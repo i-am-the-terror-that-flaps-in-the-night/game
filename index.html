@@ -419,7 +419,7 @@ body {
     <h3 style="margin-top:16px;">Level Stats</h3>
     <div id="levelStats">
         <div class="stat-row"><span>Enemies Killed</span><span id="statKills">0</span></div>
-        <div class="stat-row"><span>Gold Earned</span><span id="statGold">0</span></div>
+        <div class="stat-row"><span>Gold Earned</span><span id="statGold">1000</span></div>
         <div class="stat-row"><span>Units Lost</span><span id="statLosses">0</span></div>
         <div class="stat-row"><span>Time</span><span id="statTime">0:00</span></div>
     </div>
@@ -550,15 +550,15 @@ const RESOURCES = {
 
 // ==================== UNIT DEFINITIONS ====================
 const UNIT_TYPES = {
-    militia: { name: 'Militia', hp: 60, dmg: 8, range: 35, speed: 2.2, cooldown: 40, cost: {g:10}, pop: 1, armor: 0, desc: 'Cheap fodder. Fast but fragile.' },
-    swordsman: { name: 'Swordsman', hp: 120, dmg: 15, range: 40, speed: 1.8, cooldown: 45, cost: {g:25}, pop: 1, armor: 2, desc: 'Balanced melee fighter.' },
-    spearman: { name: 'Spearman', hp: 100, dmg: 18, range: 55, speed: 1.6, cooldown: 50, cost: {g:30}, pop: 1, armor: 1, desc: 'Long reach. Good vs large targets.' },
-    archer: { name: 'Archer', hp: 50, dmg: 12, range: 200, speed: 1.4, cooldown: 60, cost: {g:35}, pop: 1, armor: 0, ranged: true, projectile: 'arrow', desc: 'Ranged damage. Keep them safe.' },
-    crossbow: { name: 'Crossbowman', hp: 55, dmg: 28, range: 220, speed: 1.2, cooldown: 90, cost: {g:50}, pop: 1, armor: 1, ranged: true, projectile: 'bolt', pierce: 3, desc: 'Slow, heavy damage. Armor piercing.' },
-    cleric: { name: 'Cleric', hp: 70, dmg: 5, range: 120, speed: 1.3, cooldown: 80, cost: {g:60}, pop: 1, armor: 0, heal: 25, healRange: 150, healCd: 120, desc: 'Heals allies. Weak attack.' },
-    knight: { name: 'Knight', hp: 200, dmg: 25, range: 45, speed: 2.8, cooldown: 55, cost: {g:80,i:10}, pop: 2, armor: 4, charge: true, desc: 'Fast heavy cavalry. Charge attack.' },
-    mage: { name: 'Mage', hp: 60, dmg: 35, range: 180, speed: 1.1, cooldown: 100, cost: {g:100,c:20}, pop: 1, armor: 0, ranged: true, projectile: 'fireball', aoe: 60, desc: 'Fireball AoE magic damage.' },
-    catapult: { name: 'Catapult', hp: 150, dmg: 60, range: 400, speed: 0.6, cooldown: 180, cost: {g:150,i:30}, pop: 3, armor: 3, ranged: true, projectile: 'rock', aoe: 80, siege: true, desc: 'Massive range and AoE. Very slow.' }
+    militia: { name: 'Militia', hp: 60, dmg: 8, range: 35, speed: 2.2, cooldown: 40, cost: {g:0}, pop: 1, armor: 0, desc: 'Cheap fodder. Fast but fragile.' },
+    swordsman: { name: 'Swordsman', hp: 120, dmg: 15, range: 40, speed: 1.8, cooldown: 45, cost: {g:5}, pop: 1, armor: 2, desc: 'Balanced melee fighter.' },
+    spearman: { name: 'Spearman', hp: 100, dmg: 18, range: 55, speed: 1.6, cooldown: 50, cost: {g:0}, pop: 1, armor: 1, desc: 'Long reach. Good vs large targets.' },
+    archer: { name: 'Archer', hp: 50, dmg: 12, range: 200, speed: 1.4, cooldown: 60, cost: {g:5}, pop: 1, armor: 0, ranged: true, projectile: 'arrow', desc: 'Ranged damage. Keep them safe.' },
+    crossbow: { name: 'Crossbowman', hp: 55, dmg: 28, range: 220, speed: 1.2, cooldown: 90, cost: {g:0}, pop: 1, armor: 1, ranged: true, projectile: 'bolt', pierce: 3, desc: 'Slow, heavy damage. Armor piercing.' },
+    cleric: { name: 'Cleric', hp: 70, dmg: 5, range: 120, speed: 1.3, cooldown: 80, cost: {g:0}, pop: 1, armor: 0, heal: 25, healRange: 150, healCd: 120, desc: 'Heals allies. Weak attack.' },
+    knight: { name: 'Knight', hp: 200, dmg: 25, range: 45, speed: 2.8, cooldown: 55, cost: {g:0,i:0}, pop: 2, armor: 4, charge: true, desc: 'Fast heavy cavalry. Charge attack.' },
+    mage: { name: 'Mage', hp: 60, dmg: 35, range: 180, speed: 1.1, cooldown: 100, cost: {g:0,c:0}, pop: 1, armor: 0, ranged: true, projectile: 'fireball', aoe: 60, desc: 'Fireball AoE magic damage.' },
+    catapult: { name: 'Catapult', hp: 150, dmg: 60, range: 400, speed: 0.6, cooldown: 180, cost: {g:0,i:0}, pop: 3, armor: 3, ranged: true, projectile: 'rock', aoe: 80, siege: true, desc: 'Massive range and AoE. Very slow.' }
 };
 
 const ENEMY_TYPES = {
@@ -576,12 +576,12 @@ const ENEMY_TYPES = {
 
 const BUILDING_TYPES = {
     castle: { name: 'Castle', hp: 1000, width: 120, height: 100, cost: {}, desc: 'Your stronghold. Generates gold.', income: {g:0.5} },
-    mine: { name: 'Mine', hp: 200, width: 80, height: 60, cost: {g:50}, desc: 'Generates gold over time.', income: {g:2}, buildTime: 120 },
-    barracks: { name: 'Barracks', hp: 300, width: 100, height: 70, cost: {g:75}, desc: 'Unlocks advanced melee units.', unlock: ['swordsman','spearman','knight'], buildTime: 180 },
-    tower: { name: 'Tower', hp: 250, width: 50, height: 120, cost: {g:60}, desc: 'Automatically fires at enemies.', dmg: 10, range: 250, cooldown: 50, buildTime: 150 },
-    wall: { name: 'Wall', hp: 500, width: 40, height: 80, cost: {g:40}, desc: 'Blocks enemy movement.', armor: 5, buildTime: 90 },
-    academy: { name: 'Academy', hp: 280, width: 90, height: 80, cost: {g:120,c:20}, desc: 'Unlocks mages and tech.', unlock: ['mage','catapult'], buildTime: 200 },
-    archery: { name: 'Archery Range', hp: 260, width: 95, height: 70, cost: {g:70}, desc: 'Unlocks crossbowmen.', unlock: ['crossbow'], buildTime: 160 }
+    mine: { name: 'Mine', hp: 200, width: 80, height: 60, cost: {g:0}, desc: 'Generates gold over time.', income: {g:2}, buildTime: 120 },
+    barracks: { name: 'Barracks', hp: 300, width: 100, height: 70, cost: {g:0}, desc: 'Unlocks advanced melee units.', unlock: ['swordsman','spearman','knight'], buildTime: 180 },
+    tower: { name: 'Tower', hp: 250, width: 50, height: 120, cost: {g:0}, desc: 'Automatically fires at enemies.', dmg: 10, range: 250, cooldown: 50, buildTime: 150 },
+    wall: { name: 'Wall', hp: 500, width: 40, height: 80, cost: {g:0}, desc: 'Blocks enemy movement.', armor: 5, buildTime: 90 },
+    academy: { name: 'Academy', hp: 280, width: 90, height: 80, cost: {g:0,c:0}, desc: 'Unlocks mages and tech.', unlock: ['mage','catapult'], buildTime: 200 },
+    archery: { name: 'Archery Range', hp: 260, width: 95, height: 70, cost: {g:0}, desc: 'Unlocks crossbowmen.', unlock: ['crossbow'], buildTime: 160 }
 };
 
 const PROJECTILES = {
