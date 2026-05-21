@@ -157,6 +157,8 @@ body {
 }
 #waveTimer { font-size: 20px; font-weight: 800; color: #fca5a5; text-shadow: 0 0 10px rgba(220,38,38,0.6); }
 #waveNumber { font-size: 13px; color: var(--text-dim); margin-top: 2px; text-transform: uppercase; letter-spacing: 1px;}
+#waveNumber.boss-wave { color: #ff4444; text-shadow: 0 0 10px rgba(255,68,68,0.6); animation: pulse 0.5s ease-in-out infinite alternate; }
+@keyframes pulse { from { opacity: 1; } to { opacity: 0.6; } }
 
 /* Minimap */
 #minimapContainer {
@@ -363,7 +365,7 @@ select, input[type="range"] { background: #1e293b; color: #fff; border: 1px soli
     <h2>GAME PAUSED</h2>
     <button class="menu-btn" onclick="game.togglePause()">Resume Battle</button>
     <button class="menu-btn" onclick="game.openSettings()">Settings</button>
-    <button class="menu-btn" onclick="game.returnToMenu()">Abandon Campaign</button>
+    <button class="menu-btn" id="btnAbandon" onclick="game.returnToMenu()">Abandon</button>
 </div>
 
 <!-- Game Over Overlay -->
@@ -371,7 +373,7 @@ select, input[type="range"] { background: #1e293b; color: #fff; border: 1px soli
     <h1 style="background: linear-gradient(to bottom, #ff4444, #880000); -webkit-background-clip: text; color: transparent;">DEFEAT</h1>
     <p style="color:#fca5a5; max-width: 600px; text-align: center; font-size: 18px; margin-bottom: 30px;">Your fortress has fallen. The stickmen empire crumbles into dust and ash.</p>
     <div class="glass-panel" style="padding: 24px; min-width: 300px; margin-bottom: 30px;" id="endStats"></div>
-    <button class="menu-btn" onclick="game.restartLevel()">Retry Battle</button>
+    <button id="btnRetryGame" class="menu-btn" onclick="game.restartLevel()">Retry Battle</button>
     <button class="menu-btn" onclick="game.returnToMenu()">Main Menu</button>
 </div>
 
@@ -1045,7 +1047,7 @@ class Unit extends Entity {
         if(this.team === TEAMS.ENEMY) {
             game.addGold(this.bounty); game.stats.kills++; game.audio.playCoin();
         } else {
-            game.stats.losses++; game.population -= this.pop;
+            game.stats.loss++; game.population -= this.pop;
         }
     }
     draw(ctx, cam) {
@@ -1294,7 +1296,7 @@ class Game {
             
             if(hov) {
                 tt.classList.remove('hidden'); tt.style.left = (e.clientX+15)+'px'; tt.style.top = (e.clientY+15)+'px';
-                const def = hov.type ? BUILDING_TYPES[hov.type] : (hov.team===TEAMS.PLAYER ? UNIT_TYPES[hov.type] : ENEMY_TYPES[hov.type]);
+                const def = BUILDING_TYPES[hov.type] || (hov.team===TEAMS.PLAYER ? UNIT_TYPES[hov.type] : ENEMY_TYPES[hov.type]);
                 if(def) tt.innerHTML = `<div class="tt-name">${def.name}</div><div class="tt-desc">${def.desc||''}</div>HP: ${Math.floor(hov.hp)}/${hov.maxHp}<br>${def.dmg?'DMG: '+def.dmg+'<br>':''}${def.armor?'Armor: '+def.armor:''}`;
             } else tt.classList.add('hidden');
         });
@@ -1327,7 +1329,7 @@ class Game {
     }
     
     startCampaign() { this.audio.init(); this.audio.startMusic(); this.mode='campaign'; this.loadLvl(0); }
-    startEndless() { this.audio.init(); this.audio.startMusic(); this.mode='endless'; this.level=-1; this.reset(300); this.waveM = new EndlessWave(this); this.play(); }
+    startEndless() { this.audio.init(); this.audio.startMusic(); this.mode='endless'; this.level=-1; this.reset(300); const m = new Building(420, 'mine', TEAMS.PLAYER); m.building=false; m.bTimer=0; this.buildings.push(m); this.waveM = new EndlessWave(this); this.bestEndlessWave = this.bestEndlessWave || 0; this.play(); this.notify('Survive as long as you can!'); }
     loadLvl(i) { this.level=i; this.reset(LEVELS[i].startGold); this.waveM = new WaveManager(this, i); this.play(); this.notify('Region: ' + LEVELS[i].name); }
     
     reset(g) {
@@ -1339,7 +1341,7 @@ class Game {
         this.buildings.push(new Building(250, 'castle', TEAMS.PLAYER));
         if(this.level===0) { const m = new Building(400, 'mine', TEAMS.PLAYER); m.building=false; m.bTimer=0; this.buildings.push(m); }
     }
-    play() { this.state='playing'; document.querySelectorAll('.overlay').forEach(e=>e.classList.add('hidden')); }
+    play() { this.state='playing'; document.querySelectorAll('.overlay').forEach(e=>e.classList.add('hidden')); const ab=document.getElementById('btnAbandon'); if(ab) ab.innerText=this.mode==='endless'?'Abandon Run':'Abandon Campaign'; const rb=document.getElementById('btnRetryGame'); if(rb) rb.innerText=this.mode==='endless'?'Try Again':'Retry Battle'; }
     
     addGold(a) { this.gold += a; this.stats.gold += a; }
     checkCost(c) { return (this.gold>=(c.g||0) && this.iron>=(c.i||0) && this.crystal>=(c.c||0)); }
@@ -1415,7 +1417,7 @@ class Game {
         document.querySelectorAll('.overlay').forEach(e=>e.classList.add('hidden'));
         document.getElementById('mainMenu').classList.remove('hidden');
     }
-    restartLevel() { this.loadLvl(this.level); }
+    restartLevel() { if(this.mode==='endless') this.startEndless(); else this.loadLvl(this.level); }
     nextLevel() { if(this.level+1 < LEVELS.length) this.loadLvl(this.level+1); else { this.notify('Campaign Complete! Victory is yours!'); this.returnToMenu(); } }
     
     notify(m) {
@@ -1426,7 +1428,7 @@ class Game {
     updateSelUI() {
         const e=document.getElementById('selectedInfo');
         if(!this.sel) { e.innerText='Click a unit or building to view details.'; return; }
-        const s=this.sel, d=s.type?BUILDING_TYPES[s.type]:(s.team===TEAMS.PLAYER?UNIT_TYPES[s.type]:ENEMY_TYPES[s.type]);
+        const s=this.sel, d=BUILDING_TYPES[s.type]||(s.team===TEAMS.PLAYER?UNIT_TYPES[s.type]:ENEMY_TYPES[s.type]);
         e.innerHTML = `<strong style="color:#fff;font-size:14px;">${d?d.name:'Unknown'}</strong><br>HP: ${Math.floor(s.hp)}/${s.maxHp}<br>${s.dmg?'Damage: '+s.dmg+'<br>':''}${s.armor?'Armor: '+s.armor:''}`;
     }
     
@@ -1444,9 +1446,21 @@ class Game {
         }
         
         if(this.waveM) {
-            const w=this.waveM, nxt = w.cw < w.tw ? Math.max(0, Math.floor((w.wvs[w.cw].time*60 - w.t)/60)) : 0;
-            document.getElementById('waveTimer').innerText = w.cw < w.tw ? 'Next Wave: '+nxt+'s' : 'Final Wave!';
-            document.getElementById('waveNumber').innerText = this.mode==='campaign' ? 'Wave '+w.cw+' / '+w.tw : 'Wave '+w.wave;
+            if(this.mode === 'endless') {
+                const w = this.waveM;
+                const nxt = Math.max(0, Math.floor((w.int - w.t) / 60));
+                document.getElementById('waveTimer').innerText = 'Next Wave: ' + nxt + 's';
+                const isBossW = (w.wave > 0 && w.wave % 5 === 0);
+                const bossWave = isBossW ? ' [BOSS WAVE]' : '';
+                const wnEl = document.getElementById('waveNumber');
+                wnEl.innerText = 'Endless - Wave ' + w.wave + bossWave;
+                if(isBossW) wnEl.classList.add('boss-wave'); else wnEl.classList.remove('boss-wave');
+            } else {
+                const w = this.waveM;
+                const nxt = w.cw < w.tw ? Math.max(0, Math.floor((w.wvs[w.cw].time*60 - w.t)/60)) : 0;
+                document.getElementById('waveTimer').innerText = w.cw < w.tw ? 'Next Wave: '+nxt+'s' : 'Final Wave!';
+                document.getElementById('waveNumber').innerText = 'Wave '+w.cw+' / '+w.tw;
+            }
         }
         
         document.getElementById('statKills').innerText = this.stats.kills;
@@ -1525,7 +1539,13 @@ class Game {
     }
     defeat() {
         this.state='defeat'; this.audio.playError(); this.audio.stopMusic();
-        document.getElementById('endStats').innerHTML = `<div class="stat-row"><span>Enemies Destroyed</span><span>${this.stats.kills}</span></div><div class="stat-row"><span>Survival Time</span><span>${formatTime((Date.now()-this.stats.start)/1000)}</span></div>`;
+        if(this.mode === 'endless') {
+            const w = this.waveM ? this.waveM.wave : 0;
+            this.bestEndlessWave = Math.max(this.bestEndlessWave || 0, w);
+            document.getElementById('endStats').innerHTML = `<div class="stat-row"><span>Enemies Destroyed</span><span>${this.stats.kills}</span></div><div class="stat-row"><span>Waves Survived</span><span style="color:var(--gold);">${w}</span></div><div class="stat-row"><span>Survival Time</span><span>${formatTime((Date.now()-this.stats.start)/1000)}</span></div><div class="stat-row"><span>Best Wave Ever</span><span style="color:#4ade80;">${this.bestEndlessWave}</span></div>`;
+        } else {
+            document.getElementById('endStats').innerHTML = `<div class="stat-row"><span>Enemies Destroyed</span><span>${this.stats.kills}</span></div><div class="stat-row"><span>Survival Time</span><span>${formatTime((Date.now()-this.stats.start)/1000)}</span></div>`;
+        }
         document.getElementById('gameOver').classList.remove('hidden');
     }
     
@@ -1554,7 +1574,7 @@ class Game {
         if(this.shake>0) ctx.translate(rand(-this.shake,this.shake), rand(-this.shake,this.shake));
         
         // Sky & Environment
-        const lvl = LEVELS[this.level] || LEVELS;
+        const lvl = (this.level >= 0 && LEVELS[this.level]) ? LEVELS[this.level] : { sky: '#0f172a', ground: '#1c3d14' };
         const bgGrad = ctx.createLinearGradient(0,0,0,h);
         bgGrad.addColorStop(0, lvl.sky); bgGrad.addColorStop(1, '#000');
         ctx.fillStyle = bgGrad; ctx.fillRect(0,0,w,h);
@@ -1666,10 +1686,18 @@ class EndlessWave {
     update(dtMult) {
         this.t += dtMult;
         if(this.t >= this.int) {
-            this.t=0; this.wave++; this.cw++; this.g.diff = 1 + this.wave*0.2;
-            this.spawn(); this.g.audio.playTone(400,0.5,'sine',0.1);
-            this.g.notify(`Endless Wave ${this.wave}!`);
-            this.int = Math.max(300, 700 - this.wave*15);
+            this.t=0; this.wave++; this.cw++; this.g.diff = 1 + this.wave*0.18;
+            this.spawn();
+            const isBoss = this.wave % 5 === 0;
+            if(isBoss) {
+                this.g.audio.playTone(220,1,'sawtooth',0.15); this.g.audio.playTone(110,1.2,'sawtooth',0.12,0.2);
+                this.g.notify(`[BOSS WAVE ${this.wave}] A mighty force approaches!`);
+                this.g.shake = 12;
+            } else {
+                this.g.audio.playTone(400,0.5,'sine',0.1);
+                this.g.notify(`Endless Wave ${this.wave} — Difficulty x${(1+this.wave*0.18).toFixed(1)}`);
+            }
+            this.int = Math.max(240, 700 - this.wave*12);
         }
     }
     spawn() {
