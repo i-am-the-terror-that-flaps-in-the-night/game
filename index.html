@@ -1536,8 +1536,8 @@
                     </p>
                     <p>
                         <strong style="color: #fff">Economy:</strong> Build
-                        Mines to generate Gold continuously. Defeating elites
-                        yields crystals.
+                        Mines to generate Gold and Iron continuously. Defeating elites
+                        yields crystals and additional iron.
                     </p>
                     <p>
                         <strong style="color: #fff">Controls & Camera:</strong>
@@ -1926,17 +1926,17 @@
                     width: 160,
                     height: 140,
                     cost: {},
-                    desc: "Your stronghold. Defend it at all costs.",
-                    income: { g: 1 },
+                    desc: "Your stronghold. Generates +1 gold, +0.5 iron, and +0.5 crystal per sec.",
+                    income: { g: 1, i: 0.5, c: 0.5 },
                 },
                 mine: {
-                    name: "Gold Mine",
+                    name: "Resource Mine",
                     hp: 300,
                     width: 100,
                     height: 80,
                     cost: { g: 50 },
-                    desc: "Generates +3 gold/sec.",
-                    income: { g: 3 },
+                    desc: "Generates +3 gold/sec and +1 iron/sec.",
+                    income: { g: 3, i: 1 },
                     buildTime: 120,
                 },
                 barracks: {
@@ -3555,10 +3555,18 @@
                         game.addGold(this.bounty);
                         game.stats.kills++;
                         game.audio.playCoin();
-                        // Fix #12: Crystal drops
+                        
+                        // Crystal drops
                         if (this.type === "shaman") game.crystal += 2;
                         if (this.type === "necromancer") game.crystal += 5;
                         if (this.type === "dragon") game.crystal += 25;
+                        
+                        // Iron drops
+                        if (this.type === "marauder") game.iron += 1;
+                        if (this.type === "berserker") game.iron += 2;
+                        if (this.type === "shieldman") game.iron += 4;
+                        if (this.type === "ogre") game.iron += 10;
+                        
                     } else {
                         game.stats.loss++;
                         game.population -= this.pop;
