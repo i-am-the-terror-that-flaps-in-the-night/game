@@ -702,6 +702,61 @@
                 background: rgba(148, 163, 184, 0.5);
             }
 
+
+            /* ── NEW ADDITIONS ── */
+            /* Danger Vignette */
+            #dangerVignette {
+                position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+                pointer-events: none; z-index: 16;
+                background: radial-gradient(ellipse at center, transparent 35%, rgba(200,0,0,0) 100%);
+                opacity: 0; transition: opacity 0.5s;
+            }
+            /* Formation bar */
+            #formationBar { display: flex; gap: 6px; align-items: center; margin-bottom: -4px; }
+            .form-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; }
+            .form-btn {
+                padding: 5px 12px; font-size: 11px; font-weight: 700;
+                background: var(--panel-bg); border: 1px solid var(--panel-border);
+                color: var(--text-dim); border-radius: 8px; cursor: pointer;
+                transition: all 0.2s; letter-spacing: 1px; text-transform: uppercase;
+                backdrop-filter: blur(8px);
+            }
+            .form-btn:hover { color: #fff; border-color: rgba(148,163,184,0.5); }
+            .form-btn.active { color: var(--accent); border-color: var(--accent); box-shadow: 0 0 10px rgba(59,130,246,0.35); }
+            /* Wave preview */
+            #wavePreview {
+                text-align: center; font-size: 11px; color: var(--text-dim);
+                margin-top: 4px; min-height: 16px; letter-spacing: 0.5px;
+            }
+            /* Income display */
+            .income-rate { font-size: 10px; color: var(--success); font-weight: 700; margin-left: 4px; }
+            /* Difficulty buttons */
+            .diff-btn {
+                padding: 14px 28px; font-size: 13px; font-weight: 700; margin: 6px;
+                background: linear-gradient(180deg,rgba(30,41,59,1),rgba(15,23,42,1));
+                border: 1px solid rgba(148,163,184,0.3); color: #fff; border-radius: 10px;
+                cursor: pointer; transition: all 0.2s; min-width: 240px;
+                text-transform: uppercase; letter-spacing: 1.5px;
+                box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+            }
+            .diff-btn:hover { transform: translateY(-2px); box-shadow: 0 14px 28px rgba(0,0,0,0.6); }
+            .diff-btn.easy  { border-color: var(--success); }
+            .diff-btn.normal{ border-color: var(--accent); }
+            .diff-btn.hard  { border-color: #f97316; }
+            .diff-btn.brutal{ border-color: var(--danger); }
+            /* Level star */
+            .level-star { position: absolute; color: #fbbf24; font-size: 11px; text-shadow: 0 0 6px rgba(251,191,36,0.8); }
+            /* Achievement overlay */
+            .ach-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 14px; margin-top: 20px; }
+            .ach-item {
+                background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.06);
+                padding: 14px; border-radius: 10px; display: flex; gap: 12px; align-items: flex-start;
+            }
+            .ach-item.unlocked { border-color: rgba(251,191,36,0.4); background: rgba(251,191,36,0.04); }
+            .ach-icon { font-size: 24px; flex-shrink: 0; }
+            .ach-name { font-weight: 800; font-size: 13px; color: #fff; }
+            .ach-desc { font-size: 12px; color: var(--text-dim); margin-top: 3px; }
+            .ach-locked { filter: grayscale(1); opacity: 0.4; }
             /* ============================================================
    RESPONSIVE DESIGN SYSTEM (MOBILE/TABLET)
    ============================================================ */
@@ -834,9 +889,11 @@
                 }
             }
         </style>
-    </head>
+    <base target="_blank">
+</head>
     <body>
         <canvas id="gameCanvas"></canvas>
+        <div id="dangerVignette"></div>
         <div id="targetOverlay"><div id="targetCursor"></div></div>
 
         <div id="topBar" class="glass-panel ui-element">
@@ -856,7 +913,7 @@
                         <line x1="8" y1="12" x2="16" y2="12" />
                     </svg>
                 </span>
-                <span id="goldDisplay">150</span>
+                <span id="goldDisplay">150</span><span id="incomeRate" class="income-rate"></span>
             </div>
             <div
                 class="resource-pill"
@@ -995,9 +1052,16 @@
         <div id="waveInfo">
             <div id="waveTimer">Next Wave: 15s</div>
             <div id="waveNumber">Wave 1 / 5</div>
+            <div id="wavePreview"></div>
         </div>
 
         <div id="bottomContainer" class="ui-element">
+            <div id="formationBar">
+                <span class="form-label">Formation:</span>
+                <button class="form-btn active" id="fBtn-defensive" onclick="game.setFormation('defensive')">🛡 Hold</button>
+                <button class="form-btn" id="fBtn-standard" onclick="game.setFormation('standard')">⚔ Standard</button>
+                <button class="form-btn" id="fBtn-aggressive" onclick="game.setFormation('aggressive')">⚡ Assault</button>
+            </div>
             <div
                 style="
                     font-size: 11px;
@@ -1036,6 +1100,14 @@
                 >
                     Holy Light<span class="hotkey">C</span
                     ><span class="cost">30 Mana</span>
+                </button>
+                <button
+                    class="btn spell-btn"
+                    id="btnSpellLightning"
+                    onclick="game.selectSpell('lightning')"
+                    title="Chain Lightning: Arcs through 4 enemies"
+                >
+                    Lightning<span class="hotkey">V</span><span class="cost">45 Mana</span>
                 </button>
                 <div
                     style="
@@ -1162,6 +1234,19 @@
                     Catapult<span class="hotkey">9</span
                     ><span class="cost">150g 30i</span>
                 </button>
+                <button
+                    class="btn unit-btn"
+                    id="btnPaladin"
+                    oncontextmenu="
+                        game.toggleAuto('paladin');
+                        return false;
+                    "
+                    onclick="game.buyUnit('paladin')"
+                    style="border-color:rgba(251,191,36,0.4)"
+                >
+                    Paladin<span class="hotkey">0</span
+                    ><span class="cost">120g 30c</span>
+                </button>
                 <div
                     style="
                         width: 1px;
@@ -1216,6 +1301,23 @@
                 >
                     Obelisk<span class="hotkey">F</span
                     ><span class="cost">100g 50c</span>
+                </button>
+                <button
+                    class="btn bldg-btn"
+                    id="btnArchery"
+                    onclick="game.build('archery')"
+                >
+                    Archery<span class="hotkey">G</span
+                    ><span class="cost">60g</span>
+                </button>
+                <button
+                    class="btn bldg-btn"
+                    id="btnForge"
+                    onclick="game.build('forge')"
+                    style="border-color:rgba(249,115,22,0.4)"
+                >
+                    Forge<span class="hotkey">H</span
+                    ><span class="cost">80g 20i</span>
                 </button>
             </div>
         </div>
@@ -1299,6 +1401,9 @@
                 </button>
                 <button class="menu-btn" onclick="game.showHelp()">
                     Commander's Manual
+                </button>
+                <button class="menu-btn" onclick="game.openAchievements()" style="border-color:rgba(251,191,36,0.4);font-size:14px;">
+                    🏆 Achievements
                 </button>
             </div>
             <div
@@ -1596,6 +1701,30 @@
                         Understood
                     </button>
                 </div>
+            </div>
+        </div>
+
+
+        <div id="achievementsOverlay" class="overlay hidden">
+            <div class="glass-panel" style="width:700px;padding:40px;max-height:82vh;overflow-y:auto;position:relative;">
+                <button style="position:absolute;top:20px;right:25px;background:none;border:none;color:var(--text-dim);font-size:32px;cursor:pointer;" onclick="document.getElementById('achievementsOverlay').classList.add('hidden')">×</button>
+                <h2 style="text-align:center;color:var(--gold);margin-bottom:6px;">🏆 Achievements</h2>
+                <p style="text-align:center;color:var(--text-dim);font-size:13px;margin-bottom:4px;" id="achProgress">Loading…</p>
+                <div id="achievementsGrid" class="ach-grid"></div>
+            </div>
+        </div>
+
+        <div id="difficultyOverlay" class="overlay hidden">
+            <div class="glass-panel" style="width:520px;padding:40px;text-align:center;">
+                <h2 style="color:var(--gold);margin-bottom:8px;font-size:26px;">⚔ Select Difficulty</h2>
+                <p style="color:var(--text-dim);margin-bottom:28px;font-size:14px;">Your glory is determined by your courage.</p>
+                <div style="display:flex;flex-direction:column;gap:10px;align-items:center;">
+                    <button class="diff-btn easy" onclick="game.startCampaignWithDiff(0.7)">🌿 Novice — Weakened foes, bonus gold</button>
+                    <button class="diff-btn normal" onclick="game.startCampaignWithDiff(1.0)">⚔ Warlord — The intended experience</button>
+                    <button class="diff-btn hard" onclick="game.startCampaignWithDiff(1.4)">🔥 Veteran — Stronger hordes, less gold</button>
+                    <button class="diff-btn brutal" onclick="game.startCampaignWithDiff(2.0)">💀 Legendary — Maximum brutality</button>
+                </div>
+                <button class="menu-btn" style="min-width:200px;padding:12px 20px;margin-top:24px;" onclick="document.getElementById('difficultyOverlay').classList.add('hidden')">← Back</button>
             </div>
         </div>
 
@@ -1987,7 +2116,7 @@
                     width: 110,
                     height: 85,
                     cost: { g: 60 },
-                    desc: "Unlocks Crossbowmen.",
+                    desc: "Unlocks Crossbowmen. Enhances Crossbow damage & range after construction.",
                     unlock: ["crossbow"],
                     buildTime: 160,
                 },
@@ -3081,6 +3210,23 @@
                             this.building = false;
                             game.audio.playBuild();
                             game.notify(`${this.name} completed.`);
+                            if (this.type === 'forge') {
+                                game.upgrades.forge = (game.upgrades.forge || 0) + 0.25;
+                                game.units.forEach(u => {
+                                    if (u.team === TEAMS.PLAYER && !u.ranged)
+                                        u.dmg = Math.ceil(u.dmg * 1.25);
+                                });
+                                game.notify('⚒ Forge active — melee units gain +25% damage!');
+                            }
+                            if (this.type === 'archery') {
+                                game.units.forEach(u => {
+                                    if (u.team === TEAMS.PLAYER && u.type === 'crossbow') {
+                                        u.dmg   = Math.ceil(u.dmg   * 1.20);
+                                        u.range = Math.ceil(u.range * 1.15);
+                                    }
+                                });
+                                game.notify('🎯 Archery Range — Crossbowmen enhanced!');
+                            }
                         }
                         return;
                     }
@@ -3243,6 +3389,31 @@
                             ctx.lineTo(x + w, y + i * (h / 4));
                             ctx.stroke();
                         }
+                    } else if (this.type === "forge") {
+                        ctx.fillStyle = "#2d1a0e";
+                        ctx.fillRect(x, y, w, h);
+                        // chimney
+                        ctx.fillStyle = "#374151";
+                        ctx.fillRect(x + w*0.65, y - 16*cam.z, w*0.2, 16*cam.z);
+                        // body
+                        ctx.fillStyle = "#4b2c1a";
+                        ctx.fillRect(x + w*0.05, y + h*0.4, w*0.9, h*0.45);
+                        // anvil
+                        ctx.fillStyle = "#6b7280";
+                        ctx.fillRect(x + w*0.15, y + h*0.55, w*0.7, h*0.2);
+                        ctx.fillRect(x + w*0.25, y + h*0.4, w*0.5, h*0.15);
+                        // fire glow
+                        ctx.globalCompositeOperation = "screen";
+                        const ff = 0.3 + Math.abs(Math.sin(this.frame * 0.12)) * 0.4;
+                        ctx.fillStyle = `rgba(251,146,60,${ff})`;
+                        ctx.beginPath();
+                        ctx.arc(p.x, y + h*0.35, 14*cam.z, 0, Math.PI*2);
+                        ctx.fill();
+                        ctx.fillStyle = `rgba(255,220,100,${ff*0.6})`;
+                        ctx.beginPath();
+                        ctx.arc(p.x, y + h*0.3, 7*cam.z, 0, Math.PI*2);
+                        ctx.fill();
+                        ctx.globalCompositeOperation = "source-over";
                     } else if (this.type === "obelisk") {
                         ctx.fillStyle = "#1e1b4b";
                         ctx.beginPath();
@@ -3305,6 +3476,30 @@
                     this.frame = randInt(0, 100);
                     this.facing = team === TEAMS.PLAYER ? 1 : -1;
                     this.summonTimer = 300; // Fix #3: Necro timer
+                    // ── XP / Leveling (player units only) ──
+                    this.xp = 0;
+                    this.level = 1;
+                    this.xpNeeded = 60;
+                    // ── Paladin self-heal ──
+                    const ud = team === TEAMS.PLAYER ? UNIT_TYPES[type] : null;
+                    this.selfHealAmt = (ud && ud.selfHeal) || 0;
+                    this.selfHealCd  = (ud && ud.selfHealCd)  || 0;
+                    this.selfHealTimer = 0;
+                }
+                gainXP(amount) {
+                    if (this.team !== TEAMS.PLAYER || this.level >= 3 || this.hp <= 0) return;
+                    this.xp += amount;
+                    if (this.xp >= this.xpNeeded) {
+                        this.xp = 0;
+                        this.level++;
+                        this.xpNeeded = this.level === 2 ? 150 : 300;
+                        this.maxHp = Math.floor(this.maxHp * 1.15);
+                        this.hp    = Math.min(this.hp + 40, this.maxHp);
+                        this.dmg   = Math.ceil(this.dmg   * 1.10);
+                        this.armor = (this.armor || 0) + 1;
+                        game.particles.emit(this.x, this.y - 40, 30, '#fbbf24', 6, 5, 'float');
+                        game.notify(`${this.name} promoted to ★ Lv.${this.level}!`);
+                    }
                 }
                 applyUpgrades(upg) {
                     if (!upg) return;
@@ -3331,6 +3526,16 @@
                 update(dt) {
                     if (!this.active) return;
                     this.frame += dt;
+
+                    // Paladin / self-healer tick
+                    if (this.selfHealAmt > 0 && this.hp > 0 && this.hp < this.maxHp) {
+                        if (this.selfHealTimer > 0) this.selfHealTimer -= dt;
+                        else {
+                            this.heal(this.selfHealAmt);
+                            game.particles.emit(this.x, this.y - 25, 6, '#fde047', 2, 3, 'float');
+                            this.selfHealTimer = this.selfHealCd;
+                        }
+                    }
 
                     if (this.healAmt > 0) {
                         if (this.healTimer > 0) this.healTimer -= dt;
@@ -3431,10 +3636,13 @@
                     } else {
                         if (this.team === TEAMS.PLAYER) {
                             this.state = "idle";
-                            if (this.x > 450) {
-                                this.facing = -1;
-                                this.x -= 1.5 * dt;
-                                this.state = "walk";
+                            const holdX = typeof game !== 'undefined'
+                                ? (game.formation === 'defensive' ? 320 : game.formation === 'aggressive' ? 700 : 450)
+                                : 450;
+                            if (this.x > holdX) {
+                                this.facing = -1; this.x -= 1.5 * dt; this.state = "walk";
+                            } else if (typeof game !== 'undefined' && game.formation === 'aggressive' && this.x < holdX - 80) {
+                                this.facing = 1; this.x += 1.0 * dt; this.state = "walk";
                             }
                         } else {
                             this.state = "walk";
@@ -3566,7 +3774,17 @@
                         if (this.type === "berserker") game.iron += 2;
                         if (this.type === "shieldman") game.iron += 4;
                         if (this.type === "ogre") game.iron += 10;
-                        
+                        // Dragon kill flag for achievement
+                        if (this.type === "dragon") game._dragonKilled = true;
+                        // Grant XP to nearest player unit
+                        let ckr = null, ckrD = 260;
+                        game.units.forEach(u => {
+                            if (u.hp > 0 && u.team === TEAMS.PLAYER) {
+                                const d = dist(u.x, u.y, this.x, this.y);
+                                if (d < ckrD) { ckrD = d; ckr = u; }
+                            }
+                        });
+                        if (ckr) ckr.gainXP(this.bounty || 5);
                     } else {
                         game.stats.loss++;
                         game.population -= this.pop;
@@ -3864,6 +4082,17 @@
                     ctx.restore();
 
                     this.drawHp(ctx, cam, 35 * this.scale, -75 * this.scale);
+                    // Level star badge
+                    if (this.team === TEAMS.PLAYER && this.level > 1 && this.active) {
+                        const pL = cam.toScreen(this.x, this.y);
+                        ctx.save();
+                        ctx.fillStyle = '#fbbf24';
+                        ctx.shadowBlur = 8; ctx.shadowColor = '#fbbf24';
+                        ctx.font = `bold ${10 * cam.z}px system-ui`;
+                        ctx.textAlign = 'center';
+                        ctx.fillText('★'.repeat(this.level - 1), pL.x, pL.y - (82 * this.scale + 2) * cam.z);
+                        ctx.shadowBlur = 0; ctx.restore();
+                    }
                     this.drawDmg(ctx, cam, dt);
                 }
             }
@@ -3912,6 +4141,7 @@
                         if (e.code === "KeyZ") this.select("meteor");
                         if (e.code === "KeyX") this.select("blizzard");
                         if (e.code === "KeyC") this.select("heal");
+                        if (e.code === "KeyV") this.select("lightning");
                         if (e.code === "Escape" || e.button === 2)
                             this.cancel();
                     });
@@ -3962,7 +4192,7 @@
                     document.getElementById("manaDisplay").innerText =
                         Math.floor(this.mana) + "/" + this.maxMana;
 
-                    ["meteor", "blizzard", "heal"].forEach((s) => {
+                    ["meteor", "blizzard", "heal", "lightning"].forEach((s) => {
                         const btn = document.getElementById(
                             "btnSpell" + s.charAt(0).toUpperCase() + s.slice(1),
                         );
@@ -4100,8 +4330,24 @@
                             if (dist(w.x, wy, b.x, b.y) < sp.radius)
                                 b.heal(hPwr);
                         });
+                    } else if (this.active === 'lightning') {
+                        const sp2 = SPELLS.lightning;
+                        let near = game.enemies.filter(e => e.hp > 0 && dist(w.x, wy, e.x, e.y) < 500);
+                        near.sort((a,b) => dist(w.x,wy,a.x,a.y) - dist(w.x,wy,b.x,b.y));
+                        near = near.slice(0, sp2.chains);
+                        const pwr2 = sp2.damage * (1 + (game.upgrades.magic_damage || 0));
+                        near.forEach((en, idx) => {
+                            setTimeout(() => {
+                                if (game.state !== 'playing') return;
+                                en.takeDamage(pwr2 * Math.pow(0.75, idx), false, true);
+                                game.particles.emit(en.x, en.y - 28, 12, '#38bdf8', 6, 3, 'spark');
+                                const prev = idx === 0 ? {x: w.x, y: wy} : {x: near[idx-1].x, y: near[idx-1].y - 28};
+                                game.lightningArcs.push({ x1: prev.x, y1: prev.y, x2: en.x, y2: en.y - 28, life: 14 });
+                                game.audio.playMagic();
+                            }, idx * 110);
+                        });
+                        if (near.length === 0) game.notify('No targets in range!');
                     }
-
                     this.cancel();
                 }
             }
@@ -4146,7 +4392,6 @@
                             "swordsman",
                             "spearman",
                             "archer",
-                            "crossbow",
                             "cleric",
                             "knight",
                             "mage",
@@ -4172,6 +4417,11 @@
                     this.dayT = 0;
                     this.mouse = { x: 0, y: 0 };
 
+                    this.lightningArcs  = [];
+                    this.formation       = 'defensive';
+                    this.difficultyMult  = 1.0;
+                    this._dragonKilled   = false;
+                    this.achievements    = null; // inited after game is declared
                     this.loadSave(); // Fix #20
                     this.bindEvents();
                     this.loop();
@@ -4385,17 +4635,21 @@
                             7: "knight",
                             8: "mage",
                             9: "catapult",
+                            0: "paladin",
                             q: "mine",
                             w: "barracks",
                             e: "tower",
                             r: "wall",
                             t: "academy",
                             f: "obelisk",
+                            g: "archery",
+                            h: "forge",
                         };
                         if (m[k]) {
-                            if ("123456789".includes(k)) this.buyUnit(m[k]);
-                            else this.build(m[k]);
+                            if ("1234567890".includes(k) && UNIT_TYPES[m[k]]) this.buyUnit(m[k]);
+                            else if (BUILDING_TYPES[m[k]]) this.build(m[k]);
                         }
+                        if ("0123456789".includes(k)) { if (m[k]) this.buyUnit(m[k]); }
                         if (k === " " || k === "p" || k === "escape")
                             this.setSpeed(this.ts === 0 ? 1 : 0);
                         if (k === "y") this.openTechTree();
@@ -4431,6 +4685,11 @@
                 startCampaign() {
                     this.audio.init();
                     this.audio.startMusic();
+                    document.getElementById('difficultyOverlay').classList.remove('hidden');
+                }
+                startCampaignWithDiff(mult) {
+                    this.difficultyMult = mult;
+                    document.getElementById('difficultyOverlay').classList.add('hidden');
                     this.mode = "campaign";
                     this.loadLvl(this.maxUnlockedLevel);
                 }
@@ -4458,6 +4717,8 @@
                 }
 
                 reset(g) {
+                    if (this.difficultyMult < 1.0) g = Math.floor(g * 1.25);
+                    if (this.difficultyMult > 1.0) g = Math.floor(g * (this.difficultyMult > 1.2 ? 0.75 : 0.88));
                     this.gold = g;
                     this.iron = RESOURCES.START_IRON;
                     this.crystal = RESOURCES.START_CRYSTAL;
@@ -4574,6 +4835,8 @@
                     this.pop += d.pop;
                     const u = new Unit(150 + rand(-20, 20), t, TEAMS.PLAYER);
                     u.applyUpgrades(this.upgrades);
+                    if (this.upgrades.forge && !UNIT_TYPES[t].ranged)
+                        u.dmg = Math.ceil(u.dmg * (1 + this.upgrades.forge));
                     this.units.push(u);
                     if (!auto) this.audio.playBuild();
                     return true;
@@ -4609,8 +4872,8 @@
 
                 spawnEnemy(t, x, y) {
                     const e = new Unit(x, t, TEAMS.ENEMY);
-                    e.maxHp *= this.diff;
-                    e.dmg *= this.diff;
+                    e.maxHp *= (this.diff || 1) * (this.difficultyMult || 1);
+                    e.dmg   *= (this.diff || 1) * (this.difficultyMult || 1);
                     e.hp = e.maxHp;
                     this.enemies.push(e);
                 }
@@ -4664,6 +4927,17 @@
                     this.audio.playCoin();
                     this.openTechTree();
                     this.updateUI();
+                }
+                setFormation(f) {
+                    this.formation = f;
+                    ['defensive','standard','aggressive'].forEach(id => {
+                        const b = document.getElementById('fBtn-' + id);
+                        if (b) b.classList.toggle('active', id === f);
+                    });
+                }
+                openAchievements() {
+                    if (this.achievements) this.achievements.render();
+                    document.getElementById('achievementsOverlay').classList.remove('hidden');
                 }
                 openSettings() {
                     document
@@ -4739,8 +5013,16 @@
                 }
 
                 updateUI() {
-                    document.getElementById("goldDisplay").innerText =
-                        Math.floor(this.gold);
+                    document.getElementById("goldDisplay").innerText = Math.floor(this.gold);
+                    // Income per second display
+                    const incomeMult2 = 1 + (this.upgrades.income || 0);
+                    let incomePerSec = 0;
+                    this.buildings.forEach(b => {
+                        if (b.active && !b.building && b.income && b.income.g)
+                            incomePerSec += b.income.g * incomeMult2;
+                    });
+                    const irEl = document.getElementById("incomeRate");
+                    if (irEl) irEl.innerText = incomePerSec > 0 ? `+${incomePerSec.toFixed(0)}/s` : "";
                     document.getElementById("ironDisplay").innerText =
                         Math.floor(this.iron);
                     document.getElementById("crystalDisplay").innerText =
@@ -4798,8 +5080,22 @@
                         }
                     }
 
-                    document.getElementById("statKills").innerText =
-                        this.stats.kills;
+                    // Wave preview
+                    const prevEl = document.getElementById("wavePreview");
+                    if (prevEl && this.waveM && this.mode === "campaign") {
+                        const wm = this.waveM;
+                        if (wm.cw < wm.tw) {
+                            const nw = wm.wvs[wm.cw];
+                            if (nw) {
+                                const str = nw.enemies.map(gr => {
+                                    const d2 = ENEMY_TYPES[gr.t];
+                                    return `${d2 ? d2.name : gr.t} ×${gr.c}`;
+                                }).join(" · ");
+                                prevEl.innerHTML = `⚠ <span style="color:#fca5a5;">${str}</span>`;
+                            } else prevEl.innerHTML = "";
+                        } else prevEl.innerHTML = "";
+                    } else if (prevEl) prevEl.innerHTML = "";
+                    document.getElementById("statKills").innerText = this.stats.kills;
                     document.getElementById("statGold").innerText = Math.floor(
                         this.stats.gold,
                     );
@@ -4819,6 +5115,7 @@
                         knight: "btnKnight",
                         mage: "btnMage",
                         catapult: "btnCatapult",
+                        paladin: "btnPaladin",
                     };
                     for (const [t, id] of Object.entries(bMap)) {
                         const b = document.getElementById(id),
@@ -4836,6 +5133,8 @@
                         wall: "btnWall",
                         academy: "btnAcademy",
                         obelisk: "btnObelisk",
+                        archery: "btnArchery",
+                        forge: "btnForge",
                     };
                     for (const [t, id] of Object.entries(blMap)) {
                         const b = document.getElementById(id);
@@ -4939,6 +5238,7 @@
                         this.waveM.update(dt);
                         if (this.waveM.isComplete()) this.victory();
                     }
+                    if (this.achievements && this.frames % 180 === 0) this.achievements.check();
 
                     if (
                         !this.buildings.some(
@@ -4952,6 +5252,10 @@
                 victory() {
                     this.setSpeed(0);
                     this.state = "victory";
+                    // Last Stand achievement
+                    const castleV = this.buildings.find(b => b.type === "castle");
+                    if (castleV && castleV.hp / castleV.maxHp < 0.15 && this.achievements)
+                        this.achievements.tryUnlock("last_stand");
                     this.audio.playMagic();
                     this.audio.stopMusic();
                     if (this.mode === "campaign") {
@@ -5173,6 +5477,43 @@
                         ctx.fillRect(0, 0, w, h);
                     }
 
+                    // Castle danger vignette
+                    const cas2 = this.buildings.find(b => b.type === "castle" && b.active && b.hp > 0);
+                    if (cas2 && cas2.hp / cas2.maxHp < 0.35) {
+                        const ratio2 = 1 - (cas2.hp / cas2.maxHp) / 0.35;
+                        const pulse2 = (Math.sin(Date.now() * 0.004) + 1) * 0.5;
+                        const alpha2 = (0.08 + ratio2 * 0.22) * (0.5 + pulse2 * 0.5);
+                        const vg = ctx.createRadialGradient(w/2, h/2, h*0.22, w/2, h/2, h*0.85);
+                        vg.addColorStop(0, "transparent");
+                        vg.addColorStop(1, `rgba(200,0,0,${alpha2})`);
+                        ctx.fillStyle = vg; ctx.fillRect(0, 0, w, h);
+                    }
+                    // Lightning arc rendering
+                    for (let i = this.lightningArcs.length - 1; i >= 0; i--) {
+                        const arc = this.lightningArcs[i];
+                        arc.life -= dt;
+                        if (arc.life <= 0) { this.lightningArcs.splice(i, 1); continue; }
+                        const p1 = cam.toScreen(arc.x1, arc.y1);
+                        const p2 = cam.toScreen(arc.x2, arc.y2);
+                        ctx.save();
+                        ctx.globalAlpha = (arc.life / 14) * 0.85;
+                        ctx.globalCompositeOperation = "screen";
+                        ctx.strokeStyle = "#7dd3fc";
+                        ctx.lineWidth = 2.5 * cam.z;
+                        ctx.shadowBlur = 18; ctx.shadowColor = "#38bdf8";
+                        ctx.beginPath();
+                        const steps = 7;
+                        ctx.moveTo(p1.x, p1.y);
+                        for (let s = 1; s < steps; s++) {
+                            const tt = s / steps;
+                            const mx = p1.x + (p2.x - p1.x)*tt + (Math.random()-0.5)*28;
+                            const my = p1.y + (p2.y - p1.y)*tt + (Math.random()-0.5)*28;
+                            ctx.lineTo(mx, my);
+                        }
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.stroke();
+                        ctx.shadowBlur = 0; ctx.restore();
+                    }
                     ctx.restore();
                     this.drawMinimap();
                 }
@@ -5328,8 +5669,75 @@
                 }
             }
 
+
+            // ─── ACHIEVEMENTS ────────────────────────────────────────────────
+            const ACHIEVEMENTS = [
+                { id: 'first_blood',   name: 'First Blood',     icon: '⚔️',  desc: 'Slay your first enemy.' },
+                { id: 'century',       name: 'Century',         icon: '💀',  desc: 'Kill 100 enemies in one session.' },
+                { id: 'dragon_slayer', name: 'Dragon Slayer',   icon: '🐉',  desc: 'Defeat a Dragon in battle.' },
+                { id: 'last_stand',    name: 'Last Stand',      icon: '🏰',  desc: 'Win a level with castle below 15% HP.' },
+                { id: 'tech_master',   name: 'Tech Master',     icon: '🔬',  desc: 'Research 5 technologies.' },
+                { id: 'wave_10',       name: 'Endured',         icon: '🌊',  desc: 'Survive 10 waves in Endless mode.' },
+                { id: 'rich',          name: 'War Profiteer',   icon: '💰',  desc: 'Earn 1500 total gold in one session.' },
+                { id: 'holy_order',    name: 'Holy Order',      icon: '✨',  desc: 'Field 3 Paladins simultaneously.' },
+                { id: 'max_pop',       name: 'Total War',       icon: '⚔️',  desc: 'Reach maximum population cap.' },
+                { id: 'veteran',       name: 'Veteran',         icon: '⭐',  desc: 'Promote a unit to Level 3.' },
+            ];
+
+            class AchievementSystem {
+                constructor(g) {
+                    this.g = g;
+                    try { this.unlocked = new Set(JSON.parse(localStorage.getItem('sd_ach_v2') || '[]')); }
+                    catch(e) { this.unlocked = new Set(); }
+                }
+                tryUnlock(id) {
+                    if (this.unlocked.has(id)) return;
+                    const a = ACHIEVEMENTS.find(x => x.id === id);
+                    if (!a) return;
+                    this.unlocked.add(id);
+                    try { localStorage.setItem('sd_ach_v2', JSON.stringify([...this.unlocked])); } catch(e) {}
+                    const area = document.getElementById('notificationArea');
+                    if (!area) return;
+                    const d = document.createElement('div');
+                    d.className = 'notification';
+                    d.style.borderLeftColor = 'var(--gold)';
+                    d.style.background = 'rgba(251,191,36,0.08)';
+                    d.innerHTML = `${a.icon} <strong style="color:var(--gold)">Achievement!</strong> ${a.name}`;
+                    area.appendChild(d);
+                    setTimeout(() => { if (d.parentNode) d.remove(); }, 5000);
+                }
+                check() {
+                    const g = this.g;
+                    if (g.stats.kills >= 1) this.tryUnlock('first_blood');
+                    if (g.stats.kills >= 100) this.tryUnlock('century');
+                    if (g._dragonKilled) this.tryUnlock('dragon_slayer');
+                    if (g.techs.size >= 5) this.tryUnlock('tech_master');
+                    if (g.mode === 'endless' && g.waveM && g.waveM.wave >= 10) this.tryUnlock('wave_10');
+                    if (g.stats.gold >= 1500) this.tryUnlock('rich');
+                    const pals = g.units.filter(u => u.type === 'paladin' && u.hp > 0).length;
+                    if (pals >= 3) this.tryUnlock('holy_order');
+                    if (g.pop >= g.maxPop && g.maxPop >= 20) this.tryUnlock('max_pop');
+                    if (g.units.some(u => u.level >= 3)) this.tryUnlock('veteran');
+                }
+                render() {
+                    const grid = document.getElementById('achievementsGrid');
+                    const prog = document.getElementById('achProgress');
+                    if (!grid) return;
+                    grid.innerHTML = '';
+                    ACHIEVEMENTS.forEach(a => {
+                        const got = this.unlocked.has(a.id);
+                        grid.innerHTML += `<div class="ach-item ${got ? 'unlocked' : 'ach-locked'}">
+                            <span class="ach-icon">${a.icon}</span>
+                            <div><div class="ach-name">${a.name}</div><div class="ach-desc">${a.desc}</div></div>
+                        </div>`;
+                    });
+                    if (prog) prog.textContent = `${this.unlocked.size} / ${ACHIEVEMENTS.length} Unlocked`;
+                }
+            }
+
             // Init
             const game = new Game();
+            game.achievements = new AchievementSystem(game);
         </script>
     </body>
 </html>
