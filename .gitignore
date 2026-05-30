@@ -66,3 +66,8 @@ htmlcov/
 *.tar
 *.tar.gz
 *.7z
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
