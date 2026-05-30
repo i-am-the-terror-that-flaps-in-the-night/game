@@ -525,6 +525,10 @@
                 backdrop-filter: blur(4px);
                 transition: opacity 0.1s;
             }
+            .tooltip.hidden {
+                display: none;
+                opacity: 0;
+            }
             .tooltip .tt-name {
                 color: var(--gold);
                 font-weight: 800;
@@ -4664,6 +4668,13 @@
                         } else {
                             tt.classList.add("hidden");
                         }
+                    });
+
+                    // FIX: Hide tooltip and stop edge-scroll when mouse leaves canvas
+                    this.canvas.addEventListener("mouseleave", () => {
+                        this.mouse.x = -1000;
+                        this.mouse.y = -1000;
+                        document.getElementById("tooltip").classList.add("hidden");
                     });
 
                     this.canvas.addEventListener("mousedown", (e) => {
