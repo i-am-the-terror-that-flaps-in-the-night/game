@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+    <!-- Resource HUD icons. Each symbol keeps stroke="currentColor" so it
+         inherits the color set on the host element (color: var(--gold) etc.).
+         Referenced from index.html via <svg><use href="assets/icons/sprite.svg#icon-..."/></svg>.
+         NOTE: external <use> requires the page to be served over HTTP (not file://). -->
+    <symbol id="icon-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="8" />
+        <line x1="12" y1="8" x2="12" y2="16" />
+        <line x1="8" y1="12" x2="16" y2="12" />
+    </symbol>
+    <symbol id="icon-iron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2" />
+    </symbol>
+    <symbol id="icon-crystal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polygon points="12 2 15 10 22 12 15 14 12 22 9 14 2 12 9 10 12 2" />
+    </symbol>
+    <symbol id="icon-mana" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+    </symbol>
+    <symbol id="icon-pop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </symbol>
+</svg>
