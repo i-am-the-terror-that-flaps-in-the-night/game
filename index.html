@@ -1520,6 +1520,10 @@
                     <button class="menu-btn" onclick="game.startEndless()">
                         ∞ Endless Survival
                     </button>
+                    <button class="menu-btn" onclick="game.openArmory()"
+                        style="border-color:rgba(192,132,252,0.45);background:linear-gradient(180deg,rgba(30,18,45,0.95),rgba(14,8,22,0.95));">
+                        🛡 Armory
+                    </button>
                     <button class="menu-btn" onclick="game.openSettings()">
                         ⚙ Settings
                     </button>
@@ -1831,6 +1835,16 @@
             </div>
         </div>
 
+        <div id="armoryOverlay" class="overlay hidden">
+            <div class="glass-panel" style="width:720px;padding:36px 40px;max-height:84vh;overflow-y:auto;position:relative;">
+                <button style="position:absolute;top:20px;right:25px;background:none;border:none;color:var(--text-dim);font-size:32px;cursor:pointer;" onclick="document.getElementById('armoryOverlay').classList.add('hidden')">×</button>
+                <h2 style="text-align:center;color:#c084fc;margin-bottom:4px;">🛡 Armory</h2>
+                <p style="text-align:center;color:var(--text-dim);font-size:13px;margin-bottom:6px;">Permanent upgrades — they stay with each unit across every battle.</p>
+                <p style="text-align:center;font-size:15px;margin-bottom:18px;">Valor: <span id="armoryValor" style="color:#c084fc;font-weight:700;">0</span> ✦</p>
+                <div id="armoryGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"></div>
+            </div>
+        </div>
+
         <div id="difficultyOverlay" class="overlay hidden">
             <div class="glass-panel" style="width:520px;padding:40px;text-align:center;">
                 <h2 style="color:var(--gold);margin-bottom:8px;font-size:26px;">⚔ Select Difficulty</h2>
@@ -2045,6 +2059,29 @@
                     visual: "sword_shield",
                 },
             };
+
+            // ─── PERMANENT PER-UNIT UPGRADES (META PROGRESSION) ──────────────
+            // Persisted to localStorage. Each unit type can buy permanent ranks
+            // in HP and DMG that apply to every copy of that unit, every game.
+            const META_STATS = [
+                {
+                    key: "hp",
+                    name: "Vitality",
+                    icon: "❤",
+                    per: 0.08, // +8% max HP per rank
+                    color: "#ef4444",
+                },
+                {
+                    key: "dmg",
+                    name: "Power",
+                    icon: "⚔",
+                    per: 0.08, // +8% damage per rank
+                    color: "#fbbf24",
+                },
+            ];
+            const META_MAX_RANK = 5;
+            // Valor cost for the NEXT rank (index = current rank).
+            const META_COST = [30, 50, 80, 120, 180];
 
             const ENEMY_TYPES = {
                 rabble: {
@@ -5172,6 +5209,7 @@
                     this._dragonKilled   = false;
                     this.achievements    = null; // inited after game is declared
                     this.loadSave(); // Fix #20
+                    this.loadMeta(); // Permanent per-unit upgrades
                     this.bindEvents();
                     this.loop();
                 }
@@ -5220,6 +5258,121 @@
                     );
                     document.getElementById("btnStartCampaign").innerText =
                         `Resume Campaign (${this.maxUnlockedLevel + 1})`;
+                }
+
+                // ─── PERMANENT PER-UNIT UPGRADES (META PROGRESSION) ──────────
+                loadMeta() {
+                    this.meta = { valor: 0, upg: {} };
+                    for (const t in UNIT_TYPES)
+                        this.meta.upg[t] = { hp: 0, dmg: 0 };
+                    try {
+                        const s = JSON.parse(
+                            localStorage.getItem("stickman_dominion_meta"),
+                        );
+                        if (s) {
+                            this.meta.valor = s.valor || 0;
+                            for (const t in this.meta.upg) {
+                                const u = s.upg && s.upg[t];
+                                if (u) {
+                                    this.meta.upg[t].hp = Math.min(
+                                        META_MAX_RANK,
+                                        u.hp || 0,
+                                    );
+                                    this.meta.upg[t].dmg = Math.min(
+                                        META_MAX_RANK,
+                                        u.dmg || 0,
+                                    );
+                                }
+                            }
+                        }
+                    } catch (e) {}
+                }
+                saveMeta() {
+                    try {
+                        localStorage.setItem(
+                            "stickman_dominion_meta",
+                            JSON.stringify(this.meta),
+                        );
+                    } catch (e) {}
+                }
+                // Apply a unit's permanent ranks to a freshly-built unit.
+                applyMeta(u, t) {
+                    const m = this.meta && this.meta.upg[t];
+                    if (!m) return;
+                    const hpR = META_STATS[0].per,
+                        dmgR = META_STATS[1].per;
+                    if (m.hp) {
+                        const old = u.maxHp;
+                        u.maxHp = Math.floor(u.maxHp * (1 + m.hp * hpR));
+                        u.hp += u.maxHp - old;
+                    }
+                    if (m.dmg) u.dmg = Math.ceil(u.dmg * (1 + m.dmg * dmgR));
+                }
+                // Grant Valor (the meta currency) and persist it.
+                awardValor(n) {
+                    n = Math.max(0, Math.floor(n));
+                    if (!this.meta) this.loadMeta();
+                    this.meta.valor += n;
+                    this.saveMeta();
+                    return n;
+                }
+                // Buy one rank of a stat for a unit type from the Armory.
+                buyMeta(t, stat) {
+                    const m = this.meta.upg[t];
+                    if (!m || m[stat] >= META_MAX_RANK) {
+                        this.audio.playError();
+                        return;
+                    }
+                    const cost = META_COST[m[stat]];
+                    if (this.meta.valor < cost) {
+                        this.audio.playError();
+                        return;
+                    }
+                    this.meta.valor -= cost;
+                    m[stat]++;
+                    this.saveMeta();
+                    this.audio.playCoin();
+                    this.renderArmory();
+                }
+                openArmory() {
+                    this.renderArmory();
+                    document
+                        .getElementById("armoryOverlay")
+                        .classList.remove("hidden");
+                }
+                renderArmory() {
+                    document.getElementById("armoryValor").innerText =
+                        this.meta.valor;
+                    const grid = document.getElementById("armoryGrid");
+                    let html = "";
+                    for (const t in UNIT_TYPES) {
+                        const def = UNIT_TYPES[t],
+                            m = this.meta.upg[t];
+                        let rows = "";
+                        for (const s of META_STATS) {
+                            const rank = m[s.key],
+                                maxed = rank >= META_MAX_RANK,
+                                cost = maxed ? 0 : META_COST[rank],
+                                afford = !maxed && this.meta.valor >= cost;
+                            let pips = "";
+                            for (let i = 0; i < META_MAX_RANK; i++)
+                                pips += `<span style="display:inline-block;width:11px;height:11px;margin-right:3px;border-radius:2px;background:${i < rank ? s.color : "rgba(255,255,255,0.12)"};"></span>`;
+                            rows += `<div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+                                <span style="width:78px;color:${s.color};font-size:12px;">${s.icon} ${s.name}</span>
+                                <span style="flex:1;">${pips}</span>
+                                <button onclick="game.buyMeta('${t}','${s.key}')"
+                                    ${maxed || !afford ? "disabled" : ""}
+                                    style="min-width:92px;padding:5px 8px;font-size:12px;border-radius:6px;cursor:${maxed || !afford ? "default" : "pointer"};border:1px solid ${maxed ? "rgba(96,165,250,0.4)" : afford ? "rgba(251,191,36,0.6)" : "rgba(255,255,255,0.12)"};background:${maxed ? "rgba(40,60,90,0.5)" : afford ? "linear-gradient(180deg,rgba(60,45,8,0.95),rgba(30,22,4,0.95))" : "rgba(20,20,24,0.6)"};color:${maxed ? "#60a5fa" : afford ? "var(--gold)" : "var(--text-dim)"};">
+                                    ${maxed ? "MAX" : "⬆ " + cost + " ✦"}
+                                </button>
+                            </div>`;
+                        }
+                        html += `<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px 14px;">
+                            <div style="font-weight:700;color:var(--text);font-size:14px;">${def.name}</div>
+                            ${rows}
+                        </div>`;
+                    }
+                    grid.innerHTML = html;
                 }
 
                 resize() {
@@ -5455,7 +5608,7 @@
                     this.audio.startMusic();
                     this.mode = "endless";
                     this.level = -1;
-                    this.reset(300);
+                    this.reset(450);
                     const m = new Building(420, "mine", TEAMS.PLAYER);
                     m.building = false;
                     m.bTimer = 0;
@@ -5592,6 +5745,7 @@
                     this.pop += d.pop;
                     const u = new Unit(150 + rand(-20, 20), t, TEAMS.PLAYER);
                     u.applyUpgrades(this.upgrades);
+                    this.applyMeta(u, t); // Permanent per-unit upgrades
                     if (this.upgrades.forge && !UNIT_TYPES[t].ranged)
                         u.dmg = Math.ceil(u.dmg * (1 + this.upgrades.forge));
                     this.units.push(u);
@@ -6025,13 +6179,19 @@
                         ); // Fix #20
                         this.saveGame();
 
+                        const valor = this.awardValor(
+                            Math.floor(this.stats.kills / 2) + 25,
+                        );
                         document.getElementById("victoryStats").innerHTML =
-                            `<div class="stat-row"><span>Enemies Destroyed</span><span>${this.stats.kills}</span></div><div class="stat-row"><span>Bounty Claimed</span><span>${Math.floor(this.stats.gold)}</span></div><div class="stat-row"><span>Region Reward</span><span style="color:var(--gold);">+${r} Gold</span></div>`;
+                            `<div class="stat-row"><span>Enemies Destroyed</span><span>${this.stats.kills}</span></div><div class="stat-row"><span>Bounty Claimed</span><span>${Math.floor(this.stats.gold)}</span></div><div class="stat-row"><span>Region Reward</span><span style="color:var(--gold);">+${r} Gold</span></div><div class="stat-row"><span>Valor Earned</span><span style="color:#c084fc;">+${valor} ✦</span></div>`;
                         document.getElementById("btnNextLevel").style.display =
                             this.level + 1 < LEVELS.length ? "block" : "none";
                     } else {
+                        const valor = this.awardValor(
+                            Math.floor(this.stats.kills / 2) + 25,
+                        );
                         document.getElementById("victoryStats").innerHTML =
-                            '<p style="text-align:center;color:var(--text-dim);">Endless mode has no end. You fought well.</p>';
+                            `<p style="text-align:center;color:var(--text-dim);">Endless mode has no end. You fought well.</p><div class="stat-row"><span>Valor Earned</span><span style="color:#c084fc;">+${valor} ✦</span></div>`;
                     }
                     document
                         .getElementById("victoryMenu")
@@ -6050,11 +6210,17 @@
                             w,
                         );
                         this.saveGame(); // Fix #20
+                        const valor = this.awardValor(
+                            Math.floor(this.stats.kills / 2) + w * 4,
+                        );
                         document.getElementById("endStats").innerHTML =
-                            `<div class="stat-row"><span>Enemies Destroyed</span><span>${this.stats.kills}</span></div><div class="stat-row"><span>Waves Survived</span><span style="color:var(--gold);">${w}</span></div><div class="stat-row"><span>Survival Time</span><span>${formatTime((Date.now() - this.stats.start) / 1000)}</span></div><div class="stat-row"><span>Best Wave Ever</span><span style="color:var(--success);">${this.bestEndlessWave}</span></div>`;
+                            `<div class="stat-row"><span>Enemies Destroyed</span><span>${this.stats.kills}</span></div><div class="stat-row"><span>Waves Survived</span><span style="color:var(--gold);">${w}</span></div><div class="stat-row"><span>Survival Time</span><span>${formatTime((Date.now() - this.stats.start) / 1000)}</span></div><div class="stat-row"><span>Best Wave Ever</span><span style="color:var(--success);">${this.bestEndlessWave}</span></div><div class="stat-row"><span>Valor Earned</span><span style="color:#c084fc;">+${valor} ✦</span></div>`;
                     } else {
+                        const valor = this.awardValor(
+                            Math.floor(this.stats.kills / 4),
+                        );
                         document.getElementById("endStats").innerHTML =
-                            `<div class="stat-row"><span>Enemies Destroyed</span><span>${this.stats.kills}</span></div><div class="stat-row"><span>Survival Time</span><span>${formatTime((Date.now() - this.stats.start) / 1000)}</span></div>`;
+                            `<div class="stat-row"><span>Enemies Destroyed</span><span>${this.stats.kills}</span></div><div class="stat-row"><span>Survival Time</span><span>${formatTime((Date.now() - this.stats.start) / 1000)}</span></div><div class="stat-row"><span>Valor Earned</span><span style="color:#c084fc;">+${valor} ✦</span></div>`;
                     }
                     document
                         .getElementById("gameOver")
@@ -6622,9 +6788,9 @@
                         this.t = 0;
                         this.wave++;
                         this.cw++;
-                        this.g.diff = 1 + this.wave * 0.18;
+                        this.g.diff = 1 + this.wave * 0.1;
                         this.spawn();
-                        const isBoss = this.wave % 5 === 0;
+                        const isBoss = this.wave % 6 === 0;
                         if (isBoss) {
                             this.g.audio.playTone(220, 1, "sawtooth", 0.15);
                             this.g.audio.playTone(
@@ -6641,10 +6807,10 @@
                         } else {
                             this.g.audio.playTone(400, 0.5, "sine", 0.1);
                             this.g.notify(
-                                `Endless Wave ${this.wave} — Difficulty x${(1 + this.wave * 0.18).toFixed(1)}`,
+                                `Endless Wave ${this.wave} — Difficulty x${(1 + this.wave * 0.1).toFixed(1)}`,
                             );
                         }
-                        this.int = Math.max(240, 700 - this.wave * 12);
+                        this.int = Math.max(330, 760 - this.wave * 9);
                     }
                 }
                 spawn() {
@@ -6658,10 +6824,10 @@
                         "ogre",
                         "necromancer",
                     ];
-                    const c = Math.floor(6 + this.wave * 3);
+                    const c = Math.floor(5 + this.wave * 2);
                     const maxT = Math.min(
                         types.length - 1,
-                        Math.floor(this.wave / 2),
+                        Math.floor(this.wave / 3),
                     ); // Fix #10
                     for (let i = 0; i < c; i++) {
                         setTimeout(() => {
@@ -6676,7 +6842,7 @@
                             }
                         }, i * 500);
                     }
-                    if (this.wave % 5 === 0)
+                    if (this.wave % 6 === 0)
                         setTimeout(
                             () => {
                                 if (this.g.state === "playing")
