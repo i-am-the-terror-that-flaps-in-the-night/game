@@ -66,6 +66,7 @@ class Game {
         this.difficultyMult  = 1.0;
         this._dragonKilled   = false;
         this.achievements    = null; // inited after game is declared
+        this.meta            = new MetaProgression(this); // permanent unlocks
         this.loadSave(); // Fix #20
         this.bindEvents();
         this.loop();
@@ -139,8 +140,11 @@ class Game {
             RESOURCES.MAX_MANA + (this.upgrades.mana || 0);
         this.pop = 0;
         this.maxPop = 20 + (this.upgrades.pop || 0);
-        // Each level starts from basics: rebuild your war economy.
+        // Each level starts from basics: rebuild your war economy. Permanently
+        // unlocked troops (bought with Renown in the War Council) are always
+        // available from the start, bypassing the per-level building gate.
         this.unlocked.u = new Set(["militia", "archer"]);
+        if (this.meta) this.meta.applyTo(this.unlocked.u);
         this.autoQueue = {};
         this.units = [];
         this.enemies = [];
@@ -312,9 +316,10 @@ class Game {
                 this.level + 1,
             ); // Fix #20
             this.saveGame();
+            const renown = this.meta ? this.meta.awardCampaign(this.level) : 0;
 
             document.getElementById("victoryStats").innerHTML =
-                `<div class="stat-row"><span>Enemies Destroyed</span><span>${this.stats.kills}</span></div><div class="stat-row"><span>Bounty Claimed</span><span>${Math.floor(this.stats.gold)}</span></div><div class="stat-row"><span>Region Reward</span><span style="color:var(--gold);">+${r} Gold</span></div>`;
+                `<div class="stat-row"><span>Enemies Destroyed</span><span>${this.stats.kills}</span></div><div class="stat-row"><span>Bounty Claimed</span><span>${Math.floor(this.stats.gold)}</span></div><div class="stat-row"><span>Region Reward</span><span style="color:var(--gold);">+${r} Gold</span></div><div class="stat-row"><span>Renown Earned</span><span style="color:#c084fc;">+${renown} ✦</span></div>`;
             document.getElementById("btnNextLevel").style.display =
                 this.level + 1 < LEVELS.length ? "block" : "none";
         } else {

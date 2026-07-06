@@ -16,6 +16,7 @@ css/
 js/
   config.js           CONFIG, TEAMS, RESOURCES constants
   combat.js           Counter system: damage types × armor classes, formation mods, wave hints
+  meta.js             MetaProgression: Renown currency + permanent unit unlocks (War Council)
   data/               Pure data definitions (balance lives here)
     spells.js         SPELLS
     units.js          UNIT_TYPES (player roster)
@@ -75,6 +76,19 @@ cleans up whatever reaches the gate, it never snipes across the map.
 `Building`'s projectile firing (`js/entities/building.js`) reads
 `projectile`/`aoe`/`dmgType` from `BUILDING_TYPES` so any building can be
 given an attack; towers are unaffected since they don't set those fields.
+
+## Meta progression
+
+`js/meta.js` (`MetaProgression`, mirrors `AchievementSystem`) adds a
+persistent **Renown** currency saved under `sd_meta_v1`. Clearing a campaign
+region (`victory()`) and reaching each endless wave (`EndlessWave.update`)
+bank Renown immediately. The home-screen **War Council** panel spends it to
+**permanently unlock** any of the eight advanced units; unlocks are merged
+into the run roster in `reset()` (`meta.applyTo`), so they bypass the
+per-level building gate and are available from the start of every campaign
+region and endless run. The base Militia + Archer are always free — permanent
+unlocks widen the opening roster rather than replace the building system,
+which still gates any unit not yet bought.
 
 All scripts are classic (non-module) scripts sharing one global scope, loaded
 in dependency order by `index.html` — data first, then systems, entities, the

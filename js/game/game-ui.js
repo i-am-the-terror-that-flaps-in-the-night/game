@@ -30,6 +30,11 @@ Object.assign(Game.prototype, {
         document.getElementById('achievementsOverlay').classList.remove('hidden');
     },
 
+    openWarCouncil() {
+        if (this.meta) this.meta.renderCouncil();
+        document.getElementById('warCouncilOverlay').classList.remove('hidden');
+    },
+
     openSettings() {
         document
             .getElementById("settingsOverlay")
