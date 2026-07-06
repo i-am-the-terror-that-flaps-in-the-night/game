@@ -186,17 +186,6 @@
                 <button class="form-btn" id="fBtn-standard" title="Balanced stance: no damage modifiers." onclick="game.setFormation('standard')">⚔ Standard</button>
                 <button class="form-btn" id="fBtn-aggressive" title="Push forward. Units deal +15% damage but take +10%." onclick="game.setFormation('aggressive')">⚡ Assault</button>
             </div>
-            <div
-                style="
-                    font-size: 11px;
-                    color: var(--text-dim);
-                    text-transform: uppercase;
-                    letter-spacing: 1px;
-                    margin-bottom: -6px;
-                "
-            >
-                Right-Click (or Long-Press) units to Auto-Train
-            </div>
             <div id="spellsBar" class="glass-panel">
                 <button
                     class="btn spell-btn"
@@ -233,23 +222,21 @@
                 >
                     Lightning<span class="hotkey">V</span><span class="cost">45 Mana</span>
                 </button>
-                <div
-                    style="
-                        width: 1px;
-                        background: rgba(255, 255, 255, 0.1);
-                        margin: 0 8px;
-                    "
-                ></div>
+                <div class="bar-divider"></div>
                 <button
-                    class="btn"
+                    class="btn research-btn"
                     onclick="game.openTechTree()"
-                    style="border-color: var(--gold)"
                 >
                     Research<span class="hotkey">Y</span>
                 </button>
             </div>
 
             <div id="bottomBar" class="glass-panel">
+                <div class="action-tabs">
+                    <button class="action-tab active" id="tabUnits" onclick="game.setActionTab('units')">Units</button>
+                    <button class="action-tab" id="tabBuildings" onclick="game.setActionTab('buildings')">Buildings</button>
+                </div>
+                <div id="unitButtons" class="action-group">
                 <button
                     class="btn unit-btn"
                     id="btnMilitia"
@@ -359,25 +346,19 @@
                     ><span class="cost">150g 30i</span>
                 </button>
                 <button
-                    class="btn unit-btn"
+                    class="btn unit-btn btn--gold"
                     id="btnPaladin"
                     oncontextmenu="
                         game.toggleAuto('paladin');
                         return false;
                     "
                     onclick="game.buyUnit('paladin')"
-                    style="border-color:rgba(251,191,36,0.4)"
                 >
                     Paladin<span class="hotkey">0</span
                     ><span class="cost">120g 30c</span>
                 </button>
-                <div
-                    style="
-                        width: 1px;
-                        background: rgba(255, 255, 255, 0.1);
-                        margin: 0 8px;
-                    "
-                ></div>
+                </div>
+                <div id="buildingButtons" class="action-group is-hidden">
                 <button
                     class="btn bldg-btn"
                     id="btnMine"
@@ -435,14 +416,14 @@
                     ><span class="cost">60g</span>
                 </button>
                 <button
-                    class="btn bldg-btn"
+                    class="btn bldg-btn btn--ember"
                     id="btnForge"
                     onclick="game.build('forge')"
-                    style="border-color:rgba(249,115,22,0.4)"
                 >
                     Forge<span class="hotkey">H</span
                     ><span class="cost">80g 20i</span>
                 </button>
+                </div>
             </div>
         </div>
 
@@ -517,12 +498,10 @@
                     <button class="menu-btn" onclick="game.showHelp()">
                         📖 Commander's Manual
                     </button>
-                    <button class="menu-btn" onclick="game.openWarCouncil()"
-                        style="border-color:rgba(192,132,252,0.45);background:linear-gradient(180deg,rgba(30,20,48,0.95),rgba(15,10,26,0.95));">
+                    <button class="menu-btn menu-btn--council" onclick="game.openWarCouncil()">
                         ✦ War Council
                     </button>
-                    <button class="menu-btn" onclick="game.openAchievements()"
-                        style="border-color:rgba(251,191,36,0.45);background:linear-gradient(180deg,rgba(40,28,5,0.95),rgba(18,12,2,0.95));">
+                    <button class="menu-btn menu-btn--achieve" onclick="game.openAchievements()">
                         🏆 Achievements
                     </button>
                 </div>
@@ -618,39 +597,15 @@
             </button>
         </div>
 
-        <div
-            id="techTree"
-            class="overlay hidden"
-            style="background: rgba(2, 6, 23, 0.95)"
-        >
+        <div id="techTree" class="overlay hidden">
             <div
-                class="glass-panel"
-                style="
-                    width: 850px;
-                    padding: 32px;
-                    position: relative;
-                    display: flex;
-                    flex-direction: column;
-                "
+                class="glass-panel dialog dialog--wide"
+                style="display: flex; flex-direction: column;"
             >
                 <button
-                    style="
-                        position: absolute;
-                        top: 20px;
-                        right: 25px;
-                        background: none;
-                        border: none;
-                        color: var(--text-dim);
-                        font-size: 32px;
-                        cursor: pointer;
-                        transition: 0.2s;
-                    "
-                    onmouseover="this.style.color = '#fff'"
-                    onmouseout="this.style.color = 'var(--text-dim)'"
+                    class="overlay-close"
                     onclick="game.closeTechTree()"
-                >
-                    ×
-                </button>
+                >×</button>
                 <h2
                     style="
                         text-align: center;
@@ -681,7 +636,7 @@
         </div>
 
         <div id="settingsOverlay" class="overlay hidden">
-            <div class="glass-panel" style="width: 500px; padding: 40px">
+            <div class="glass-panel dialog dialog--narrow">
                 <h2
                     style="
                         text-align: center;
@@ -732,10 +687,7 @@
         </div>
 
         <div id="helpOverlay" class="overlay hidden">
-            <div
-                class="glass-panel"
-                style="width: 750px; padding: 40px; overflow-y: auto"
-            >
+            <div class="glass-panel dialog">
                 <h2
                     style="
                         color: var(--gold);
@@ -871,8 +823,8 @@
 
 
         <div id="achievementsOverlay" class="overlay hidden">
-            <div class="glass-panel" style="width:700px;padding:40px;max-height:82vh;overflow-y:auto;position:relative;">
-                <button style="position:absolute;top:20px;right:25px;background:none;border:none;color:var(--text-dim);font-size:32px;cursor:pointer;" onclick="document.getElementById('achievementsOverlay').classList.add('hidden')">×</button>
+            <div class="glass-panel dialog">
+                <button class="overlay-close" onclick="document.getElementById('achievementsOverlay').classList.add('hidden')">×</button>
                 <h2 style="text-align:center;color:var(--gold);margin-bottom:6px;">🏆 Achievements</h2>
                 <p style="text-align:center;color:var(--text-dim);font-size:13px;margin-bottom:4px;" id="achProgress">Loading…</p>
                 <div id="achievementsGrid" class="ach-grid"></div>
@@ -880,8 +832,8 @@
         </div>
 
         <div id="warCouncilOverlay" class="overlay hidden">
-            <div class="glass-panel" style="width:720px;padding:40px;max-height:82vh;overflow-y:auto;position:relative;">
-                <button style="position:absolute;top:20px;right:25px;background:none;border:none;color:var(--text-dim);font-size:32px;cursor:pointer;" onclick="document.getElementById('warCouncilOverlay').classList.add('hidden')">×</button>
+            <div class="glass-panel dialog">
+                <button class="overlay-close" onclick="document.getElementById('warCouncilOverlay').classList.add('hidden')">×</button>
                 <h2 style="text-align:center;color:#c084fc;margin-bottom:6px;">✦ War Council</h2>
                 <p style="text-align:center;color:var(--text-dim);font-size:13px;margin-bottom:2px;">Spend Renown to permanently unlock troops. Unlocked units are ready from the start of every campaign region and endless run — no building required.</p>
                 <p style="text-align:center;color:#c084fc;font-weight:800;font-size:18px;margin-bottom:10px;" id="renownDisplay">✦ 0 Renown</p>
@@ -891,7 +843,7 @@
         </div>
 
         <div id="difficultyOverlay" class="overlay hidden">
-            <div class="glass-panel" style="width:520px;padding:40px;text-align:center;">
+            <div class="glass-panel dialog dialog--narrow" style="text-align:center;">
                 <h2 style="color:var(--gold);margin-bottom:8px;font-size:26px;">⚔ Select Difficulty</h2>
                 <p style="color:var(--text-dim);margin-bottom:28px;font-size:14px;">Your glory is determined by your courage.</p>
                 <div style="display:flex;flex-direction:column;gap:10px;align-items:center;">

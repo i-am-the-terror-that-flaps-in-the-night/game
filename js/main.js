@@ -2,11 +2,11 @@
 const game = new Game();
 game.achievements = new AchievementSystem(game);
 
-// ─── HOME SCREEN EMBERS ───────────────────────────────────────────
+// ─── HOME SCREEN DATA MOTES (holographic embers) ──────────────────
 (function spawnEmbers() {
     const container = document.getElementById('menuEmbers');
     if (!container) return;
-    const colors = ['#fbbf24','#f59e0b','#fb923c','#fde68a','#f97316'];
+    const colors = ['#2de2ff','#7df9ff','#2dd4bf','#22d3ee','#e64bff'];
     const count = 38;
     for (let i = 0; i < count; i++) {
         const el = document.createElement('div');

@@ -35,6 +35,18 @@ Object.assign(Game.prototype, {
         document.getElementById('warCouncilOverlay').classList.remove('hidden');
     },
 
+    // Bottom action bar: toggle the Units / Buildings groups. Buttons stay in
+    // the DOM (only the wrapper is display:none) so the per-frame updateUI()
+    // and getElementById calls keep working on the hidden group.
+    setActionTab(tab) {
+        this.actionTab = tab;
+        const units = tab === 'units';
+        document.getElementById('unitButtons').classList.toggle('is-hidden', !units);
+        document.getElementById('buildingButtons').classList.toggle('is-hidden', units);
+        document.getElementById('tabUnits').classList.toggle('active', units);
+        document.getElementById('tabBuildings').classList.toggle('active', !units);
+    },
+
     openSettings() {
         document
             .getElementById("settingsOverlay")

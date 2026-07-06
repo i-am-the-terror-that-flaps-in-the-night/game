@@ -26,9 +26,9 @@
         transform-origin: top right;
         right: 10px;
     }
-    .glass-panel[style*="width:850px"],
-    .glass-panel[style*="width:750px"] {
-        width: 90vw !important;
+    .dialog,
+    .dialog--wide {
+        width: 92vw;
     }
 }
 
@@ -93,10 +93,11 @@
         grid-template-columns: 1fr;
         gap: 10px;
     }
-    .glass-panel[style*="width:850px"],
-    .glass-panel[style*="width:750px"] {
-        width: 95vw !important;
-        padding: 20px !important;
+    .dialog,
+    .dialog--wide,
+    .dialog--narrow {
+        width: 95vw;
+        padding: 20px;
         max-height: 90vh;
     }
 
