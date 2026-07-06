@@ -71,6 +71,9 @@ class EndlessWave {
             this.wave++;
             this.cw++;
             this.g.diff = 1 + this.wave * 0.15;
+            // Reaching each endless wave banks Renown immediately, so deep runs
+            // are rewarded even if you quit before dying.
+            if (this.g.meta) this.g.meta.addRenown(Math.ceil(this.wave * 1.5));
             this.spawn();
             const isBoss = this.wave % 5 === 0;
             if (isBoss) {

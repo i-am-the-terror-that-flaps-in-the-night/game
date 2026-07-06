@@ -516,6 +516,10 @@
                     <button class="menu-btn" onclick="game.showHelp()">
                         📖 Commander's Manual
                     </button>
+                    <button class="menu-btn" onclick="game.openWarCouncil()"
+                        style="border-color:rgba(192,132,252,0.45);background:linear-gradient(180deg,rgba(30,20,48,0.95),rgba(15,10,26,0.95));">
+                        ✦ War Council
+                    </button>
                     <button class="menu-btn" onclick="game.openAchievements()"
                         style="border-color:rgba(251,191,36,0.45);background:linear-gradient(180deg,rgba(40,28,5,0.95),rgba(18,12,2,0.95));">
                         🏆 Achievements
@@ -786,6 +790,18 @@
                         ones.
                     </p>
                     <p>
+                        <strong style="color: #c084fc">War Council &amp;
+                        Renown:</strong> Clearing campaign regions and surviving
+                        endless waves earns <strong style="color:#c084fc">Renown</strong>,
+                        a currency that carries between runs. Spend it in the War
+                        Council (main menu) to <strong style="color:#fff">permanently
+                        unlock</strong> advanced troops — once unlocked they are
+                        ready from the start of every level and endless run, with
+                        no building required. You still start each region with
+                        Militia and Archers; permanent unlocks widen that opening
+                        roster as you progress.
+                    </p>
+                    <p>
                         <strong style="color: #fff">Controls & Camera:</strong>
                     </p>
                     <ul
@@ -855,6 +871,17 @@
             </div>
         </div>
 
+        <div id="warCouncilOverlay" class="overlay hidden">
+            <div class="glass-panel" style="width:720px;padding:40px;max-height:82vh;overflow-y:auto;position:relative;">
+                <button style="position:absolute;top:20px;right:25px;background:none;border:none;color:var(--text-dim);font-size:32px;cursor:pointer;" onclick="document.getElementById('warCouncilOverlay').classList.add('hidden')">×</button>
+                <h2 style="text-align:center;color:#c084fc;margin-bottom:6px;">✦ War Council</h2>
+                <p style="text-align:center;color:var(--text-dim);font-size:13px;margin-bottom:2px;">Spend Renown to permanently unlock troops. Unlocked units are ready from the start of every campaign region and endless run — no building required.</p>
+                <p style="text-align:center;color:#c084fc;font-weight:800;font-size:18px;margin-bottom:10px;" id="renownDisplay">✦ 0 Renown</p>
+                <p style="text-align:center;color:var(--text-dim);font-size:11px;margin-bottom:14px;">Earn Renown by clearing campaign regions and surviving endless waves.</p>
+                <div id="unlockGrid" class="ach-grid"></div>
+            </div>
+        </div>
+
         <div id="difficultyOverlay" class="overlay hidden">
             <div class="glass-panel" style="width:520px;padding:40px;text-align:center;">
                 <h2 style="color:var(--gold);margin-bottom:8px;font-size:26px;">⚔ Select Difficulty</h2>
@@ -872,6 +899,7 @@
         <!-- Load order matters: these are classic scripts sharing one global scope. -->
         <script src="js/config.js"></script>
         <script src="js/combat.js"></script>
+        <script src="js/meta.js"></script>
         <script src="js/data/spells.js"></script>
         <script src="js/data/units.js"></script>
         <script src="js/data/enemies.js"></script>
