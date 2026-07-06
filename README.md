@@ -7,12 +7,12 @@ A browser RTS/defense game. Static site — open `index.html` or deploy with Clo
 ```
 index.html            Page markup (HUD, menus, overlays) + stylesheet/script includes
 css/
-  base.css            Fonts, CSS variables, resets, canvas
-  hud.css             In-game HUD: resource bar, action bar, side panels, minimap
-  menus.css           Overlays & menus, tooltips, notifications, tech tree, settings
+  base.css            Fonts + the full design-token layer (:root), resets, canvas
+  hud.css             In-game HUD: holo-panels, resource bar, tabbed action bar, minimap
+  menus.css           Overlays & menus, tooltips, notifications, tech tree, dialog classes
   components.css      Small widgets: vignette, formation bar, difficulty, achievements
-  responsive.css      Mobile/tablet breakpoints
-  home.css            Home screen: embers, title, menu buttons
+  responsive.css      Mobile/tablet breakpoints (target the .dialog--* classes)
+  home.css            Home screen: data-motes, title, menu buttons
 js/
   config.js           CONFIG, TEAMS, RESOURCES constants
   combat.js           Counter system: damage types × armor classes, formation mods, wave hints
@@ -89,6 +89,25 @@ per-level building gate and are available from the start of every campaign
 region and endless run. The base Militia + Archer are always free — permanent
 unlocks widen the opening roster rather than replace the building system,
 which still gates any unit not yet bought.
+
+## UI theme (holographic command-console)
+
+The interface uses a sci-fi cyan/teal "command-console" look built entirely on
+a design-token layer in `css/base.css` `:root` — colors, spacing, radius, glow,
+shadow, blur, and z-index scales. Two shared surfaces carry most of the theme:
+`.glass-panel` (holo-panel: cyan corner brackets, scanlines, neon edge) and
+`.btn` (console keys with corner ticks + cyan hover glow). Because the widely
+used `--accent`/`--panel-border` tokens and those two classes are referenced
+everywhere (including JS template literals), the theme is centrally tunable.
+Fonts: Orbitron for display chrome, Share Tech Mono for HUD numerics.
+
+The bottom action bar is decluttered into **Units / Buildings tabs**
+(`#unitButtons` / `#buildingButtons` wrappers toggled by `game.setActionTab()`
+in `js/game/game-ui.js`). Tabs only toggle a wrapper's `display`, so all 18
+buttons stay in the DOM and the per-frame `updateUI()` keeps updating the hidden
+group; unit/build hotkeys work regardless of the visible tab. Overlay dialogs
+size via `.dialog` / `.dialog--wide` / `.dialog--narrow` classes (tokenized
+widths) rather than inline pixel widths, which `responsive.css` targets directly.
 
 All scripts are classic (non-module) scripts sharing one global scope, loaded
 in dependency order by `index.html` — data first, then systems, entities, the

@@ -11,13 +11,13 @@
 .form-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; }
 .form-btn {
     padding: 5px 12px; font-size: 11px; font-weight: 700;
-    background: var(--panel-bg); border: 1px solid var(--panel-border);
-    color: var(--text-dim); border-radius: 8px; cursor: pointer;
+    background: var(--panel-bg); border: var(--edge);
+    color: var(--text-dim); border-radius: var(--r-sm); cursor: pointer;
     transition: all 0.2s; letter-spacing: 1px; text-transform: uppercase;
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(var(--blur-sm));
 }
-.form-btn:hover { color: #fff; border-color: rgba(148,163,184,0.5); }
-.form-btn.active { color: var(--accent); border-color: var(--accent); box-shadow: 0 0 10px rgba(59,130,246,0.35); }
+.form-btn:hover { color: #fff; border-color: var(--accent-dim); }
+.form-btn.active { color: var(--accent-bright); border-color: var(--accent); box-shadow: var(--glow-cyan); }
 /* Wave preview */
 #wavePreview {
     text-align: center; font-size: 11px; color: var(--text-dim);
@@ -28,24 +28,28 @@
 /* Difficulty buttons */
 .diff-btn {
     padding: 14px 28px; font-size: 13px; font-weight: 700; margin: 6px;
-    background: linear-gradient(180deg,rgba(30,41,59,1),rgba(15,23,42,1));
-    border: 1px solid rgba(148,163,184,0.3); color: #fff; border-radius: 10px;
+    font-family: var(--font-display);
+    background: linear-gradient(180deg,rgba(12,26,38,0.95),rgba(6,14,22,0.95));
+    border: var(--edge); color: #fff; border-radius: var(--r-sm);
     cursor: pointer; transition: all 0.2s; min-width: 240px;
     text-transform: uppercase; letter-spacing: 1.5px;
     box-shadow: 0 8px 20px rgba(0,0,0,0.4);
 }
-.diff-btn:hover { transform: translateY(-2px); box-shadow: 0 14px 28px rgba(0,0,0,0.6); }
+.diff-btn:hover { transform: translateY(-2px); box-shadow: 0 14px 28px rgba(0,0,0,0.6), var(--glow-cyan); }
 .diff-btn.easy  { border-color: var(--success); }
 .diff-btn.normal{ border-color: var(--accent); }
-.diff-btn.hard  { border-color: #f97316; }
+.diff-btn.hard  { border-color: var(--warning); }
 .diff-btn.brutal{ border-color: var(--danger); }
 /* Level star */
 .level-star { position: absolute; color: #fbbf24; font-size: 11px; text-shadow: 0 0 6px rgba(251,191,36,0.8); }
 /* Achievement overlay */
 .ach-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 14px; margin-top: 20px; }
 .ach-item {
-    background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.06);
-    padding: 14px; border-radius: 10px; display: flex; gap: 12px; align-items: flex-start;
+    background:
+        repeating-linear-gradient(180deg, rgba(45,226,255,0.03) 0 1px, transparent 1px 4px),
+        rgba(0,0,0,0.3);
+    border: var(--edge);
+    padding: 14px; border-radius: var(--r-sm); display: flex; gap: 12px; align-items: flex-start;
 }
 .ach-item.unlocked { border-color: rgba(251,191,36,0.4); background: rgba(251,191,36,0.04); }
 .ach-icon { font-size: 24px; flex-shrink: 0; }

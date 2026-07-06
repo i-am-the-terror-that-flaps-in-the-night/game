@@ -1,21 +1,65 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Cinzel+Decorative:wght@700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
 /* ============================================================
-   STICKMAN DOMINION 3.1 - POLISHED STYLESHEET
+   STICKMAN DOMINION 3.1 - HOLOGRAPHIC COMMAND-CONSOLE THEME
    ============================================================ */
 :root {
-    --bg-dark: #05050a;
-    --panel-bg: rgba(10, 12, 20, 0.85);
-    --panel-border: rgba(100, 150, 255, 0.25);
+    /* ---- surfaces ---- */
+    --bg-void: #03070e;
+    --bg-dark: #03070e;
+    --panel-bg: rgba(7, 16, 26, 0.72);
+    --panel-bg-solid: #081521;
+    --panel-border: rgba(45, 226, 255, 0.28);
+    --panel-border-bright: rgba(45, 226, 255, 0.7);
+
+    /* ---- holographic accents ---- */
+    --accent: #2de2ff;            /* electric cyan — primary chrome accent */
+    --accent-bright: #7df9ff;
+    --accent-dim: rgba(45, 226, 255, 0.5);
+    --teal: #2dd4bf;              /* secondary lead */
+    --magenta: #e64bff;           /* tertiary accent (spells / alerts) */
+    --electric-blue: #3b82f6;     /* legacy blue, kept available */
+
+    /* ---- currency / semantic (names preserved for JS/inline refs) ---- */
     --gold: #fbbf24;
     --iron: #94a3b8;
     --crystal: #22d3ee;
     --mana: #c084fc;
     --pop: #f87171;
-    --text: #f1f5f9;
-    --text-dim: #94a3b8;
-    --accent: #3b82f6;
-    --danger: #ef4444;
-    --success: #10b981;
+    --danger: #ff4d5e;
+    --success: #2de2a6;
+    --warning: #ffb020;
+
+    /* ---- text ---- */
+    --text: #e6f6fb;
+    --text-dim: #7fa6b5;
+
+    /* ---- spacing scale ---- */
+    --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px; --sp-5: 20px;
+    --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
+
+    /* ---- radius (angular = small) ---- */
+    --r-sm: 3px; --r-md: 6px; --r-lg: 10px; --r-pill: 999px;
+    --notch: 12px;
+
+    /* ---- borders / glow / shadow ---- */
+    --edge: 1px solid var(--panel-border);
+    --edge-bright: 1px solid var(--panel-border-bright);
+    --glow-cyan: 0 0 12px rgba(45, 226, 255, 0.45);
+    --glow-cyan-strong: 0 0 20px rgba(45, 226, 255, 0.6);
+    --glow-magenta: 0 0 16px rgba(230, 75, 255, 0.5);
+    --shadow-panel: 0 10px 40px rgba(0, 0, 0, 0.8);
+    --inset-hair: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    --inset-glow: inset 0 0 24px rgba(45, 226, 255, 0.05);
+
+    /* ---- blur (reduced to limit GPU stacking over animating canvas) ---- */
+    --blur-lg: 12px; --blur-md: 10px; --blur-sm: 6px;
+
+    /* ---- fonts ---- */
+    --font-display: 'Orbitron', 'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'Share Tech Mono', ui-monospace, monospace;
+
+    /* ---- z-index scale ---- */
+    --z-vignette: 16; --z-hud: 20; --z-notify: 150; --z-overlay: 1000; --z-tooltip: 10000;
 }
 
 * {
