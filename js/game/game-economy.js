@@ -19,6 +19,32 @@ Object.assign(Game.prototype, {
         this.crystal -= c.c || 0;
     },
 
+    // Recruiting the same unit over and over gets expensive: +18% of the
+    // base price per living unit of that type. Mixed armies stay cheap.
+    unitCost(t) {
+        const base = UNIT_TYPES[t].cost;
+        const n = this.units.filter(
+            (u) => u.type === t && u.hp > 0 && u.team === TEAMS.PLAYER,
+        ).length;
+        const s = 1 + 0.18 * n;
+        return {
+            g: Math.ceil((base.g || 0) * s),
+            i: Math.ceil((base.i || 0) * s),
+            c: Math.ceil((base.c || 0) * s),
+        };
+    },
+
+    // Mines escalate steeply — the second mine is a real investment call.
+    buildCost(t) {
+        const base = BUILDING_TYPES[t].cost;
+        if (t !== "mine") return base;
+        const n = this.buildings.filter(
+            (b) => b.type === "mine" && b.active,
+        ).length;
+        const s = Math.pow(1.6, n);
+        return { g: Math.ceil((base.g || 0) * s) };
+    },
+
     toggleAuto(type) {
         if (!this.unlocked.u.has(type)) return;
         this.autoQueue[type] = !this.autoQueue[type];
@@ -38,7 +64,8 @@ Object.assign(Game.prototype, {
         if (this.state !== "playing" || !this.unlocked.u.has(t))
             return false;
         const d = UNIT_TYPES[t];
-        if (!this.checkCost(d.cost)) {
+        const cost = this.unitCost(t);
+        if (!this.checkCost(cost)) {
             if (!auto) {
                 this.audio.playError();
                 this.notify("Insufficient Resources.");
@@ -52,7 +79,7 @@ Object.assign(Game.prototype, {
             }
             return false;
         }
-        this.payCost(d.cost);
+        this.payCost(cost);
         this.pop += d.pop;
         const u = new Unit(150 + rand(-20, 20), t, TEAMS.PLAYER);
         u.applyUpgrades(this.upgrades);
@@ -67,7 +94,8 @@ Object.assign(Game.prototype, {
         if (this.state !== "playing" || !this.unlocked.b.has(t))
             return;
         const d = BUILDING_TYPES[t];
-        if (!this.checkCost(d.cost)) {
+        const cost = this.buildCost(t);
+        if (!this.checkCost(cost)) {
             this.audio.playError();
             this.notify("Insufficient Resources.");
             return;
@@ -84,11 +112,16 @@ Object.assign(Game.prototype, {
             this.notify("No space near castle!");
             return;
         }
-        this.payCost(d.cost);
+        this.payCost(cost);
         const b = new Building(bx, t, TEAMS.PLAYER);
         this.buildings.push(b);
-        if (d.unlock)
+        if (d.unlock) {
             d.unlock.forEach((u) => this.unlocked.u.add(u));
+            const names = d.unlock
+                .map((u) => UNIT_TYPES[u].name)
+                .join(", ");
+            this.notify(`Unlocked: ${names}`);
+        }
         this.audio.playBuild();
     },
 

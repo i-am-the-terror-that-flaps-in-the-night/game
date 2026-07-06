@@ -5,6 +5,7 @@ class WaveManager {
         this.cw = 0;
         this.t = 0;
         this.tw = this.wvs.length;
+        this.pending = 0; // scheduled-but-not-yet-spawned enemies
     }
     update(dt) {
         if (this.cw >= this.tw) return;
@@ -27,8 +28,10 @@ class WaveManager {
     spawn(w) {
         w.enemies.forEach((gr) => {
             for (let i = 0; i < gr.c; i++) {
+                this.pending++;
                 setTimeout(
                     () => {
+                        this.pending--;
                         if (this.g.state === "playing")
                             this.g.spawnEnemy(
                                 gr.t,
@@ -42,7 +45,13 @@ class WaveManager {
         });
     }
     isComplete() {
-        return this.cw >= this.tw && this.g.enemies.length === 0;
+        // No victory while staggered spawns are still in flight — otherwise
+        // clearing a wave quickly could skip the rest of the level.
+        return (
+            this.cw >= this.tw &&
+            this.pending === 0 &&
+            this.g.enemies.length === 0
+        );
     }
 }
 
@@ -61,7 +70,7 @@ class EndlessWave {
             this.t = 0;
             this.wave++;
             this.cw++;
-            this.g.diff = 1 + this.wave * 0.18;
+            this.g.diff = 1 + this.wave * 0.15;
             this.spawn();
             const isBoss = this.wave % 5 === 0;
             if (isBoss) {
@@ -80,53 +89,68 @@ class EndlessWave {
             } else {
                 this.g.audio.playTone(400, 0.5, "sine", 0.1);
                 this.g.notify(
-                    `Endless Wave ${this.wave} — Difficulty x${(1 + this.wave * 0.18).toFixed(1)}`,
+                    `Endless Wave ${this.wave}: ${this.themeName(this.wave)} — Power x${(1 + this.wave * 0.15).toFixed(1)}`,
                 );
             }
             this.int = Math.max(240, 700 - this.wave * 12);
         }
     }
-    spawn() {
-        const types = [
-            "rabble",
-            "marauder",
-            "berserker",
-            "shieldman",
-            "archer",
-            "shaman",
-            "ogre",
-            "necromancer",
+    // Endless waves are scripted, not random: five rotating themes, each
+    // demanding a different counter, telegraphed in the wave preview.
+    themeName(w) {
+        if (w % 5 === 0) return "Boss March";
+        return ["Swarm", "Raiding Party", "Shield Wall", "Dark Ritual"][
+            (w % 5) - 1
         ];
-        const c = Math.floor(6 + this.wave * 3);
-        const maxT = Math.min(
-            types.length - 1,
-            Math.floor(this.wave / 2),
-        ); // Fix #10
-        for (let i = 0; i < c; i++) {
-            setTimeout(() => {
-                if (this.g.state === "playing") {
-                    const enemyType =
-                        types[randInt(0, maxT)] || types[0];
-                    this.g.spawnEnemy(
-                        enemyType,
-                        CONFIG.WORLD_WIDTH - rand(50, 300),
-                        CONFIG.GROUND_Y,
-                    );
-                }
-            }, i * 500);
+    }
+    composition(w) {
+        const s = Math.floor(1 + w * 0.6); // scaling knob
+        if (w % 5 === 0) {
+            // Boss March: armored elites, a dragon past wave 10
+            return [
+                { t: "ogre", c: Math.min(1 + Math.floor(w / 5), 10) },
+                { t: "shaman", c: Math.min(1 + Math.floor(w / 8), 6) },
+                { t: "dragon", c: w >= 10 ? Math.floor(w / 10) : 0 },
+            ];
         }
-        if (this.wave % 5 === 0)
-            setTimeout(
-                () => {
+        switch (w % 5) {
+            case 1: // Swarm: bodies — AoE and cheap lines shine
+                return [
+                    { t: "rabble", c: 6 + s * 2 },
+                    { t: "marauder", c: w > 5 ? s : 0 },
+                ];
+            case 2: // Raiding Party: fast slashers hunting your backline
+                return [
+                    { t: "marauder", c: 3 + s },
+                    { t: "berserker", c: 2 + Math.floor(s * 0.8) },
+                ];
+            case 3: // Shield Wall: arrows bounce — bring blunt or magic
+                return [
+                    { t: "shieldman", c: 3 + s },
+                    { t: "archer", c: 2 + Math.floor(s * 0.7) },
+                ];
+            default: // Dark Ritual: healers & necromancers must die first
+                return [
+                    { t: "shaman", c: 1 + Math.floor(s / 2) },
+                    { t: "marauder", c: 3 + s },
+                    { t: "necromancer", c: w > 8 ? Math.floor(w / 6) : 0 },
+                ];
+        }
+    }
+    spawn() {
+        let i = 0;
+        this.composition(this.wave).forEach((gr) => {
+            for (let k = 0; k < gr.c; k++, i++) {
+                setTimeout(() => {
                     if (this.g.state === "playing")
                         this.g.spawnEnemy(
-                            "dragon",
-                            CONFIG.WORLD_WIDTH - 150,
+                            gr.t,
+                            CONFIG.WORLD_WIDTH - rand(50, 300),
                             CONFIG.GROUND_Y,
                         );
-                },
-                c * 500 + 1000,
-            );
+                }, i * 500);
+            }
+        });
     }
     isComplete() {
         return false;

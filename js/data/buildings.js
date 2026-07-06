@@ -14,7 +14,7 @@ const BUILDING_TYPES = {
         width: 100,
         height: 80,
         cost: { g: 50 },
-        desc: "Generates +3 gold/sec and +1 iron/sec.",
+        desc: "Generates +3 gold/sec and +1 iron/sec. Each additional mine costs more.",
         income: { g: 3, i: 1 },
         buildTime: 120,
     },
@@ -86,7 +86,8 @@ const BUILDING_TYPES = {
         width: 110,
         height: 90,
         cost: { g: 80, i: 20 },
-        desc: "Enhances melee unit attack damage by +25% per Forge built.",
+        desc: "Unlocks the Paladin. Enhances melee unit attack damage by +25% per Forge built.",
+        unlock: ["paladin"],
         buildTime: 170,
     },
 };

@@ -1,6 +1,6 @@
 // --- PROJECTILES & MAGIC ---
 class Projectile {
-    constructor(x, y, target, type, dmg, team, aoe, pierce, siege) {
+    constructor(x, y, target, type, dmg, team, aoe, pierce, siege, opts) {
         this.x = x;
         this.y = y;
         this.t = target;
@@ -9,6 +9,16 @@ class Projectile {
         this.team = team;
         this.active = true;
         this.trail = [];
+        // Combat-resolution source info (counter system)
+        const o = opts || {};
+        this.src = {
+            dmgType: o.dmgType || (type === "fireball" || type === "skull" ? "magic" : "pierce"),
+            armorPierce: o.armorPierce || false,
+            vsLarge: o.vsLarge || 0,
+            siege: siege || false,
+            team: team,
+            isUnit: o.isUnit || false,
+        };
 
         this.tX = target.x;
         this.tY = target.y; // Fix #5: Cache coords
@@ -141,13 +151,8 @@ class Projectile {
             return;
         }
 
-        const mult =
-            this.siege && target instanceof Building ? 2 : 1;
-        const d = Math.max(
-            1,
-            this.dmg * mult - (target.armor || 0),
-        );
-        target.takeDamage(d);
+        const res = resolveDamage(this.dmg, this.src, target);
+        target.takeDamage(res.amt, res.tag);
         const ang = Math.atan2(this.vy, this.vx) + Math.PI;
         game.fx.spark(this.x, this.y, ang, {
             n: 5, len: 14, spread: 0.8, col: this.col,
@@ -185,14 +190,8 @@ class Projectile {
                   ];
         for (const t of targets) {
             if (dist(this.x, this.y, t.x, t.y) < this.aoe) {
-                const mult =
-                    this.siege && t instanceof Building ? 2 : 1; // Fix #19: Siege logic
-                t.takeDamage(
-                    Math.max(
-                        1,
-                        this.dmg * 0.6 * mult - (t.armor || 0),
-                    ),
-                );
+                const res = resolveDamage(this.dmg * 0.6, this.src, t);
+                t.takeDamage(res.amt, res.tag);
             }
         }
         game.particles.emit(

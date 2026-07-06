@@ -15,6 +15,11 @@ class Unit extends Entity {
         this.cd = def.cooldown;
         this.cdTimer = 0;
         this.armor = def.armor || 0;
+        this.dmgType = def.dmgType || "slash";
+        this.armorClass = def.armorClass || "none";
+        this.armorPierce = def.armorPierce || false;
+        this.vsLarge = def.vsLarge || 0;
+        this.large = def.large || false;
         this.ranged = def.ranged;
         this.proj = def.projectile;
         this.pierce = def.pierce;
@@ -268,21 +273,29 @@ class Unit extends Entity {
                     this.aoe,
                     this.pierce,
                     this.siege,
+                    {
+                        dmgType: this.dmgType,
+                        armorPierce: this.armorPierce,
+                        vsLarge: this.vsLarge,
+                        isUnit: true,
+                    },
                 ),
             );
             if (this.proj === "fireball") game.audio.playMagic();
             else game.audio.playShoot();
         } else {
             this.atk = 1; this.atkKind = 1; // melee swing
-            const crt = Math.random() < 0.1;
-            const isBldg = tgt instanceof Building;
-            const mult = this.siege && isBldg ? 2 : 1; // Fix #19
-            const actual = Math.max(
-                1,
-                (crt ? this.dmg * 1.6 : this.dmg) * mult -
-                    (tgt.armor || 0),
-            );
-            tgt.takeDamage(actual, crt);
+            const src = {
+                dmgType: this.dmgType,
+                armorPierce: this.armorPierce,
+                vsLarge: this.vsLarge,
+                siege: this.siege,
+                team: this.team,
+                isUnit: true,
+            };
+            const res = resolveDamage(this.dmg, src, tgt);
+            const crt = res.tag === "strong"; // counter hits get the heavy FX
+            tgt.takeDamage(res.amt, res.tag);
 
             if (this.aoe) {
                 const trgs =
@@ -295,12 +308,8 @@ class Unit extends Entity {
                         t.hp > 0 &&
                         dist(this.x, this.y, t.x, t.y) < this.aoe
                     ) {
-                        t.takeDamage(
-                            Math.max(
-                                1,
-                                this.dmg * 0.5 - (t.armor || 0),
-                            ),
-                        );
+                        const r2 = resolveDamage(this.dmg * 0.5, src, t);
+                        t.takeDamage(r2.amt, r2.tag);
                         t.recoil = (t.x > this.x ? 1 : -1) * 4;
                     }
                 // Ground-slam shockwave

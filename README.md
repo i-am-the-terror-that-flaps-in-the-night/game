@@ -15,6 +15,7 @@ css/
   home.css            Home screen: embers, title, menu buttons
 js/
   config.js           CONFIG, TEAMS, RESOURCES constants
+  combat.js           Counter system: damage types × armor classes, formation mods, wave hints
   data/               Pure data definitions (balance lives here)
     spells.js         SPELLS
     units.js          UNIT_TYPES (player roster)
@@ -44,6 +45,20 @@ js/
   achievements.js     ACHIEVEMENTS + AchievementSystem
   main.js             Bootstrap: creates the Game, home-screen embers
 ```
+
+## Strategy systems
+
+Combat is deterministic — no crits, no dice. Every unit has a damage type
+(slash / pierce / blunt / magic) and an armor class (unarmored / light /
+heavy / shielded); `js/combat.js` holds the counter table and the single
+`resolveDamage()` used by melee, projectiles, and towers. Spamming one unit
+is punished twice: waves are themed around armor classes that hard-counter
+monocultures, and recruiting the same unit repeatedly costs +18% per living
+copy. Advanced units are gated behind buildings each level (Barracks,
+Archery Range, Academy, War Forge), mines escalate in price, formations
+trade damage dealt for damage taken, and endless mode runs a scripted
+five-theme rotation that is previewed — with a counter hint — before each
+wave lands.
 
 All scripts are classic (non-module) scripts sharing one global scope, loaded
 in dependency order by `index.html` — data first, then systems, entities, the

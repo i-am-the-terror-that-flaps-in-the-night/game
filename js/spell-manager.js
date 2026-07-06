@@ -156,7 +156,7 @@ class SpellManager {
                         dist(w.x, CONFIG.GROUND_Y, en.x, en.y) <
                         sp.radius
                     )
-                        en.takeDamage(pwr, true, true);
+                        en.takeDamage(pwr, "strong");
                 });
             }, 800);
         } else if (this.active === "blizzard") {
@@ -174,7 +174,7 @@ class SpellManager {
                     );
                     game.enemies.forEach((en) => {
                         if (dist(w.x, wy, en.x, en.y) < sp.radius) {
-                            en.takeDamage(12, false, true);
+                            en.takeDamage(12, "magic");
                             en.x = Math.min(
                                 CONFIG.WORLD_WIDTH - 50,
                                 en.x + en.speed * 0.9,
@@ -211,7 +211,7 @@ class SpellManager {
             near.forEach((en, idx) => {
                 setTimeout(() => {
                     if (game.state !== 'playing') return;
-                    en.takeDamage(pwr2 * Math.pow(0.75, idx), false, true);
+                    en.takeDamage(pwr2 * Math.pow(0.75, idx), "magic");
                     game.particles.emit(en.x, en.y - 28, 12, '#38bdf8', 6, 3, 'spark');
                     const prev = idx === 0 ? {x: w.x, y: wy} : {x: near[idx-1].x, y: near[idx-1].y - 28};
                     game.lightningArcs.push({ x1: prev.x, y1: prev.y, x2: en.x, y2: en.y - 28, life: 14 });

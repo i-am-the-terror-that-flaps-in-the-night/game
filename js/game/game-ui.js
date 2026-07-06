@@ -79,7 +79,8 @@ Object.assign(Game.prototype, {
                 (s.team === TEAMS.PLAYER
                     ? UNIT_TYPES[s.type]
                     : ENEMY_TYPES[s.type]);
-        e.innerHTML = `<strong style="color:var(--gold);font-size:15px; letter-spacing:1px; text-transform:uppercase;">${d ? d.name : "Unknown"}</strong><br>HP: ${Math.floor(s.hp)}/${s.maxHp}<br>${s.dmg ? "Damage: " + s.dmg + "<br>" : ""}${s.armor ? "Armor: " + s.armor : ""}`;
+        const mu = describeMatchups(d);
+        e.innerHTML = `<strong style="color:var(--gold);font-size:15px; letter-spacing:1px; text-transform:uppercase;">${d ? d.name : "Unknown"}</strong><br>HP: ${Math.floor(s.hp)}/${s.maxHp}<br>${s.dmg ? "Damage: " + Math.round(s.dmg) + "<br>" : ""}${s.armor ? "Armor: " + s.armor + "<br>" : ""}${mu ? `<span style="font-size:12px;">${mu}</span>` : ""}`;
     },
 
     updateUI() {
@@ -150,19 +151,26 @@ Object.assign(Game.prototype, {
             }
         }
 
-        // Wave preview
+        // Wave preview + tactical counter hint
         const prevEl = document.getElementById("wavePreview");
-        if (prevEl && this.waveM && this.mode === "campaign") {
-            const wm = this.waveM;
-            if (wm.cw < wm.tw) {
-                const nw = wm.wvs[wm.cw];
-                if (nw) {
-                    const str = nw.enemies.map(gr => {
+        if (prevEl && this.waveM) {
+            let groups = null;
+            if (this.mode === "campaign") {
+                const wm = this.waveM;
+                if (wm.cw < wm.tw && wm.wvs[wm.cw])
+                    groups = wm.wvs[wm.cw].enemies;
+            } else {
+                groups = this.waveM.composition(this.waveM.wave + 1);
+            }
+            if (groups) {
+                const str = groups
+                    .filter((gr) => gr.c > 0)
+                    .map((gr) => {
                         const d2 = ENEMY_TYPES[gr.t];
                         return `${d2 ? d2.name : gr.t} ×${gr.c}`;
-                    }).join(" · ");
-                    prevEl.innerHTML = `⚠ <span style="color:#fca5a5;">${str}</span>`;
-                } else prevEl.innerHTML = "";
+                    })
+                    .join(" · ");
+                prevEl.innerHTML = `⚠ <span style="color:#fca5a5;">${str}</span><br><span style="color:#7dd3fc;font-size:11px;">${waveHint(groups)}</span>`;
             } else prevEl.innerHTML = "";
         } else if (prevEl) prevEl.innerHTML = "";
         document.getElementById("statKills").innerText = this.stats.kills;
@@ -187,14 +195,32 @@ Object.assign(Game.prototype, {
             catapult: "btnCatapult",
             paladin: "btnPaladin",
         };
+        // Which building unlocks each unit (for the lock label)
+        const unlockedBy = {};
+        for (const [bt, bd] of Object.entries(BUILDING_TYPES))
+            if (bd.unlock)
+                bd.unlock.forEach((u) => (unlockedBy[u] = bd.name));
+
+        const costStr = (c) =>
+            `${c.g || 0}g` +
+            (c.i ? ` ${c.i}i` : "") +
+            (c.c ? ` ${c.c}c` : "");
+
         for (const [t, id] of Object.entries(bMap)) {
             const b = document.getElementById(id),
                 d = UNIT_TYPES[t];
             if (!b) continue;
+            const locked = !this.unlocked.u.has(t);
+            const cost = this.unitCost(t);
             b.disabled =
-                !this.checkCost(d.cost) ||
-                this.pop + d.pop > this.maxPop ||
-                !this.unlocked.u.has(t);
+                locked ||
+                !this.checkCost(cost) ||
+                this.pop + d.pop > this.maxPop;
+            const cs = b.querySelector(".cost");
+            if (cs)
+                cs.innerText = locked
+                    ? `🔒 ${unlockedBy[t] || "?"}`
+                    : costStr(cost);
         }
         const blMap = {
             mine: "btnMine",
@@ -209,9 +235,13 @@ Object.assign(Game.prototype, {
         for (const [t, id] of Object.entries(blMap)) {
             const b = document.getElementById(id);
             if (!b) continue;
+            const cost = this.buildCost(t);
             b.disabled =
-                !this.checkCost(BUILDING_TYPES[t].cost) ||
-                !this.unlocked.b.has(t);
+                !this.checkCost(cost) || !this.unlocked.b.has(t);
+            if (t === "mine") {
+                const cs = b.querySelector(".cost");
+                if (cs) cs.innerText = costStr(cost);
+            }
         }
 
         const td = document.getElementById("activeUpgrades");
