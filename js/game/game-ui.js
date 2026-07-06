@@ -155,6 +155,11 @@ Object.assign(Game.prototype, {
                 document.getElementById("waveNumber").innerText =
                     "Wave " + w.cw + " / " + w.tw;
             }
+            const cwBtn = document.getElementById("btnCallWave");
+            if (cwBtn)
+                cwBtn.style.display = this.waveM.canCall()
+                    ? "inline-block"
+                    : "none";
         }
 
         // Wave preview + tactical counter hint

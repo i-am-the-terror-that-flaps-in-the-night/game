@@ -49,6 +49,13 @@ Object.assign(Game.prototype, {
             .classList.remove("hidden");
     },
 
+    // "Call Wave" button / N key: skip the countdown and summon the next wave
+    // immediately. No-op if not actively playing or no wave is queued.
+    callWave() {
+        if (this.state !== "playing" || !this.waveM) return;
+        if (this.waveM.callWave()) this.audio.playTone(880, 0.08, "square", 0.1);
+    },
+
     restartLevel() {
         if (this.mode === "endless") this.startEndless();
         else this.loadLvl(this.level);
