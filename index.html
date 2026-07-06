@@ -176,6 +176,7 @@
             <div id="waveTimer">Next Wave: 15s</div>
             <div id="waveNumber">Wave 1 / 5</div>
             <div id="wavePreview"></div>
+            <button id="btnCallWave" onclick="game.callWave()" title="Send the next wave immediately (N)">⚔ Call Wave Now <span class="hotkey">N</span></button>
         </div>
 
         <div id="bottomContainer" class="ui-element">
@@ -831,6 +832,13 @@
                             >
                             on mobile) any unit button to toggle automatic
                             recruitment.
+                        </li>
+                        <li>
+                            <strong>Call Wave:</strong> Cleared the field early?
+                            Hit
+                            <span style="color: var(--success)">⚔ Call Wave Now</span>
+                            (or press <strong>N</strong>) to summon the next wave
+                            immediately instead of waiting out the timer.
                         </li>
                     </ul>
                     <p>
