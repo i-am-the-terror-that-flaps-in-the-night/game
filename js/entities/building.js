@@ -14,6 +14,9 @@ class Building extends Entity {
         this.range = def.range || 0;
         this.cooldown = def.cooldown || 0;
         this.cdTimer = 0;
+        this.projType = def.projectile || "bolt";
+        this.projAoe = def.aoe || 0;
+        this.projDmgType = def.dmgType || null;
         this.bTimer = def.buildTime || 0;
         this.building = this.bTimer > 0;
         this.frame = 0;
@@ -69,9 +72,15 @@ class Building extends Entity {
                             this.x,
                             this.y - this.h * 0.8,
                             c,
-                            "bolt",
+                            this.projType,
                             this.dmg,
                             this.team,
+                            this.projAoe,
+                            0,
+                            false,
+                            this.projDmgType
+                                ? { dmgType: this.projDmgType }
+                                : undefined,
                         ),
                     );
                     game.audio.playShoot();
