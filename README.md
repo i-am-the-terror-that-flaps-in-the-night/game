@@ -60,6 +60,22 @@ trade damage dealt for damage taken, and endless mode runs a scripted
 five-theme rotation that is previewed — with a counter hint — before each
 wave lands.
 
+## Late-campaign relief
+
+Every level ramps two safety nets so the campaign gets *easier* as it goes
+without touching the early game: the castle (`js/data/buildings.js`) fires
+short-range, armor-agnostic magic bolts whose damage scales with
+`1 + level * 0.6` (45 dmg on level 1 up to 234 on level 8), and gold income
+gets a `1 + level * 0.22` multiplier (up to 2.54×) applied in the income
+loop (`js/game/game.js`) and mirrored in the HUD rate display
+(`js/game/game-ui.js`). Both ramps are computed from `this.level` in
+`reset()` and floor at their base value in endless mode (`level === -1`).
+The castle's range (140) and cooldown are fixed at every level — it only
+cleans up whatever reaches the gate, it never snipes across the map.
+`Building`'s projectile firing (`js/entities/building.js`) reads
+`projectile`/`aoe`/`dmgType` from `BUILDING_TYPES` so any building can be
+given an attack; towers are unaffected since they don't set those fields.
+
 All scripts are classic (non-module) scripts sharing one global scope, loaded
 in dependency order by `index.html` — data first, then systems, entities, the
 `Game` class and its prototype mixins, and finally `main.js` which instantiates

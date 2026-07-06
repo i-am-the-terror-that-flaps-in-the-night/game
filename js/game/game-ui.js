@@ -87,10 +87,11 @@ Object.assign(Game.prototype, {
         document.getElementById("goldDisplay").innerText = Math.floor(this.gold);
         // Income per second display
         const incomeMult2 = 1 + (this.upgrades.income || 0);
+        const lvlMult2 = this.levelIncomeMult || 1;
         let incomePerSec = 0;
         this.buildings.forEach(b => {
             if (b.active && !b.building && b.income && b.income.g)
-                incomePerSec += b.income.g * incomeMult2;
+                incomePerSec += b.income.g * incomeMult2 * lvlMult2;
         });
         const irEl = document.getElementById("incomeRate");
         if (irEl) irEl.innerText = incomePerSec > 0 ? `+${incomePerSec.toFixed(0)}/s` : "";

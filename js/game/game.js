@@ -156,9 +156,14 @@ class Game {
         this.sel = null;
         this.camera.x = 0;
         this.camera.tX = 0;
-        this.buildings.push(
-            new Building(250, "castle", TEAMS.PLAYER),
-        );
+        // Later levels get a much deadlier (but still short-ranged)
+        // castle and a fatter income stream — the early game stays hard,
+        // the grind at the end doesn't.
+        const lvl = Math.max(0, this.level);
+        this.levelIncomeMult = 1 + lvl * 0.22;
+        const castle = new Building(250, "castle", TEAMS.PLAYER);
+        castle.dmg = Math.round(castle.dmg * (1 + lvl * 0.6));
+        this.buildings.push(castle);
         if (this.level === 0) {
             const m = new Building(400, "mine", TEAMS.PLAYER);
             m.building = false;
@@ -218,10 +223,11 @@ class Game {
 
         let buildingManaRegen = 0; // Fix #11: Dynamic mana calculation
         const iM = 1 + (this.upgrades.income || 0);
+        const lvlM = this.levelIncomeMult || 1;
         this.buildings.forEach((b) => {
             if (!b.active || b.building) return;
             if (b.income.g)
-                this.addGold((b.income.g * iM * dt) / 60);
+                this.addGold((b.income.g * iM * lvlM * dt) / 60);
             if (b.income.i) this.iron += (b.income.i * dt) / 60;
             if (b.income.c) this.crystal += (b.income.c * dt) / 60;
             if (b.income.mana) buildingManaRegen += b.income.mana;
