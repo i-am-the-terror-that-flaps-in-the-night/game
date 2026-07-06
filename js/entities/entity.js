@@ -10,17 +10,18 @@ class Entity {
         this.active = true;
         this.dmgTexts = [];
     }
-    takeDamage(amt, isCrit = false, isMagic = false) {
+    // tag: 'strong' (counter hit) | 'weak' (resisted) | 'magic' | null
+    takeDamage(amt, tag = null) {
         if (this.hp <= 0) return;
         this.hp -= amt;
         this.hurtT = 7;   // flinch
         this.flashT = 5;  // white hit-flash
-        const col = isMagic
-            ? "#c084fc"
-            : isCrit
-              ? "#fbbf24"
-              : "#ef4444";
-        const sz = isCrit ? 24 : 15;
+        const col =
+            tag === "strong" ? "#fbbf24"
+            : tag === "weak" ? "#94a3b8"
+            : tag === "magic" ? "#c084fc"
+            : "#ef4444";
+        const sz = tag === "strong" ? 24 : tag === "weak" ? 12 : 15;
         this.dmgTexts.push({
             v: Math.floor(amt),
             x: rand(-12, 12),

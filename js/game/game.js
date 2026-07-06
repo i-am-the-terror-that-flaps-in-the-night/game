@@ -36,18 +36,10 @@ class Game {
         this.projectiles = [];
         this.upgrades = {};
         this.techs = new Set();
+        // Only basic troops to start — buildings unlock the rest
+        // (Barracks, Archery Range, Academy, War Forge).
         this.unlocked = {
-            u: new Set([
-                "militia",
-                "swordsman",
-                "spearman",
-                "archer",
-                "cleric",
-                "knight",
-                "mage",
-                "catapult",
-                "paladin",
-            ]),
+            u: new Set(["militia", "archer"]),
             b: new Set([
                 "castle",
                 "mine",
@@ -147,6 +139,8 @@ class Game {
             RESOURCES.MAX_MANA + (this.upgrades.mana || 0);
         this.pop = 0;
         this.maxPop = 20 + (this.upgrades.pop || 0);
+        // Each level starts from basics: rebuild your war economy.
+        this.unlocked.u = new Set(["militia", "archer"]);
         this.autoQueue = {};
         this.units = [];
         this.enemies = [];

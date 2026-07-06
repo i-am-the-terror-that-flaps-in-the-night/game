@@ -181,9 +181,9 @@
         <div id="bottomContainer" class="ui-element">
             <div id="formationBar">
                 <span class="form-label">Formation:</span>
-                <button class="form-btn active" id="fBtn-defensive" onclick="game.setFormation('defensive')">🛡 Hold</button>
-                <button class="form-btn" id="fBtn-standard" onclick="game.setFormation('standard')">⚔ Standard</button>
-                <button class="form-btn" id="fBtn-aggressive" onclick="game.setFormation('aggressive')">⚡ Assault</button>
+                <button class="form-btn active" id="fBtn-defensive" title="Hold near the castle. Units deal −10% damage but take −15%." onclick="game.setFormation('defensive')">🛡 Hold</button>
+                <button class="form-btn" id="fBtn-standard" title="Balanced stance: no damage modifiers." onclick="game.setFormation('standard')">⚔ Standard</button>
+                <button class="form-btn" id="fBtn-aggressive" title="Push forward. Units deal +15% damage but take +10%." onclick="game.setFormation('aggressive')">⚡ Assault</button>
             </div>
             <div
                 style="
@@ -747,9 +747,34 @@
                         Castle falls, you lose.
                     </p>
                     <p>
+                        <strong style="color: #fff">Combat & Counters:</strong>
+                        Every unit has a damage type and an armor class — there
+                        is no luck, only matchups. Watch the wave preview and
+                        field the counter:
+                    </p>
+                    <ul
+                        style="
+                            margin-left: 20px;
+                            margin-bottom: 10px;
+                            color: var(--text-dim);
+                        "
+                    >
+                        <li><strong style="color:#e2e8f0">Slash</strong> (Militia, Swordsman, Knight) cuts down unarmored mobs, glances off heavy plate.</li>
+                        <li><strong style="color:#e2e8f0">Pierce</strong> (Spearman, Archer) punches light armor; arrows bounce off shields. Crossbow bolts ignore armor entirely.</li>
+                        <li><strong style="color:#e2e8f0">Blunt</strong> (Paladin, Catapult) crushes shields and heavy armor, wasted on rabble.</li>
+                        <li><strong style="color:#e2e8f0">Magic</strong> (Mage, Cleric) burns through armor of every kind.</li>
+                        <li>Spearmen skewer <strong style="color:#e2e8f0">large</strong> foes (Ogres); only ranged attacks touch <strong style="color:#e2e8f0">flying</strong> Dragons.</li>
+                        <li>Gold damage numbers mean a counter hit; gray means resisted — recruit accordingly.</li>
+                    </ul>
+                    <p>
                         <strong style="color: #fff">Economy:</strong> Build
-                        Mines to generate Gold and Iron continuously. Defeating elites
-                        yields crystals and additional iron.
+                        Mines to generate Gold and Iron continuously (each extra
+                        mine costs more). Defeating elites yields crystals and
+                        additional iron. Recruiting many of the same unit gets
+                        progressively more expensive — mixed armies are cheaper
+                        and cover each other's weaknesses. Barracks, Archery
+                        Range, Academy and War Forge unlock advanced troops each
+                        level.
                     </p>
                     <p>
                         <strong style="color: #fff">Controls & Camera:</strong>
@@ -837,6 +862,7 @@
 
         <!-- Load order matters: these are classic scripts sharing one global scope. -->
         <script src="js/config.js"></script>
+        <script src="js/combat.js"></script>
         <script src="js/data/spells.js"></script>
         <script src="js/data/units.js"></script>
         <script src="js/data/enemies.js"></script>

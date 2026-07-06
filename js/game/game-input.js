@@ -1,6 +1,18 @@
 // --- GAME: event binding, spell selection & formations ---
 Object.assign(Game.prototype, {
     bindEvents() {
+        // Native hover titles on the recruit/build bars explaining each role
+        const idFor = (t) =>
+            "btn" + t.charAt(0).toUpperCase() + t.slice(1);
+        Object.entries(UNIT_TYPES).forEach(([t, d]) => {
+            const btn = document.getElementById(idFor(t));
+            if (btn && d.desc) btn.title = `${d.name} — ${d.desc}`;
+        });
+        Object.entries(BUILDING_TYPES).forEach(([t, d]) => {
+            const btn = document.getElementById(idFor(t));
+            if (btn && d.desc) btn.title = `${d.name} — ${d.desc}`;
+        });
+
         this.canvas.addEventListener("mousemove", (e) => {
             this.mouse.x = e.clientX;
             this.mouse.y = e.clientY;
@@ -36,8 +48,10 @@ Object.assign(Game.prototype, {
                     (hov.team === TEAMS.PLAYER
                         ? UNIT_TYPES[hov.type]
                         : ENEMY_TYPES[hov.type]);
-                if (def)
-                    tt.innerHTML = `<div class="tt-name">${def.name}</div><div class="tt-desc">${def.desc || ""}</div>HP: ${Math.floor(hov.hp)}/${hov.maxHp}<br>${def.dmg ? "DMG: " + def.dmg + "<br>" : ""}${def.armor ? "Armor: " + def.armor : ""}`;
+                if (def) {
+                    const mu = describeMatchups(def);
+                    tt.innerHTML = `<div class="tt-name">${def.name}</div><div class="tt-desc">${def.desc || ""}</div>HP: ${Math.floor(hov.hp)}/${hov.maxHp}<br>${def.dmg ? "DMG: " + def.dmg + "<br>" : ""}${def.armor ? "Armor: " + def.armor + "<br>" : ""}${mu ? `<span style="font-size:11px;">${mu}</span>` : ""}`;
+                }
             } else {
                 tt.classList.add("hidden");
             }
