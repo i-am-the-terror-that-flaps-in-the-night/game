@@ -1,0 +1,268 @@
+// --- GAME: panels, notifications, HUD & minimap ---
+Object.assign(Game.prototype, {
+    openTechTree() {
+        if (this.state !== "playing") return;
+        this.setSpeed(0);
+        const c = document.getElementById("techTreeContent");
+        c.innerHTML = "";
+        TECH_TREE.forEach((t) => {
+            const o = this.techs.has(t.id);
+            c.innerHTML += `<div class="tech-item ${o ? "owned" : ""}">
+    <div style="font-weight:800;color:${o ? "var(--success)" : "var(--gold)"};font-size:15px;">${t.name} ${o ? "✓" : ""}</div>
+    <div style="font-size:13px;color:var(--text-dim);flex-grow:1;">${t.desc}</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
+        <span style="color:var(--gold);font-weight:800; font-size:14px;">${t.cost}g</span>
+        <button class="tech-btn" ${o || this.gold < t.cost ? "disabled" : ""} onclick="game.buyTech('${t.id}')">${o ? "Researched" : "Research"}</button>
+    </div></div>`;
+        });
+        document
+            .getElementById("techTree")
+            .classList.remove("hidden");
+    },
+
+    closeTechTree() {
+        document.getElementById("techTree").classList.add("hidden");
+        this.setSpeed(1);
+    },
+
+    openAchievements() {
+        if (this.achievements) this.achievements.render();
+        document.getElementById('achievementsOverlay').classList.remove('hidden');
+    },
+
+    openSettings() {
+        document
+            .getElementById("settingsOverlay")
+            .classList.remove("hidden");
+    },
+
+    closeSettings() {
+        this.audio.vols.sound =
+            document.getElementById("volSound").value / 100;
+        this.audio.vols.music =
+            document.getElementById("volMusic").value / 100;
+        this.audio.updateVols();
+        document
+            .getElementById("settingsOverlay")
+            .classList.add("hidden");
+        this.saveGame();
+    },
+
+    showHelp() {
+        document
+            .getElementById("helpOverlay")
+            .classList.remove("hidden");
+    },
+
+    notify(m) {
+        const a = document.getElementById("notificationArea");
+        if (a.children.length > 4) a.removeChild(a.firstChild); // Fix #13
+        const d = document.createElement("div");
+        d.className = "notification";
+        d.innerText = m;
+        a.appendChild(d);
+        setTimeout(() => {
+            if (d.parentNode) d.remove();
+        }, 4000);
+    },
+
+    updateSelUI() {
+        const e = document.getElementById("selectedInfo");
+        if (!this.sel) {
+            e.innerText =
+                "Click a unit or building to view details.";
+            return;
+        }
+        const s = this.sel,
+            d =
+                BUILDING_TYPES[s.type] ||
+                (s.team === TEAMS.PLAYER
+                    ? UNIT_TYPES[s.type]
+                    : ENEMY_TYPES[s.type]);
+        e.innerHTML = `<strong style="color:var(--gold);font-size:15px; letter-spacing:1px; text-transform:uppercase;">${d ? d.name : "Unknown"}</strong><br>HP: ${Math.floor(s.hp)}/${s.maxHp}<br>${s.dmg ? "Damage: " + s.dmg + "<br>" : ""}${s.armor ? "Armor: " + s.armor : ""}`;
+    },
+
+    updateUI() {
+        document.getElementById("goldDisplay").innerText = Math.floor(this.gold);
+        // Income per second display
+        const incomeMult2 = 1 + (this.upgrades.income || 0);
+        let incomePerSec = 0;
+        this.buildings.forEach(b => {
+            if (b.active && !b.building && b.income && b.income.g)
+                incomePerSec += b.income.g * incomeMult2;
+        });
+        const irEl = document.getElementById("incomeRate");
+        if (irEl) irEl.innerText = incomePerSec > 0 ? `+${incomePerSec.toFixed(0)}/s` : "";
+        document.getElementById("ironDisplay").innerText =
+            Math.floor(this.iron);
+        document.getElementById("crystalDisplay").innerText =
+            Math.floor(this.crystal);
+        document.getElementById("popDisplay").innerText =
+            this.pop + "/" + this.maxPop;
+        document.getElementById("levelDisplay").innerText =
+            this.mode === "campaign" ? this.level + 1 : "∞";
+
+        const c = this.buildings.find((b) => b.type === "castle");
+        if (c) {
+            document.getElementById(
+                "castleHealthFill",
+            ).style.width =
+                (Math.max(0, c.hp) / c.maxHp) * 100 + "%";
+            document.getElementById("castleHealthText").innerText =
+                Math.floor(Math.max(0, c.hp)) + " / " + c.maxHp;
+        }
+
+        if (this.waveM) {
+            if (this.mode === "endless") {
+                const w = this.waveM;
+                const nxt = Math.max(
+                    0,
+                    Math.floor((w.int - w.t) / 60),
+                );
+                document.getElementById("waveTimer").innerText =
+                    "Next Wave: " + nxt + "s";
+                const isBossW = w.wave > 0 && w.wave % 5 === 0;
+                const wnEl = document.getElementById("waveNumber");
+                wnEl.innerText =
+                    "Endless - Wave " +
+                    w.wave +
+                    (isBossW ? " [BOSS WAVE]" : "");
+                if (isBossW) wnEl.classList.add("boss-wave");
+                else wnEl.classList.remove("boss-wave");
+            } else {
+                const w = this.waveM;
+                const nxt =
+                    w.cw < w.tw
+                        ? Math.max(
+                              0,
+                              Math.floor(
+                                  (w.wvs[w.cw].time * 60 - w.t) /
+                                      60,
+                              ),
+                          )
+                        : 0;
+                document.getElementById("waveTimer").innerText =
+                    w.cw < w.tw
+                        ? "Next Wave: " + nxt + "s"
+                        : "Final Wave!";
+                document.getElementById("waveNumber").innerText =
+                    "Wave " + w.cw + " / " + w.tw;
+            }
+        }
+
+        // Wave preview
+        const prevEl = document.getElementById("wavePreview");
+        if (prevEl && this.waveM && this.mode === "campaign") {
+            const wm = this.waveM;
+            if (wm.cw < wm.tw) {
+                const nw = wm.wvs[wm.cw];
+                if (nw) {
+                    const str = nw.enemies.map(gr => {
+                        const d2 = ENEMY_TYPES[gr.t];
+                        return `${d2 ? d2.name : gr.t} ×${gr.c}`;
+                    }).join(" · ");
+                    prevEl.innerHTML = `⚠ <span style="color:#fca5a5;">${str}</span>`;
+                } else prevEl.innerHTML = "";
+            } else prevEl.innerHTML = "";
+        } else if (prevEl) prevEl.innerHTML = "";
+        document.getElementById("statKills").innerText = this.stats.kills;
+        document.getElementById("statGold").innerText = Math.floor(
+            this.stats.gold,
+        );
+        document.getElementById("statLosses").innerText =
+            this.stats.loss;
+        document.getElementById("statTime").innerText = formatTime(
+            (Date.now() - this.stats.start) / 1000,
+        );
+
+        const bMap = {
+            militia: "btnMilitia",
+            swordsman: "btnSwordsman",
+            spearman: "btnSpearman",
+            archer: "btnArcher",
+            crossbow: "btnCrossbow",
+            cleric: "btnCleric",
+            knight: "btnKnight",
+            mage: "btnMage",
+            catapult: "btnCatapult",
+            paladin: "btnPaladin",
+        };
+        for (const [t, id] of Object.entries(bMap)) {
+            const b = document.getElementById(id),
+                d = UNIT_TYPES[t];
+            if (!b) continue;
+            b.disabled =
+                !this.checkCost(d.cost) ||
+                this.pop + d.pop > this.maxPop ||
+                !this.unlocked.u.has(t);
+        }
+        const blMap = {
+            mine: "btnMine",
+            barracks: "btnBarracks",
+            tower: "btnTower",
+            wall: "btnWall",
+            academy: "btnAcademy",
+            obelisk: "btnObelisk",
+            archery: "btnArchery",
+            forge: "btnForge",
+        };
+        for (const [t, id] of Object.entries(blMap)) {
+            const b = document.getElementById(id);
+            if (!b) continue;
+            b.disabled =
+                !this.checkCost(BUILDING_TYPES[t].cost) ||
+                !this.unlocked.b.has(t);
+        }
+
+        const td = document.getElementById("activeUpgrades");
+        if (this.techs.size === 0)
+            td.innerHTML =
+                '<div class="stat-row"><span>No upgrades purchased</span></div>';
+        else {
+            td.innerHTML = "";
+            this.techs.forEach((id) => {
+                const t = TECH_TREE.find((x) => x.id === id);
+                if (t)
+                    td.innerHTML += `<div class="stat-row"><span>${t.name}</span><span style="color:var(--success)">Active</span></div>`;
+            });
+        }
+    },
+
+    drawMinimap() {
+        const mc = document.getElementById("minimap"),
+            cx = mc.getContext("2d");
+        const mw = mc.width,
+            mh = mc.height;
+        cx.clearRect(0, 0, mw, mh);
+
+        const sX = mw / CONFIG.WORLD_WIDTH;
+
+        this.buildings.forEach((b) => {
+            if (!b.active) return;
+            cx.fillStyle =
+                b.type === "castle" ? "#fbbf24" : "#3b82f6";
+            cx.fillRect(b.x * sX - 2, mh - 12, 4, 10);
+        });
+        this.units.forEach((u) => {
+            if (u.active) {
+                cx.fillStyle = "#34d399";
+                cx.fillRect(u.x * sX, mh - 8, 2, 4);
+            }
+        });
+        this.enemies.forEach((e) => {
+            if (e.active) {
+                cx.fillStyle = "#ef4444";
+                cx.fillRect(e.x * sX, mh - 8, 2, 4);
+            }
+        });
+
+        cx.strokeStyle = "rgba(255,255,255,0.6)";
+        cx.lineWidth = 1;
+        cx.strokeRect(
+            this.camera.x * sX,
+            1,
+            (window.innerWidth / this.camera.z) * sX,
+            mh - 2,
+        );
+    },
+});

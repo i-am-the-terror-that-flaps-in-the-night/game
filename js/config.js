@@ -1,0 +1,21 @@
+/* ============================================================
+   STICKMAN DOMINION 3.1 - REFACTORED ENGINE & LOGIC
+   ============================================================ */
+
+// --- CONFIGURATION ---
+const CONFIG = {
+    WORLD_WIDTH: 4500,
+    GROUND_Y: window.innerHeight - 180,
+    GRAVITY: 0.5,
+    EDGE_SCROLL_MARGIN: 50,
+    EDGE_SCROLL_SPEED: 18,
+};
+
+const TEAMS = { PLAYER: 1, ENEMY: 2 };
+const RESOURCES = {
+    START_GOLD: 150,
+    START_IRON: 0,
+    START_CRYSTAL: 0,
+    MAX_MANA: 100,
+    MANA_REGEN: 0.05,
+};

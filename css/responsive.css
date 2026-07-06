@@ -1,0 +1,131 @@
+/* ============================================================
+   RESPONSIVE DESIGN SYSTEM (MOBILE/TABLET)
+   ============================================================ */
+@media (max-width: 1200px) {
+    #notificationArea {
+        right: 20px;
+        top: 80px;
+        transform: scale(0.85);
+        transform-origin: top right;
+    }
+}
+
+@media (max-width: 1024px) {
+    #topBar {
+        transform: translateX(-50%) scale(0.8);
+        top: 10px;
+        width: max-content;
+    }
+    #bottomContainer {
+        transform: translateX(-50%) scale(0.85);
+        bottom: 10px;
+        width: max-content;
+    }
+    #sidePanel {
+        transform: scale(0.85);
+        transform-origin: top right;
+        right: 10px;
+    }
+    .glass-panel[style*="width:850px"],
+    .glass-panel[style*="width:750px"] {
+        width: 90vw !important;
+    }
+}
+
+@media (max-width: 768px) {
+    /* Compress UI on Phones */
+    .overlay h1 {
+        font-size: 48px;
+    }
+    .overlay h2 {
+        font-size: 20px;
+        margin-bottom: 20px;
+    }
+    .menu-btn {
+        min-width: 220px;
+        padding: 14px 28px;
+    }
+
+    #topBar {
+        flex-wrap: wrap;
+        justify-content: center;
+        width: 95vw;
+        padding: 8px 12px;
+        border-radius: 16px;
+        top: 5px;
+        gap: 10px;
+    }
+    #topBar > div[style*="width:1px"] {
+        display: none;
+    }
+    .resource-pill {
+        font-size: 13px;
+    }
+
+    #bottomContainer {
+        transform: translateX(-50%) scale(0.75);
+        bottom: -5px;
+    }
+    #spellsBar,
+    #bottomBar {
+        flex-wrap: wrap;
+        justify-content: center;
+        padding: 8px;
+        gap: 6px;
+    }
+
+    .btn {
+        min-width: 65px;
+        font-size: 11px;
+        padding: 8px 6px;
+    }
+    .btn .cost {
+        font-size: 10px;
+    }
+    .hotkey {
+        display: none;
+    } /* Hide hotkeys on mobile */
+
+    #sidePanel {
+        display: none;
+    } /* Hide stats panel to save space */
+    .tech-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    .glass-panel[style*="width:850px"],
+    .glass-panel[style*="width:750px"] {
+        width: 95vw !important;
+        padding: 20px !important;
+        max-height: 90vh;
+    }
+
+    #timeControls {
+        top: auto;
+        bottom: 140px;
+        right: 10px;
+        flex-direction: column;
+    }
+    #healthOverlay {
+        transform: scale(0.8);
+        transform-origin: top left;
+        left: 10px;
+        top: 60px;
+    }
+    #waveInfo {
+        top: 60px;
+        transform: translateX(-50%) scale(0.8);
+        padding: 8px 20px;
+    }
+    #minimapContainer {
+        bottom: 140px;
+        left: 10px;
+        transform: scale(0.8);
+        transform-origin: bottom left;
+    }
+    #notificationArea {
+        transform: scale(0.75);
+        top: 120px;
+        right: 10px;
+    }
+}

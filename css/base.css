@@ -1,0 +1,47 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Cinzel+Decorative:wght@700&display=swap');
+/* ============================================================
+   STICKMAN DOMINION 3.1 - POLISHED STYLESHEET
+   ============================================================ */
+:root {
+    --bg-dark: #05050a;
+    --panel-bg: rgba(10, 12, 20, 0.85);
+    --panel-border: rgba(100, 150, 255, 0.25);
+    --gold: #fbbf24;
+    --iron: #94a3b8;
+    --crystal: #22d3ee;
+    --mana: #c084fc;
+    --pop: #f87171;
+    --text: #f1f5f9;
+    --text-dim: #94a3b8;
+    --accent: #3b82f6;
+    --danger: #ef4444;
+    --success: #10b981;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+body {
+    background: var(--bg-dark);
+    color: var(--text);
+    font-family:
+        "Segoe UI",
+        system-ui,
+        -apple-system,
+        sans-serif;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* Base Canvas */
+#gameCanvas {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    background: #020617;
+    touch-action: none; /* Prevents browser pull-to-refresh on mobile */
+}

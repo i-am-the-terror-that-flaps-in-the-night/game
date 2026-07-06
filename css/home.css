@@ -1,0 +1,128 @@
+/* ── HOME SCREEN POLISH ── */
+
+#mainMenu {
+    background: radial-gradient(ellipse at 50% 60%, rgba(30,15,5,0.97) 0%, rgba(2,6,23,0.99) 70%);
+}
+#mainMenu .overlay-inner {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Ember particle field */
+#menuEmbers {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 0;
+}
+        .ember {
+--dur: 8s;
+--delay: 0s;
+--drift: 0px;
+position: absolute;
+bottom: -10px;
+width: 3px;
+height: 3px;
+border-radius: 50%;
+opacity: 0;
+animation: emberRise var(--dur, 8s) ease-in infinite;
+animation-delay: var(--delay, 0s);
+        }
+        @keyframes emberRise {
+0%   { transform: translateY(0) translateX(0) scale(1); opacity: 0; }
+10%  { opacity: 0.9; }
+80%  { opacity: 0.4; }
+100% { transform: translateY(-95vh) translateX(var(--drift, 0px)) scale(0.3); opacity: 0; }
+        }
+
+/* Title */
+#mainMenu .menu-title-sub {
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 8px;
+    color: var(--gold);
+    text-transform: uppercase;
+    opacity: 0.85;
+    margin-bottom: 8px;
+    text-shadow: 0 0 20px rgba(251,191,36,0.6);
+}
+#mainMenu h1 {
+    font-family: 'Cinzel Decorative', 'Cinzel', serif;
+    font-size: 78px;
+    font-weight: 700;
+    background: linear-gradient(160deg, #fff5cc 0%, #fbbf24 35%, #f59e0b 65%, #92400e 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(0 0 30px rgba(251,191,36,0.45));
+    letter-spacing: 8px;
+    margin-bottom: 0;
+    line-height: 1;
+}
+
+/* Decorative divider */
+.menu-divider {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 22px 0 28px;
+    width: 340px;
+}
+.menu-divider-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(251,191,36,0.5), transparent);
+}
+.menu-divider-icon {
+    font-size: 20px;
+    opacity: 0.8;
+    filter: drop-shadow(0 0 8px rgba(251,191,36,0.7));
+}
+
+/* Polished menu buttons */
+.menu-btn {
+    position: relative;
+    font-family: 'Cinzel', serif;
+    letter-spacing: 3px;
+    overflow: hidden;
+}
+.menu-btn::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -130%; width: 60%; height: 100%;
+    background: linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.07) 50%, transparent 80%);
+    transition: left 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.menu-btn:hover::after { left: 160%; }
+.menu-btn.primary-btn {
+    border-color: rgba(251,191,36,0.55);
+    background: linear-gradient(180deg, rgba(45,30,5,0.95), rgba(20,12,2,0.95));
+    box-shadow: 0 0 24px rgba(251,191,36,0.15), 0 10px 20px rgba(0,0,0,0.4);
+}
+.menu-btn.primary-btn:hover {
+    border-color: var(--gold);
+    background: linear-gradient(180deg, rgba(70,45,8,0.95), rgba(35,22,4,0.95));
+    box-shadow: 0 0 36px rgba(251,191,36,0.3), 0 15px 30px rgba(0,0,0,0.6);
+}
+.menu-btn.primary-btn::before {
+    background: linear-gradient(90deg, transparent, rgba(251,191,36,0.1), transparent);
+}
+
+/* Version badge */
+.version-badge {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    color: rgba(148,163,184,0.55);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    border: 1px solid rgba(148,163,184,0.15);
+    padding: 5px 16px;
+    border-radius: 20px;
+    position: absolute;
+    bottom: 24px;
+}
