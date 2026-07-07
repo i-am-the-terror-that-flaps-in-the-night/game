@@ -1,5 +1,6 @@
-import { resolveDamage } from '../systems/combat.js';
-import { CONFIG, TEAMS } from '../config.js';
+import { dealDamage } from '../systems/combat.js';
+import { lowestHpAllyInRange, nearestX } from '../systems/targeting.js';
+import { CONFIG, NECRO_ENEMY_CAP, NECRO_MINION_TYPE, NECRO_SUMMON_INTERVAL, TEAMS } from '../config.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { UNIT_TYPES } from '../data/units.js';
 import { Entity } from './entity.js';
@@ -9,6 +10,7 @@ import { clamp, dist, rand, randInt } from '../utils.js';
 export class Unit extends Entity {
     constructor(x, type, team) {
         super(x, CONFIG.GROUND_Y, team);
+        this.kind = "unit"; // combat.js target discrimination (vs instanceof)
         this.type = type;
         const def =
             team === TEAMS.PLAYER
@@ -52,7 +54,7 @@ export class Unit extends Entity {
         this.state = "walk";
         this.frame = randInt(0, 100);
         this.facing = team === TEAMS.PLAYER ? 1 : -1;
-        this.summonTimer = 300; // Fix #3: Necro timer
+        this.summonTimer = NECRO_SUMMON_INTERVAL; // Fix #3: Necro timer
         // ── XP / Leveling (player units only) ──
         this.xp = 0;
         this.level = 1;
@@ -122,20 +124,7 @@ export class Unit extends Entity {
                     this.team === TEAMS.PLAYER
                         ? game.units
                         : game.enemies;
-                let tgt = null,
-                    lowHp = 1;
-                for (const a of allies) {
-                    if (
-                        a !== this &&
-                        a.hp > 0 &&
-                        a.hp / a.maxHp < lowHp &&
-                        dist(this.x, this.y, a.x, a.y) <
-                            this.healRange
-                    ) {
-                        lowHp = a.hp / a.maxHp;
-                        tgt = a;
-                    }
-                }
+                const tgt = lowestHpAllyInRange(this, allies, this.healRange);
                 if (tgt) {
                     tgt.heal(this.healAmt);
                     game.particles.emit(
@@ -162,25 +151,15 @@ export class Unit extends Entity {
         const bldgs =
             this.team === TEAMS.PLAYER ? [] : game.buildings;
 
-        let cD = Infinity,
-            tgt = null;
-        for (const e of enemies) {
-            if (e.hp <= 0 || (e.flying && !this.ranged)) continue; // Fix #4: Ground ignores air
-            const d = Math.abs(e.x - this.x);
-            if (d < cD) {
-                cD = d;
-                tgt = e;
-            }
-        }
+        // Fix #4: ground units ignore airborne foes. Fall back to the nearest
+        // building only when no enemy is targetable (player units pass bldgs=[]).
+        let res = nearestX(this.x, enemies, (e) => e.hp > 0 && !(e.flying && !this.ranged));
+        let tgt = res.tgt,
+            cD = res.d;
         if (!tgt) {
-            for (const b of bldgs) {
-                if (b.hp <= 0) continue;
-                const d = Math.abs(b.x - this.x);
-                if (d < cD) {
-                    cD = d;
-                    tgt = b;
-                }
-            }
+            res = nearestX(this.x, bldgs, (b) => b.hp > 0);
+            tgt = res.tgt;
+            cD = res.d;
         }
 
         if (tgt) {
@@ -231,10 +210,10 @@ export class Unit extends Entity {
 
         if (this.type === "necromancer") {
             this.summonTimer -= dt;
-            if (this.summonTimer <= 0 && game.enemies.length < 60) {
-                this.summonTimer = 300;
+            if (this.summonTimer <= 0 && game.enemies.length < NECRO_ENEMY_CAP) {
+                this.summonTimer = NECRO_SUMMON_INTERVAL;
                 game.spawnEnemy(
-                    "skeleton",
+                    NECRO_MINION_TYPE,
                     this.x + rand(-50, 50),
                     this.y,
                 );
@@ -289,9 +268,8 @@ export class Unit extends Entity {
                 team: this.team,
                 isUnit: true,
             };
-            const res = resolveDamage(this.dmg, src, tgt);
+            const res = dealDamage(this.dmg, src, tgt);
             const crt = res.tag === "strong"; // counter hits get the heavy FX
-            tgt.takeDamage(res.amt, res.tag);
 
             if (this.aoe) {
                 const trgs =
@@ -304,8 +282,7 @@ export class Unit extends Entity {
                         t.hp > 0 &&
                         dist(this.x, this.y, t.x, t.y) < this.aoe
                     ) {
-                        const r2 = resolveDamage(this.dmg * 0.5, src, t);
-                        t.takeDamage(r2.amt, r2.tag);
+                        dealDamage(this.dmg * 0.5, src, t);
                         t.recoil = (t.x > this.x ? 1 : -1) * 4;
                     }
                 // Ground-slam shockwave
@@ -407,16 +384,12 @@ export class Unit extends Entity {
             game.stats.kills++;
             game.audio.playCoin();
             
-            // Crystal drops
-            if (this.type === "shaman") game.crystal += 2;
-            if (this.type === "necromancer") game.crystal += 5;
-            if (this.type === "dragon") game.crystal += 25;
-            
-            // Iron drops
-            if (this.type === "marauder") game.iron += 1;
-            if (this.type === "berserker") game.iron += 2;
-            if (this.type === "shieldman") game.iron += 4;
-            if (this.type === "ogre") game.iron += 10;
+            // Crystal / iron drops (per-enemy table lives in data/enemies.js)
+            const drops = ENEMY_TYPES[this.type].drops;
+            if (drops) {
+                if (drops.crystal) game.crystal += drops.crystal;
+                if (drops.iron) game.iron += drops.iron;
+            }
             // Dragon kill flag for achievement
             if (this.type === "dragon") game._dragonKilled = true;
             // Grant XP to nearest player unit

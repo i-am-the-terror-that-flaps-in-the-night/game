@@ -1,5 +1,6 @@
-import { resolveDamage } from './combat.js';
-import { CONFIG, TEAMS } from '../config.js';
+import { dealDamage } from './combat.js';
+import { CONFIG, NECRO_MINION_TYPE, PROJ_CULL_MARGIN, PROJ_HIT_RADIUS, TEAMS } from '../config.js';
+import { PROJECTILE_TYPES } from '../data/projectiles.js';
 import { dist, rand, shade } from '../utils.js';
 
 // --- PROJECTILES & MAGIC ---
@@ -13,10 +14,11 @@ export class Projectile {
         this.team = team;
         this.active = true;
         this.trail = [];
+        const def = PROJECTILE_TYPES[type];
         // Combat-resolution source info (counter system)
         const o = opts || {};
         this.src = {
-            dmgType: o.dmgType || (type === "fireball" || type === "skull" ? "magic" : "pierce"),
+            dmgType: o.dmgType || def.defaultDmgType,
             armorPierce: o.armorPierce || false,
             vsLarge: o.vsLarge || 0,
             vsFlying: o.vsFlying || 0,
@@ -27,32 +29,6 @@ export class Projectile {
 
         this.tX = target.x;
         this.tY = target.y; // Fix #5: Cache coords
-
-        const def = {
-            arrow: { sp: 12, c: "#cbd5e1", sz: 2, arc: true },
-            bolt: { sp: 16, c: "#94a3b8", sz: 3, arc: false },
-            fireball: {
-                sp: 8,
-                c: "#f97316",
-                sz: 6,
-                aoe: true,
-                glow: true,
-            },
-            rock: {
-                sp: 6,
-                c: "#475569",
-                sz: 12,
-                arc: true,
-                aoe: true,
-            },
-            skull: {
-                sp: 7,
-                c: "#c084fc",
-                sz: 6,
-                glow: true,
-                summon: true,
-            },
-        }[type];
 
         this.sp = def.sp;
         this.col = def.c;
@@ -114,10 +90,10 @@ export class Projectile {
             !this.arc &&
             this.t &&
             this.t.hp > 0 &&
-            dist(this.x, this.y, this.tX, this.tY) < 30
+            dist(this.x, this.y, this.tX, this.tY) < PROJ_HIT_RADIUS
         )
             this.hit(this.t);
-        if (this.x < -200 || this.x > CONFIG.WORLD_WIDTH + 200)
+        if (this.x < -PROJ_CULL_MARGIN || this.x > CONFIG.WORLD_WIDTH + PROJ_CULL_MARGIN)
             this.active = false;
     }
     hitFloor() {
@@ -139,7 +115,7 @@ export class Projectile {
     hit(target) {
         this.active = false;
         if (this.summon && this.team === TEAMS.ENEMY) {
-            game.spawnEnemy("skeleton", this.x, CONFIG.GROUND_Y);
+            game.spawnEnemy(NECRO_MINION_TYPE, this.x, CONFIG.GROUND_Y);
             game.particles.emit(
                 this.x,
                 this.y,
@@ -156,8 +132,7 @@ export class Projectile {
             return;
         }
 
-        const res = resolveDamage(this.dmg, this.src, target);
-        target.takeDamage(res.amt, res.tag);
+        dealDamage(this.dmg, this.src, target);
         const ang = Math.atan2(this.vy, this.vx) + Math.PI;
         game.fx.spark(this.x, this.y, ang, {
             n: 5, len: 14, spread: 0.8, col: this.col,
@@ -195,8 +170,7 @@ export class Projectile {
                   ];
         for (const t of targets) {
             if (dist(this.x, this.y, t.x, t.y) < this.aoe) {
-                const res = resolveDamage(this.dmg * 0.6, this.src, t);
-                t.takeDamage(res.amt, res.tag);
+                dealDamage(this.dmg * 0.6, this.src, t);
             }
         }
         game.particles.emit(

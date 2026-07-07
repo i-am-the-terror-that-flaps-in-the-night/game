@@ -4,11 +4,10 @@ import { TECH_TREE } from '../data/tech.js';
 import { UNIT_TYPES } from '../data/units.js';
 import { Building } from '../entities/building.js';
 import { Unit } from '../entities/unit.js';
-import { Game } from './game.js';
 import { btnId, rand } from '../utils.js';
 
-// --- GAME: resources, recruiting, building & tech ---
-Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
+// --- GAME: resources, recruiting, building & tech (installed by install-mixins.js) ---
+export const economyMethods = /** @type {ThisType<any>} */ ({
     addGold(a) {
         this.gold += a;
         this.stats.gold += a;
@@ -172,4 +171,4 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
         this.openTechTree();
         this.updateUI();
     },
-}));
+});

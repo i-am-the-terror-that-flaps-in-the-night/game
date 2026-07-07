@@ -1,18 +1,18 @@
 import { CONFIG } from '../config.js';
+import { el } from '../ui/dom.js';
 import { btnId, costStr, formatTime } from '../utils.js';
 import { defOf, describeMatchups, waveHint } from '../systems/combat.js';
 import { BUILDING_TYPES } from '../data/buildings.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { TECH_TREE } from '../data/tech.js';
 import { UNIT_TYPES } from '../data/units.js';
-import { Game } from './game.js';
 
-// --- GAME: panels, notifications, HUD & minimap ---
-Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
+// --- GAME: panels, notifications, HUD & minimap (installed by install-mixins.js) ---
+export const uiMethods = /** @type {ThisType<any>} */ ({
     openTechTree() {
         if (this.state !== "playing") return;
         this.setSpeed(0);
-        const c = document.getElementById("techTreeContent");
+        const c = el("techTreeContent");
         c.innerHTML = "";
         TECH_TREE.forEach((t) => {
             const o = this.techs.has(t.id);
@@ -24,24 +24,22 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
         <button class="tech-btn" ${o || this.gold < t.cost ? "disabled" : ""} onclick="game.buyTech('${t.id}')">${o ? "Researched" : "Research"}</button>
     </div></div>`;
         });
-        document
-            .getElementById("techTree")
-            .classList.remove("hidden");
+        el("techTree").classList.remove("hidden");
     },
 
     closeTechTree() {
-        document.getElementById("techTree").classList.add("hidden");
+        el("techTree").classList.add("hidden");
         this.setSpeed(1);
     },
 
     openAchievements() {
         if (this.achievements) this.achievements.render();
-        document.getElementById('achievementsOverlay').classList.remove('hidden');
+        el('achievementsOverlay').classList.remove('hidden');
     },
 
     openWarCouncil() {
         if (this.meta) this.meta.renderCouncil();
-        document.getElementById('warCouncilOverlay').classList.remove('hidden');
+        el('warCouncilOverlay').classList.remove('hidden');
     },
 
     // Bottom action bar: toggle the Units / Buildings groups. Buttons stay in
@@ -50,38 +48,32 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
     setActionTab(tab) {
         this.actionTab = tab;
         const units = tab === 'units';
-        document.getElementById('unitButtons').classList.toggle('is-hidden', !units);
-        document.getElementById('buildingButtons').classList.toggle('is-hidden', units);
-        document.getElementById('tabUnits').classList.toggle('active', units);
-        document.getElementById('tabBuildings').classList.toggle('active', !units);
+        el('unitButtons').classList.toggle('is-hidden', !units);
+        el('buildingButtons').classList.toggle('is-hidden', units);
+        el('tabUnits').classList.toggle('active', units);
+        el('tabBuildings').classList.toggle('active', !units);
     },
 
     openSettings() {
-        document
-            .getElementById("settingsOverlay")
-            .classList.remove("hidden");
+        el("settingsOverlay").classList.remove("hidden");
     },
 
     closeSettings() {
         this.audio.vols.sound =
-            document.getElementById("volSound").value / 100;
+            el("volSound").value / 100;
         this.audio.vols.music =
-            document.getElementById("volMusic").value / 100;
+            el("volMusic").value / 100;
         this.audio.updateVols();
-        document
-            .getElementById("settingsOverlay")
-            .classList.add("hidden");
+        el("settingsOverlay").classList.add("hidden");
         this.saveGame();
     },
 
     showHelp() {
-        document
-            .getElementById("helpOverlay")
-            .classList.remove("hidden");
+        el("helpOverlay").classList.remove("hidden");
     },
 
     notify(m) {
-        const a = document.getElementById("notificationArea");
+        const a = el("notificationArea");
         if (a.children.length > 4) a.removeChild(a.firstChild); // Fix #13
         const d = document.createElement("div");
         d.className = "notification";
@@ -93,7 +85,7 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
     },
 
     updateSelUI() {
-        const e = document.getElementById("selectedInfo");
+        const e = el("selectedInfo");
         if (!this.sel) {
             e.innerText =
                 "Click a unit or building to view details.";
@@ -106,7 +98,7 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
     },
 
     updateUI() {
-        document.getElementById("goldDisplay").innerText = Math.floor(this.gold);
+        el("goldDisplay").innerText = Math.floor(this.gold);
         // Income per second display
         const incomeMult2 = 1 + (this.upgrades.income || 0);
         const lvlMult2 = this.levelIncomeMult || 1;
@@ -115,24 +107,24 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
             if (b.active && !b.building && b.income && b.income.g)
                 incomePerSec += b.income.g * incomeMult2 * lvlMult2;
         });
-        const irEl = document.getElementById("incomeRate");
+        const irEl = el("incomeRate");
         if (irEl) irEl.innerText = incomePerSec > 0 ? `+${incomePerSec.toFixed(0)}/s` : "";
-        document.getElementById("ironDisplay").innerText =
+        el("ironDisplay").innerText =
             Math.floor(this.iron);
-        document.getElementById("crystalDisplay").innerText =
+        el("crystalDisplay").innerText =
             Math.floor(this.crystal);
-        document.getElementById("popDisplay").innerText =
+        el("popDisplay").innerText =
             this.pop + "/" + this.maxPop;
-        document.getElementById("levelDisplay").innerText =
+        el("levelDisplay").innerText =
             this.mode === "campaign" ? this.level + 1 : "∞";
 
         const c = this.buildings.find((b) => b.type === "castle");
         if (c) {
-            document.getElementById(
+            el(
                 "castleHealthFill",
             ).style.width =
                 (Math.max(0, c.hp) / c.maxHp) * 100 + "%";
-            document.getElementById("castleHealthText").innerText =
+            el("castleHealthText").innerText =
                 Math.floor(Math.max(0, c.hp)) + " / " + c.maxHp;
         }
 
@@ -143,10 +135,10 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
                     0,
                     Math.floor((w.int - w.t) / 60),
                 );
-                document.getElementById("waveTimer").innerText =
+                el("waveTimer").innerText =
                     "Next Wave: " + nxt + "s";
                 const isBossW = w.wave > 0 && w.wave % 5 === 0;
-                const wnEl = document.getElementById("waveNumber");
+                const wnEl = el("waveNumber");
                 wnEl.innerText =
                     "Endless - Wave " +
                     w.wave +
@@ -165,14 +157,14 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
                               ),
                           )
                         : 0;
-                document.getElementById("waveTimer").innerText =
+                el("waveTimer").innerText =
                     w.cw < w.tw
                         ? "Next Wave: " + nxt + "s"
                         : "Final Wave!";
-                document.getElementById("waveNumber").innerText =
+                el("waveNumber").innerText =
                     "Wave " + w.cw + " / " + w.tw;
             }
-            const cwBtn = document.getElementById("btnCallWave");
+            const cwBtn = el("btnCallWave");
             if (cwBtn)
                 cwBtn.style.display = this.waveM.canCall()
                     ? "inline-block"
@@ -180,7 +172,7 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
         }
 
         // Wave preview + tactical counter hint
-        const prevEl = document.getElementById("wavePreview");
+        const prevEl = el("wavePreview");
         if (prevEl && this.waveM) {
             let groups = null;
             if (this.mode === "campaign") {
@@ -201,13 +193,13 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
                 prevEl.innerHTML = `⚠ <span style="color:#fca5a5;">${str}</span><br><span style="color:#7dd3fc;font-size:11px;">${waveHint(groups)}</span>`;
             } else prevEl.innerHTML = "";
         } else if (prevEl) prevEl.innerHTML = "";
-        document.getElementById("statKills").innerText = this.stats.kills;
-        document.getElementById("statGold").innerText = Math.floor(
+        el("statKills").innerText = this.stats.kills;
+        el("statGold").innerText = Math.floor(
             this.stats.gold,
         );
-        document.getElementById("statLosses").innerText =
+        el("statLosses").innerText =
             this.stats.loss;
-        document.getElementById("statTime").innerText = formatTime(
+        el("statTime").innerText = formatTime(
             (Date.now() - this.stats.start) / 1000,
         );
 
@@ -219,7 +211,7 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
 
         // Recruit buttons — one per unit type (ids derived from the data table).
         for (const t of Object.keys(UNIT_TYPES)) {
-            const b = document.getElementById(btnId(t)),
+            const b = el(btnId(t)),
                 d = UNIT_TYPES[t];
             if (!b) continue;
             const locked = !this.unlocked.u.has(t);
@@ -236,7 +228,7 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
         }
         // Build buttons — castle has no button, so getElementById skips it.
         for (const t of Object.keys(BUILDING_TYPES)) {
-            const b = document.getElementById(btnId(t));
+            const b = el(btnId(t));
             if (!b) continue;
             const cost = this.buildCost(t);
             b.disabled =
@@ -247,7 +239,7 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
             }
         }
 
-        const td = document.getElementById("activeUpgrades");
+        const td = el("activeUpgrades");
         if (this.techs.size === 0)
             td.innerHTML =
                 '<div class="stat-row"><span>No upgrades purchased</span></div>';
@@ -262,7 +254,7 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
     },
 
     drawMinimap() {
-        const mc = document.getElementById("minimap"),
+        const mc = el("minimap"),
             cx = mc.getContext("2d");
         const mw = mc.width,
             mh = mc.height;
@@ -298,4 +290,4 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
             mh - 2,
         );
     },
-}));
+});

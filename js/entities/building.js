@@ -2,10 +2,12 @@ import { CONFIG, TEAMS } from '../config.js';
 import { BUILDING_TYPES } from '../data/buildings.js';
 import { Entity } from './entity.js';
 import { Projectile } from '../systems/projectile.js';
+import { nearestX } from '../systems/targeting.js';
 
 export class Building extends Entity {
     constructor(x, type, team) {
         super(x, CONFIG.GROUND_Y, team);
+        this.kind = "building"; // combat.js target discrimination (vs instanceof)
         this.type = type;
         const def = BUILDING_TYPES[type];
         this.name = def.name;
@@ -65,22 +67,12 @@ export class Building extends Entity {
                     this.team === TEAMS.PLAYER
                         ? game.enemies
                         : game.units;
-                let c = null,
-                    cd = Infinity;
-                for (const t of trgs) {
-                    if (t.hp <= 0) continue;
-                    // Flyers can be engaged from farther out (flak-fire); ground
-                    // targets use the normal, shorter range.
-                    const reach =
-                        t.flying && this.flyRange
-                            ? this.flyRange
-                            : this.range;
-                    const d = Math.abs(t.x - this.x);
-                    if (d <= reach && d < cd) {
-                        cd = d;
-                        c = t;
-                    }
-                }
+                // Flyers can be engaged from farther out (flak-fire); ground
+                // targets use the normal, shorter range. Nearest eligible foe.
+                const { tgt: c } = nearestX(this.x, trgs, (t, d) =>
+                    t.hp > 0 &&
+                    d <= (t.flying && this.flyRange ? this.flyRange : this.range),
+                );
                 if (c) {
                     const opts = {};
                     if (this.projDmgType) opts.dmgType = this.projDmgType;

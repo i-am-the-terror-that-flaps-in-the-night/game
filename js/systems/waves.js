@@ -2,6 +2,39 @@ import { CONFIG } from '../config.js';
 import { LEVELS } from '../data/levels.js';
 import { rand } from '../utils.js';
 
+/**
+ * @typedef {Object} WaveController The duck-typed interface both managers below
+ *   satisfy (game.waveM). Note the deliberately different invariants:
+ *   WaveManager tracks `pending` and completes; EndlessWave never does.
+ * @property {(dt:number)=>void} update
+ * @property {()=>boolean} isComplete
+ * @property {()=>boolean} canCall
+ * @property {()=>boolean} callWave
+ * @property {number} cw
+ * @property {number} tw
+ * @property {number} [wave]
+ */
+
+// Schedule a wave's enemies as staggered setTimeouts. Each plan entry is
+// { type, delayMs, xMin, xMax, track }. The caller computes delayMs (so the
+// campaign per-group jitter is applied once, at schedule time, in loop order);
+// the x position is randomized at spawn time as before. track:true bumps
+// mgr.pending around the spawn (campaign victory gating); endless passes false.
+function scheduleSpawns(mgr, plan) {
+    plan.forEach((s) => {
+        if (s.track) mgr.pending++;
+        setTimeout(() => {
+            if (s.track) mgr.pending--;
+            if (mgr.g.state === "playing")
+                mgr.g.spawnEnemy(
+                    s.type,
+                    CONFIG.WORLD_WIDTH - rand(s.xMin, s.xMax),
+                    CONFIG.GROUND_Y,
+                );
+        }, s.delayMs);
+    });
+}
+
 export class WaveManager {
     constructor(g, lvl) {
         this.g = g;
@@ -40,23 +73,19 @@ export class WaveManager {
         return true;
     }
     spawn(w) {
+        const plan = [];
         w.enemies.forEach((gr) => {
             for (let i = 0; i < gr.c; i++) {
-                this.pending++;
-                setTimeout(
-                    () => {
-                        this.pending--;
-                        if (this.g.state === "playing")
-                            this.g.spawnEnemy(
-                                gr.t,
-                                CONFIG.WORLD_WIDTH - rand(100, 400),
-                                CONFIG.GROUND_Y,
-                            );
-                    },
-                    i * 700 + rand(0, 200),
-                );
+                plan.push({
+                    type: gr.t,
+                    delayMs: i * 700 + rand(0, 200),
+                    xMin: 100,
+                    xMax: 400,
+                    track: true,
+                });
             }
         });
+        scheduleSpawns(this, plan);
     }
     isComplete() {
         // No victory while staggered spawns are still in flight — otherwise
@@ -165,18 +194,19 @@ export class EndlessWave {
     }
     spawn() {
         let i = 0;
+        const plan = [];
         this.composition(this.wave).forEach((gr) => {
             for (let k = 0; k < gr.c; k++, i++) {
-                setTimeout(() => {
-                    if (this.g.state === "playing")
-                        this.g.spawnEnemy(
-                            gr.t,
-                            CONFIG.WORLD_WIDTH - rand(50, 300),
-                            CONFIG.GROUND_Y,
-                        );
-                }, i * 500);
+                plan.push({
+                    type: gr.t,
+                    delayMs: i * 500,
+                    xMin: 50,
+                    xMax: 300,
+                    track: false,
+                });
             }
         });
+        scheduleSpawns(this, plan);
     }
     isComplete() {
         return false;

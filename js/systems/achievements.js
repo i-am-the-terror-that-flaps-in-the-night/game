@@ -1,3 +1,5 @@
+import { loadJSON, saveJSON } from './storage.js';
+
 // ─── ACHIEVEMENTS ────────────────────────────────────────────────
 export const ACHIEVEMENTS = [
     { id: 'first_blood',   name: 'First Blood',     icon: '⚔️',  desc: 'Slay your first enemy.' },
@@ -15,7 +17,7 @@ export const ACHIEVEMENTS = [
 export class AchievementSystem {
     constructor(g) {
         this.g = g;
-        try { this.unlocked = new Set(JSON.parse(localStorage.getItem('sd_ach_v2') || '[]')); }
+        try { this.unlocked = new Set(loadJSON('sd_ach_v2') || []); }
         catch(e) { this.unlocked = new Set(); }
     }
     tryUnlock(id) {
@@ -23,7 +25,7 @@ export class AchievementSystem {
         const a = ACHIEVEMENTS.find(x => x.id === id);
         if (!a) return;
         this.unlocked.add(id);
-        try { localStorage.setItem('sd_ach_v2', JSON.stringify([...this.unlocked])); } catch(e) {}
+        saveJSON('sd_ach_v2', [...this.unlocked]);
         const area = document.getElementById('notificationArea');
         if (!area) return;
         const d = document.createElement('div');

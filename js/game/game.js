@@ -5,12 +5,17 @@ import { LEVELS } from '../data/levels.js';
 import { Building } from '../entities/building.js';
 import { MetaProgression } from '../systems/meta.js';
 import { SpellManager } from '../systems/spell-manager.js';
+import { loadJSON, saveJSON } from '../systems/storage.js';
 import { formatTime } from '../utils.js';
 import { DecalSystem, EffectSystem, ParticleSystem, WeatherSystem } from '../systems/vfx.js';
 
 // --- GAME: core state, lifecycle & main loop ---
 // (flow/economy/input/ui/render methods are mixed into Game.prototype
-//  from the other js/game/*.js files)
+//  from the other js/game/*.js files — see js/main.js for the boot ordering
+//  contract those mixins depend on.)
+// Constructor order is load-bearing: systems that others depend on (audio,
+// camera, spells) are built first; loadSave() runs before bindEvents(); and
+// bindEvents() runs before loop() starts the frame cycle.
 export class Game {
     constructor() {
         this.canvas = document.getElementById("gameCanvas");
@@ -86,9 +91,7 @@ export class Game {
     // Fix #20: Local Storage Persistence
     loadSave() {
         try {
-            const s = JSON.parse(
-                localStorage.getItem("stickman_dominion_save"),
-            );
+            const s = loadJSON("stickman_dominion_save");
             if (s) {
                 this.maxUnlockedLevel = s.maxUnlockedLevel || 0;
                 this.bestEndlessWave = s.bestEndlessWave || 0;
@@ -115,16 +118,17 @@ export class Game {
     }
 
     saveGame() {
-        localStorage.setItem(
+        saveJSON(
             "stickman_dominion_save",
-            JSON.stringify({
+            {
                 maxUnlockedLevel: this.maxUnlockedLevel,
                 bestEndlessWave: this.bestEndlessWave,
                 volSound: document.getElementById("volSound").value,
                 volMusic: document.getElementById("volMusic").value,
                 pq: document.getElementById("particleQuality")
                     .value,
-            }),
+            },
+            { swallow: false },
         );
         document.getElementById("btnStartCampaign").innerText =
             `Resume Campaign (${this.maxUnlockedLevel + 1})`;
@@ -137,6 +141,9 @@ export class Game {
             window.innerHeight - 180,
             window.innerHeight * 0.6,
         );
+        // resize() runs once in the constructor before this.camera exists (the
+        // Camera seeds viewW itself); guard for that first call.
+        if (this.camera) this.camera.viewW = window.innerWidth;
         this._buildBackdropCache();
     }
 
@@ -267,12 +274,23 @@ export class Game {
             }
         }
 
-        [
-            ...this.buildings,
-            ...this.units,
-            ...this.enemies,
-            ...this.projectiles,
-        ].forEach((e) => e.update(dt));
+        // Update every entity that existed at the START of this frame. Capture
+        // all four counts up front so anything spawned mid-frame (necromancer
+        // summons -> enemies, towers/archers -> projectiles) is first updated
+        // NEXT frame — exactly what the old combined-snapshot array did, but
+        // without allocating that array every frame. The pre-captured lengths
+        // are essential: a plain `i < this.arr.length` loop (or four forEach
+        // calls) would re-read the grown array and process those new entities a
+        // frame early. No entity update splices these arrays (removal is the
+        // filter pass below), so indices 0..N-1 stay stable through the loop.
+        const bN = this.buildings.length,
+            uN = this.units.length,
+            eN = this.enemies.length,
+            pN = this.projectiles.length;
+        for (let i = 0; i < bN; i++) this.buildings[i].update(dt);
+        for (let i = 0; i < uN; i++) this.units[i].update(dt);
+        for (let i = 0; i < eN; i++) this.enemies[i].update(dt);
+        for (let i = 0; i < pN; i++) this.projectiles[i].update(dt);
 
         this.units = this.units.filter(
             (u) => u.active || u.dmgTexts.length > 0,

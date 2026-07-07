@@ -1,10 +1,9 @@
 import { CONFIG } from '../config.js';
 import { LEVELS } from '../data/levels.js';
-import { Game } from './game.js';
 import { clamp, mixCol, mixRgb, particleQuality, rand, rgba, shade, toRgb, toRgba } from '../utils.js';
 
-// --- GAME: backdrop, foreground, post-FX & frame draw ---
-Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
+// --- GAME: backdrop, foreground, post-FX & frame draw (installed by install-mixins.js) ---
+export const renderMethods = /** @type {ThisType<any>} */ ({
 
     // ─── CINEMATIC ENVIRONMENT ──────────────────────────────
     _buildBackdropCache() {
@@ -364,14 +363,18 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
         ctx.save();
         this.decals.draw(ctx, cam);
 
-        const ents = [
-            ...this.buildings.map((b) => ({ t: "b", o: b })),
-            ...this.units.map((u) => ({ t: "u", o: u })),
-            ...this.enemies.map((e) => ({ t: "e", o: e })),
-            ...this.projectiles.map((p) => ({ t: "p", o: p })),
-        ];
-        ents.sort((a, b) => a.o.y - b.o.y);
-        ents.forEach((e) => e.o.draw(ctx, cam, dt));
+        // Reuse one scratch array instead of allocating four .map() arrays + a
+        // combined spread + a {t,o} wrapper per entity (whose `t` tag was never
+        // read) every frame. Same concat order + stable sort => identical draw
+        // order, including y-ties. draw() does not mutate these arrays.
+        const ents = this._drawList || (this._drawList = []);
+        ents.length = 0;
+        for (const b of this.buildings) ents.push(b);
+        for (const u of this.units) ents.push(u);
+        for (const e of this.enemies) ents.push(e);
+        for (const p of this.projectiles) ents.push(p);
+        ents.sort((a, b) => a.y - b.y);
+        ents.forEach((o) => o.draw(ctx, cam, dt));
 
         this.particles.draw(ctx, cam);
         this.fx.draw(ctx, cam);
@@ -450,4 +453,4 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
         ctx.restore();
         this.drawMinimap();
     },
-}));
+});

@@ -1,4 +1,4 @@
-import { TEAMS } from '../config.js';
+import { HIT_FLASH_FRAMES, HIT_FLINCH_FRAMES, TEAMS } from '../config.js';
 import { Unit } from './unit.js';
 import { clamp, ik2, lerp, particleQuality, shade, toRgba } from '../utils.js';
 
@@ -20,8 +20,8 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
         const spd = clamp(this.speed / 2, 0.5, 2.2);
         const gp = this.frame * 0.22 * spd;        // gait phase
         const breath = Math.sin(this.frame * 0.09) * 1.3;
-        const hurt = this.hurtT > 0 ? clamp(this.hurtT / 7, 0, 1) : 0;
-        const flash = this.flashT > 0 ? clamp(this.flashT / 5, 0, 1) : 0;
+        const hurt = this.hurtT > 0 ? clamp(this.hurtT / HIT_FLINCH_FRAMES, 0, 1) : 0;
+        const flash = this.flashT > 0 ? clamp(this.flashT / HIT_FLASH_FRAMES, 0, 1) : 0;
         const sw = this.atk;                       // 1 (just fired) -> 0
         const windup = clamp((sw - 0.72) / 0.28, 0, 1);
         const strike = clamp((0.72 - sw) / 0.72, 0, 1);

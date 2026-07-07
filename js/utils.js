@@ -1,4 +1,6 @@
 // --- UTILS ---
+import { el } from './ui/dom.js';
+
 export const rand = (min, max) => Math.random() * (max - min) + min;
 export const randInt = (min, max) => Math.floor(rand(min, max + 1));
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -75,6 +77,6 @@ export const costStr = (c) =>
     `${c.g || 0}g` + (c.i ? ` ${c.i}i` : "") + (c.c ? ` ${c.c}c` : "");
 // Current particle-quality multiplier from the settings <select> (defaults to 1).
 export const particleQuality = () => {
-    const el = document.getElementById("particleQuality");
-    return el ? parseFloat(el.value) || 1 : 1;
+    const node = el("particleQuality");
+    return node ? parseFloat(node.value) || 1 : 1;
 };
