@@ -42,9 +42,11 @@ export const FORMATION_MODS = {
 };
 
 // Resolve an attack. src: { dmgType, armorPierce, vsLarge, siege, team, isUnit }.
-// Returns { amt, tag } where tag drives the damage-text color:
-// 'strong' (counter hit), 'weak' (resisted), 'magic', or null.
-export function resolveDamage(base, src, target) {
+// `formation` is the attacker/defender formation id (player-unit modifier only);
+// pass a falsy value for no modifier. Kept as a parameter so this function is
+// pure (no global read) and unit-testable. Returns { amt, tag } where tag drives
+// the damage-text color: 'strong' (counter hit), 'weak' (resisted), 'magic', or null.
+export function resolveDamage(base, src, target, formation) {
     let mult = 1;
     if (target.kind === "building") {
         if (src.siege) mult *= 2;
@@ -59,7 +61,7 @@ export function resolveDamage(base, src, target) {
         // into airborne foes (Dragons) than melee ever could.
         if (src.vsFlying && target.flying) mult *= src.vsFlying;
 
-        const f = typeof game !== "undefined" && FORMATION_MODS[game.formation];
+        const f = FORMATION_MODS[formation];
         if (f) {
             if (src.team === TEAMS.PLAYER && src.isUnit) mult *= f.deal;
             if (target.team === TEAMS.PLAYER && target.kind === "unit") mult *= f.take;
@@ -73,7 +75,8 @@ export function resolveDamage(base, src, target) {
 // Resolve an attack and apply it to the target in one step. Returns the same
 // { amt, tag } as resolveDamage so callers can still read `tag` for hit FX.
 export function dealDamage(base, src, target) {
-    const res = resolveDamage(base, src, target);
+    const formation = typeof game !== "undefined" ? game.formation : undefined;
+    const res = resolveDamage(base, src, target, formation);
     target.takeDamage(res.amt, res.tag);
     return res;
 }
