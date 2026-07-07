@@ -1,4 +1,5 @@
 import { dealDamage } from '../systems/combat.js';
+import { lowestHpAllyInRange, nearestX } from '../systems/targeting.js';
 import { CONFIG, NECRO_ENEMY_CAP, NECRO_MINION_TYPE, NECRO_SUMMON_INTERVAL, TEAMS } from '../config.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { UNIT_TYPES } from '../data/units.js';
@@ -122,20 +123,7 @@ export class Unit extends Entity {
                     this.team === TEAMS.PLAYER
                         ? game.units
                         : game.enemies;
-                let tgt = null,
-                    lowHp = 1;
-                for (const a of allies) {
-                    if (
-                        a !== this &&
-                        a.hp > 0 &&
-                        a.hp / a.maxHp < lowHp &&
-                        dist(this.x, this.y, a.x, a.y) <
-                            this.healRange
-                    ) {
-                        lowHp = a.hp / a.maxHp;
-                        tgt = a;
-                    }
-                }
+                const tgt = lowestHpAllyInRange(this, allies, this.healRange);
                 if (tgt) {
                     tgt.heal(this.healAmt);
                     game.particles.emit(
@@ -162,25 +150,15 @@ export class Unit extends Entity {
         const bldgs =
             this.team === TEAMS.PLAYER ? [] : game.buildings;
 
-        let cD = Infinity,
-            tgt = null;
-        for (const e of enemies) {
-            if (e.hp <= 0 || (e.flying && !this.ranged)) continue; // Fix #4: Ground ignores air
-            const d = Math.abs(e.x - this.x);
-            if (d < cD) {
-                cD = d;
-                tgt = e;
-            }
-        }
+        // Fix #4: ground units ignore airborne foes. Fall back to the nearest
+        // building only when no enemy is targetable (player units pass bldgs=[]).
+        let res = nearestX(this.x, enemies, (e) => e.hp > 0 && !(e.flying && !this.ranged));
+        let tgt = res.tgt,
+            cD = res.d;
         if (!tgt) {
-            for (const b of bldgs) {
-                if (b.hp <= 0) continue;
-                const d = Math.abs(b.x - this.x);
-                if (d < cD) {
-                    cD = d;
-                    tgt = b;
-                }
-            }
+            res = nearestX(this.x, bldgs, (b) => b.hp > 0);
+            tgt = res.tgt;
+            cD = res.d;
         }
 
         if (tgt) {
