@@ -143,6 +143,16 @@ try {
     ok(pend.before === 0 && pend.after > 0, 'campaign tracks pending spawns');
     ok(pend.complete === false, 'isComplete() false while spawns pending (no premature victory)');
 
+    // Data-driven death drops: a shaman drops exactly 2 crystal on death.
+    const drop = await page.evaluate(() => {
+        const before = game.crystal;
+        game.spawnEnemy('shaman', 2000, 0);
+        const e = game.enemies[game.enemies.length - 1];
+        e.takeDamage(1e9); // kill -> die() reads ENEMY_TYPES.shaman.drops
+        return game.crystal - before;
+    });
+    ok(drop === 2, 'shaman death drops 2 crystal (data-driven)');
+
     // ── 4. Lifecycle: endless + defeat ───────────────────────────────────
     console.log('\n[lifecycle]');
     await page.evaluate(() => game.returnToMenu());

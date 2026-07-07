@@ -37,6 +37,7 @@ interface EntityDef {
     flying?: boolean;
     boss?: boolean;
     bounty?: number;
+    drops?: { crystal?: number; iron?: number };
     summon?: boolean;
     scale?: number;
     color?: string;

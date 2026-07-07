@@ -383,16 +383,12 @@ export class Unit extends Entity {
             game.stats.kills++;
             game.audio.playCoin();
             
-            // Crystal drops
-            if (this.type === "shaman") game.crystal += 2;
-            if (this.type === "necromancer") game.crystal += 5;
-            if (this.type === "dragon") game.crystal += 25;
-            
-            // Iron drops
-            if (this.type === "marauder") game.iron += 1;
-            if (this.type === "berserker") game.iron += 2;
-            if (this.type === "shieldman") game.iron += 4;
-            if (this.type === "ogre") game.iron += 10;
+            // Crystal / iron drops (per-enemy table lives in data/enemies.js)
+            const drops = ENEMY_TYPES[this.type].drops;
+            if (drops) {
+                if (drops.crystal) game.crystal += drops.crystal;
+                if (drops.iron) game.iron += drops.iron;
+            }
             // Dragon kill flag for achievement
             if (this.type === "dragon") game._dragonKilled = true;
             // Grant XP to nearest player unit
