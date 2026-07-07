@@ -36,7 +36,7 @@ export const PROJECTILE_TYPES = {
     // AoE magic bolt (splash radius supplied by the boss, per the note above).
     cinder: {
         sp: 7,
-        c: "#84cc16",
+        c: "#fb923c",
         sz: 6,
         arc: true,
         aoe: true,

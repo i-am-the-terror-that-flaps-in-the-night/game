@@ -2,7 +2,7 @@ import { Entity } from './entity.js';
 import { CONFIG, HIT_FLASH_FRAMES, TEAMS } from '../config.js';
 import { dealDamage } from '../systems/combat.js';
 import { Projectile } from '../systems/projectile.js';
-import { clamp, lerp, particleQuality, rand, shade, toRgba } from '../utils.js';
+import { clamp, lerp, particleQuality, rand, toRgba } from '../utils.js';
 
 // --- BOSS: "Rustmaw, the Hollow Engine" ---------------------------------
 // A colossal eldritch locomotive — not a member of ENEMY_TYPES and not driven
@@ -22,8 +22,9 @@ import { clamp, lerp, particleQuality, rand, shade, toRgba } from '../utils.js';
 const PHASE_HI = 0.66; // hp ratio: phase 1 -> 2
 const PHASE_LO = 0.33; // hp ratio: phase 2 -> 3
 
-// Corrupted-smoke palette (sickly greens + void purples), emitted additively.
-const SMOKE_COLS = ['#7c3aed', '#4ade80', '#a855f7', '#65a30d', '#2e1065'];
+// Corrupted-exhaust palette — sooty smoke lit by amber embers and void-violet.
+// Emitted additively, so these read as glowing exhaust, not solid billows.
+const SMOKE_COLS = ['#f59e0b', '#b45309', '#7c3aed', '#6b7280', '#a16207'];
 
 export class Boss extends Entity {
     constructor(x, hp) {
@@ -278,7 +279,7 @@ export class Boss extends Entity {
             ));
         }
         game.audio.bossCinder();
-        game.particles.emit(ox, oy, 6, '#4ade80', 4, 3, 'float');
+        game.particles.emit(ox, oy, 6, '#f59e0b', 4, 3, 'float');
     }
 
     // Nearest player unit by 1-D distance, falling back to the castle/buildings.
@@ -303,8 +304,9 @@ export class Boss extends Entity {
     }
 
     _emitSmoke() {
-        const sx = this.x + this.facing * -34; // stack sits toward the cab (rear)
-        const sy = CONFIG.GROUND_Y - 96;
+        // Belches from the funnel, which sits toward the FRONT of the boiler.
+        const sx = this.x + this.facing * 52;
+        const sy = CONFIG.GROUND_Y - 116;
         const col = SMOKE_COLS[(this.frame | 0) % SMOKE_COLS.length];
         game.particles.emit(sx, sy, this.phase >= 3 ? 5 : 3, col, 2, 4, 'float');
     }
@@ -329,16 +331,19 @@ export class Boss extends Entity {
     }
 
     // ── Rendering ───────────────────────────────────────────────────────
-    // Custom silhouette drawn in screen space around cam.toScreen(x,y). Layered
-    // back-to-front; screen-blend passes for the corrupted glow/core/eyes. One
-    // entity, so the detail cost is negligible.
+    // A steam-locomotive silhouette drawn in screen space around
+    // cam.toScreen(x,y): long horizontal boiler, tall flared funnel + steam
+    // domes on top, a cab with a roof at the rear, big spoked driving wheels
+    // linked by a red side-rod, and a cow-catcher pilot at the front. Local
+    // space has the FRONT at +x (the facing flip aims it at the castle). The
+    // eldritch horror is carried by accents — amber furnace fire, malevolent
+    // lamp-eyes, a peeled boiler in phase 3 — not by the base shape.
     draw(ctx, cam, dt) {
         if (!this.active) { this.drawDmg(ctx, cam, dt); return; }
         const p = cam.toScreen(this.x, this.y);
         const z = cam.z * this.scale;
         const q = particleQuality();
-        const dying = this.dyingT > 0;
-        const wob = dying ? Math.sin(this.frame * 0.6) * 3 : 0;
+        const wob = this.dyingT > 0 ? Math.sin(this.frame * 0.6) * 3 : 0;
 
         ctx.save();
         ctx.translate(p.x, p.y + wob * z);
@@ -346,44 +351,43 @@ export class Boss extends Entity {
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
 
-        // Ground shadow (large).
+        // Ground shadow.
         ctx.fillStyle = 'rgba(0,0,0,0.42)';
         ctx.beginPath();
-        ctx.ellipse(0, 2, 150, 20, 0, 0, Math.PI * 2);
+        ctx.ellipse(-4, 2, 150, 18, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Corrupted aura behind the hull.
+        // Faint corrupted heat-haze behind the hull (small, so it doesn't wash
+        // the machine into a glowing blob).
         if (q >= 1) {
             ctx.save();
             ctx.globalCompositeOperation = 'screen';
-            const aura = ctx.createRadialGradient(0, -60, 20, 0, -60, 210);
-            const aA = 0.10 + this.coreGlow * 0.06 + (this.phase - 1) * 0.03;
-            aura.addColorStop(0, toRgba('#7c3aed', aA));
-            aura.addColorStop(0.5, toRgba('#4ade80', aA * 0.4));
+            const aA = 0.05 + this.coreGlow * 0.03 + (this.phase - 1) * 0.02;
+            const aura = ctx.createRadialGradient(-40, -46, 10, -40, -46, 150);
+            aura.addColorStop(0, toRgba('#f59e0b', aA));
+            aura.addColorStop(0.6, toRgba('#7c3aed', aA * 0.5));
             aura.addColorStop(1, 'transparent');
             ctx.fillStyle = aura;
-            ctx.fillRect(-220, -220, 440, 260);
+            ctx.fillRect(-200, -190, 400, 220);
             ctx.restore();
         }
 
-        this._drawWheels(ctx);
-        this._drawBody(ctx);
-        this._drawCore(ctx);
-        this._drawMaw(ctx);
-        this._drawStack(ctx);
-        this._drawSpines(ctx);
-        this._drawTendrils(ctx, q);
+        this._drawRunningGear(ctx);
+        this._drawHull(ctx);
+        this._drawTopworks(ctx);
+        this._drawPilot(ctx);
+        this._drawGlow(ctx, q);
 
-        // Telegraph tell — a bright forward warning glow across the tracks.
+        // Telegraph tell — a bright forward warning glow down the track ahead.
         if (this.mode === 'telegraph') {
             ctx.save();
             ctx.globalCompositeOperation = 'screen';
             const t = clamp(1 - this.modeT / 46, 0, 1);
-            const g2 = ctx.createLinearGradient(-40, 0, -260, 0);
+            const g2 = ctx.createLinearGradient(120, 0, 300, 0);
             g2.addColorStop(0, toRgba('#f59e0b', 0.5 * t));
             g2.addColorStop(1, 'transparent');
             ctx.fillStyle = g2;
-            ctx.fillRect(-260, -70, 220, 74);
+            ctx.fillRect(120, -60, 200, 64);
             ctx.restore();
         }
 
@@ -394,7 +398,7 @@ export class Boss extends Entity {
             ctx.globalAlpha = clamp(this.flashT / HIT_FLASH_FRAMES, 0, 1) * 0.5;
             ctx.fillStyle = '#ffffff';
             ctx.beginPath();
-            ctx.ellipse(-6, -52, 120, 46, 0, 0, Math.PI * 2);
+            ctx.ellipse(0, -54, 118, 44, 0, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
         }
@@ -403,271 +407,296 @@ export class Boss extends Entity {
         this.drawDmg(ctx, cam, dt);
     }
 
-    _drawWheels(ctx) {
-        // Too many wheels for any real engine — the impossible undercarriage.
-        const spin = this.frame * (this.mode === 'charge' ? 0.5 : 0.14) * -this.facing;
-        const xs = [-110, -74, -38, -2, 40, 84];
+    // Big spoked driving wheels + small pilot truck, joined by an animated
+    // red side-rod — the single strongest "this is a locomotive" cue.
+    _drawRunningGear(ctx) {
+        const spin = this.frame * (this.mode === 'charge' ? 0.42 : 0.11) * this.facing;
+        const driveXs = [-52, 4, 60];
+        const R = 27, WY = -27;
+
+        // Axle beam + leaf-spring hangers.
         ctx.strokeStyle = '#0b0f1a';
-        ctx.lineWidth = 7;
-        ctx.beginPath(); ctx.moveTo(-120, -14); ctx.lineTo(96, -14); ctx.stroke(); // axle beam
-        for (let i = 0; i < xs.length; i++) {
-            const wx = xs[i];
-            const r = i === 1 || i === 4 ? 26 : 17;
-            ctx.save();
-            ctx.translate(wx, -12);
-            ctx.fillStyle = '#141a26';
-            ctx.strokeStyle = '#2b3446';
-            ctx.lineWidth = 3;
-            ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-            // Glowing eldritch rim + spokes.
-            ctx.save();
-            ctx.globalCompositeOperation = 'screen';
-            ctx.strokeStyle = toRgba('#a855f7', 0.55);
-            ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.arc(0, 0, r - 3, 0, Math.PI * 2); ctx.stroke();
-            ctx.rotate(spin + i);
-            ctx.strokeStyle = toRgba('#4ade80', 0.5);
-            ctx.lineWidth = 1.6;
-            for (let s = 0; s < 4; s++) {
-                ctx.rotate(Math.PI / 2);
-                ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(r - 4, 0); ctx.stroke();
-            }
-            ctx.restore();
-            ctx.restore();
+        ctx.lineWidth = 6;
+        ctx.beginPath(); ctx.moveTo(-70, -30); ctx.lineTo(96, -30); ctx.stroke();
+
+        // Pilot (leading) truck — two small wheels under the smokebox.
+        for (const wx of [80, 104]) this._wheel(ctx, wx, -13, 12, spin, false);
+        // Driving wheels.
+        for (const wx of driveXs) this._wheel(ctx, wx, WY, R, spin, true);
+
+        // Side-rod: a straight iron bar pinned to each driver's crank; all pins
+        // share a phase, so the rod stays rigid and bobs — as a real one does.
+        const rp = R * 0.55;
+        const px = Math.cos(spin) * rp, py = Math.sin(spin) * rp;
+        ctx.strokeStyle = '#7f1d1d';
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(driveXs[0] + px, WY + py);
+        ctx.lineTo(driveXs[driveXs.length - 1] + px, WY + py);
+        ctx.stroke();
+        ctx.strokeStyle = '#b91c1c';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = '#dc2626';
+        for (const wx of driveXs) {
+            ctx.beginPath(); ctx.arc(wx + px, WY + py, 3, 0, Math.PI * 2); ctx.fill();
         }
     }
 
-    _drawBody(ctx) {
-        // Boiler — a long riveted iron cylinder, rust-streaked, tapering to the
-        // cow-catcher at the front (screen-left / -x).
-        const dmgR = 1 - clamp(this.hp / this.maxHp, 0, 1); // 0..1 corrosion
-        const bg = ctx.createLinearGradient(0, -96, 0, -18);
-        bg.addColorStop(0, shade('#3b3247', 0.12));
-        bg.addColorStop(0.5, '#241f31');
-        bg.addColorStop(1, shade('#3a2a20', -0.2)); // rusted underside
-        ctx.fillStyle = bg;
+    _wheel(ctx, wx, wy, r, spin, driver) {
+        ctx.save();
+        ctx.translate(wx, wy);
+        // Steel tyre + hub.
+        ctx.fillStyle = '#12161f';
+        ctx.strokeStyle = '#3a4150';
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = '#565f70';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(0, 0, r - 4, 0, Math.PI * 2); ctx.stroke();
+        if (driver) {
+            ctx.rotate(spin);
+            ctx.strokeStyle = '#6b7280';
+            ctx.lineWidth = 3;
+            for (let s = 0; s < 8; s++) {
+                ctx.rotate(Math.PI / 4);
+                ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(r - 5, 0); ctx.stroke();
+            }
+            // Counterweight crescent (the dark loco wheel arc).
+            ctx.fillStyle = '#0b0f1a';
+            ctx.beginPath(); ctx.arc(0, 0, r - 5, 0.6, 2.0); ctx.arc(0, 0, r * 0.4, 2.0, 0.6, true); ctx.closePath(); ctx.fill();
+        } else {
+            ctx.rotate(spin);
+            ctx.strokeStyle = '#565f70';
+            ctx.lineWidth = 2;
+            for (let s = 0; s < 4; s++) { ctx.rotate(Math.PI / 2); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(r - 3, 0); ctx.stroke(); }
+        }
+        ctx.fillStyle = '#2a2f3a';
+        ctx.beginPath(); ctx.arc(0, 0, r * 0.26, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+    }
+
+    // Footplate, cab (rear), boiler cylinder and smokebox (front).
+    _drawHull(ctx) {
+        const dmgR = 1 - clamp(this.hp / this.maxHp, 0, 1);
+        const iron = (top, y0, y1) => {
+            const g = ctx.createLinearGradient(0, y0, 0, y1);
+            g.addColorStop(0, top);
+            g.addColorStop(0.55, '#232833');
+            g.addColorStop(1, '#12151d');
+            return g;
+        };
+
+        // Running board / footplate.
+        ctx.fillStyle = '#1a1f2a';
+        ctx.strokeStyle = '#0b0f1a';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.rect(-104, -34, 200, 8); ctx.fill(); ctx.stroke();
+
+        // Cab (rear, -x): boxy body + overhanging roof.
+        ctx.fillStyle = iron('#39414f', -98, -34);
+        ctx.strokeStyle = '#0b0f1a';
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.rect(-104, -96, 44, 62); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#2a2f3a';
+        ctx.beginPath(); ctx.moveTo(-110, -96); ctx.lineTo(-54, -96); ctx.lineTo(-58, -104); ctx.lineTo(-106, -104); ctx.closePath();
+        ctx.fill(); ctx.stroke();
+
+        // Boiler cylinder (front of cab to smokebox).
+        ctx.fillStyle = iron('#3c4453', -86, -34);
         ctx.strokeStyle = '#0b0f1a';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(-120, -18);
-        ctx.lineTo(-120, -74);
-        ctx.quadraticCurveTo(-118, -92, -96, -92); // boiler shoulder
-        ctx.lineTo(70, -92);
-        ctx.quadraticCurveTo(92, -92, 92, -66);     // cab back
-        ctx.lineTo(92, -18);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
+        ctx.moveTo(-62, -34);
+        ctx.lineTo(-62, -80);
+        ctx.quadraticCurveTo(-62, -86, -54, -86);
+        ctx.lineTo(78, -86);
+        ctx.quadraticCurveTo(90, -86, 90, -70);   // smokebox shoulder
+        ctx.lineTo(90, -34);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
 
-        // Panel seams + rivets.
-        ctx.strokeStyle = toRgba('#0b0f1a', 0.7);
-        ctx.lineWidth = 1.5;
-        for (const sx of [-88, -52, -16, 22, 58]) {
-            ctx.beginPath(); ctx.moveTo(sx, -90); ctx.lineTo(sx, -20); ctx.stroke();
+        // Boiler bands (raised rings) + rivet rows.
+        ctx.strokeStyle = toRgba('#0b0f1a', 0.8);
+        ctx.lineWidth = 2.5;
+        for (const bx of [-40, -14, 14, 42]) {
+            ctx.beginPath(); ctx.moveTo(bx, -85); ctx.lineTo(bx, -35); ctx.stroke();
         }
         ctx.fillStyle = '#0b0f1a';
-        for (const sx of [-104, -70, -34, 4, 40, 76]) {
-            ctx.beginPath(); ctx.arc(sx, -86, 2, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.arc(sx, -24, 2, 0, Math.PI * 2); ctx.fill();
+        for (const bx of [-52, -26, 2, 30, 58, 74]) {
+            ctx.beginPath(); ctx.arc(bx, -82, 1.6, 0, Math.PI * 2); ctx.fill();
         }
+        // Top highlight (rolled-steel sheen).
+        ctx.strokeStyle = toRgba('#8b95a6', 0.5);
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(-54, -83); ctx.lineTo(76, -83); ctx.stroke();
 
-        // Rust / corrosion streaks intensify as it takes damage.
+        // Smokebox (darker front drum) + round door "face".
+        ctx.fillStyle = '#171b24';
+        ctx.beginPath(); ctx.rect(66, -84, 24, 50); ctx.fill();
+        ctx.strokeStyle = '#0b0f1a'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.fillStyle = '#20252f';
+        ctx.strokeStyle = '#3a4150';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.arc(84, -58, 22, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        // Door hinge straps + dogs.
+        ctx.strokeStyle = '#4a5464'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(84, -80); ctx.lineTo(84, -36); ctx.moveTo(62, -58); ctx.lineTo(106, -58); ctx.stroke();
+
+        // Rust wash, heavier as it corrodes.
         ctx.save();
-        ctx.globalAlpha = 0.25 + dmgR * 0.5;
+        ctx.globalAlpha = 0.2 + dmgR * 0.45;
         ctx.strokeStyle = '#7c3f1d';
         ctx.lineWidth = 2;
-        for (const sx of [-96, -40, 18, 64]) {
-            ctx.beginPath();
-            ctx.moveTo(sx, -70);
-            ctx.lineTo(sx + 3, -24);
-            ctx.stroke();
-        }
-        ctx.restore();
-
-        // Cracks appear from phase 2, glowing corruption from phase 3.
-        if (this.phase >= 2) {
-            ctx.strokeStyle = this.phase >= 3 ? toRgba('#4ade80', 0.9) : toRgba('#1a1330', 0.9);
-            if (this.phase >= 3) { ctx.save(); ctx.globalCompositeOperation = 'screen'; }
-            ctx.lineWidth = this.phase >= 3 ? 2 : 1.5;
-            ctx.beginPath();
-            ctx.moveTo(-60, -88); ctx.lineTo(-48, -62); ctx.lineTo(-58, -42); ctx.lineTo(-44, -22);
-            ctx.moveTo(30, -90); ctx.lineTo(40, -60); ctx.lineTo(28, -40);
-            ctx.stroke();
-            if (this.phase >= 3) ctx.restore();
-        }
-
-        // Cab window — a warped porthole with a watching glow.
-        ctx.fillStyle = '#05070d';
-        ctx.beginPath(); ctx.ellipse(62, -66, 14, 16, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.save();
-        ctx.globalCompositeOperation = 'screen';
-        const blink = 0.55 + Math.sin(this.frame * 0.07) * 0.45;
-        const eg = ctx.createRadialGradient(62, -64, 1, 62, -64, 12);
-        eg.addColorStop(0, toRgba('#fca5a5', blink));
-        eg.addColorStop(0.5, toRgba('#dc2626', blink * 0.7));
-        eg.addColorStop(1, 'transparent');
-        ctx.fillStyle = eg;
-        ctx.beginPath(); ctx.arc(62, -64, 12, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = toRgba('#fee2e2', blink);
-        ctx.beginPath(); ctx.arc(59, -66, 2.4, 0, Math.PI * 2); ctx.fill();
+        for (const bx of [-46, -6, 34, 70]) { ctx.beginPath(); ctx.moveTo(bx, -70); ctx.lineTo(bx + 3, -36); ctx.stroke(); }
         ctx.restore();
     }
 
-    _drawCore(ctx) {
-        // The furnace heart — a glowing maw in the boiler flank. Widens and
-        // brightens with coreGlow; fully exposed (its grate peeled) in phase 3.
-        const exposed = this.phase >= 3;
-        const cx = -26, cy = -54;
-        const rw = exposed ? 30 : 22;
-        const rh = exposed ? 26 : 20;
-        // Dark furnace mouth.
-        ctx.fillStyle = '#0a0602';
-        ctx.beginPath(); ctx.ellipse(cx, cy, rw, rh, 0, 0, Math.PI * 2); ctx.fill();
-        // Glowing corrupted fire.
-        ctx.save();
-        ctx.globalCompositeOperation = 'screen';
-        const gl = clamp(this.coreGlow, 0, 2);
-        const cg = ctx.createRadialGradient(cx, cy, 1, cx, cy, rw * 1.4);
-        cg.addColorStop(0, toRgba('#fef9c3', 0.95));
-        cg.addColorStop(0.35, toRgba('#f59e0b', 0.85 * Math.min(1, gl)));
-        cg.addColorStop(0.7, toRgba('#65a30d', 0.5 * Math.min(1, gl)));
-        cg.addColorStop(1, 'transparent');
-        ctx.fillStyle = cg;
-        ctx.beginPath(); ctx.arc(cx, cy, rw * 1.4, 0, Math.PI * 2); ctx.fill();
-        // Inner flicker embers.
-        ctx.fillStyle = toRgba('#fde68a', 0.8);
-        for (let i = 0; i < 4; i++) {
-            const a = this.frame * 0.1 + i * 1.7;
-            ctx.beginPath();
-            ctx.arc(cx + Math.cos(a) * rw * 0.4, cy + Math.sin(a * 1.3) * rh * 0.4, 2, 0, Math.PI * 2);
-            ctx.fill();
-        }
-        ctx.restore();
-        // Grate bars (intact until phase 3 tears them off).
-        if (!exposed) {
-            ctx.strokeStyle = '#0b0f1a';
-            ctx.lineWidth = 2.4;
-            for (let i = -2; i <= 2; i++) {
-                ctx.beginPath(); ctx.moveTo(cx + i * 8, cy - rh); ctx.lineTo(cx + i * 8, cy + rh); ctx.stroke();
-            }
-        }
-    }
+    // Funnel (tall flared chimney near the front) + steam & sand domes + a
+    // headlamp box. These sit ON TOP of the boiler and sell the locomotive read.
+    _drawTopworks(ctx) {
+        // Sand dome (small) then steam dome (large) — brass-capped hemispheres.
+        const dome = (dx, w, h) => {
+            ctx.fillStyle = '#2a2f3a';
+            ctx.strokeStyle = '#0b0f1a'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.ellipse(dx, -86, w, h, 0, Math.PI, 0); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#8a6d1f';
+            ctx.beginPath(); ctx.ellipse(dx, -86 - h, w * 0.85, 3.5, 0, Math.PI, 0); ctx.fill();
+        };
+        dome(-24, 11, 13);
+        dome(20, 13, 16);
 
-    _drawMaw(ctx) {
-        // Cow-catcher reforged into a fanged maw at the front (-x).
-        ctx.fillStyle = '#161320';
+        // Funnel: flared stack rising from the boiler top toward the front.
+        ctx.save();
+        ctx.translate(52, -86);
+        const fg = ctx.createLinearGradient(0, -34, 0, 0);
+        fg.addColorStop(0, '#3a4150');
+        fg.addColorStop(1, '#1a1f2a');
+        ctx.fillStyle = fg;
         ctx.strokeStyle = '#0b0f1a';
         ctx.lineWidth = 2.5;
         ctx.beginPath();
-        ctx.moveTo(-120, -18);
-        ctx.lineTo(-120, -60);
-        ctx.lineTo(-160, -30);
-        ctx.lineTo(-150, -8);
+        ctx.moveTo(-7, 0); ctx.lineTo(-9, -26); ctx.lineTo(-14, -34); // flare out
+        ctx.lineTo(14, -34); ctx.lineTo(9, -26); ctx.lineTo(7, 0);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        // Cap rim.
+        ctx.fillStyle = '#0b0f1a';
+        ctx.beginPath(); ctx.ellipse(0, -34, 14, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+
+        // Headlamp box mounted on the smokebox top-front.
+        ctx.fillStyle = '#2a2f3a';
+        ctx.strokeStyle = '#0b0f1a'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.rect(78, -92, 14, 12); ctx.fill(); ctx.stroke();
+        // Whistle behind the steam dome.
+        ctx.strokeStyle = '#8a6d1f'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(4, -102); ctx.lineTo(4, -112); ctx.stroke();
+    }
+
+    // Cow-catcher pilot at the very front, with a few fangs for menace.
+    _drawPilot(ctx) {
+        ctx.fillStyle = '#1a1f2a';
+        ctx.strokeStyle = '#0b0f1a';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(90, -34);
+        ctx.lineTo(116, -34);
+        ctx.lineTo(128, -2);
+        ctx.lineTo(96, -2);
         ctx.closePath();
         ctx.fill(); ctx.stroke();
-        // Inner throat glow.
-        ctx.save();
-        ctx.globalCompositeOperation = 'screen';
-        const tg = ctx.createRadialGradient(-134, -30, 1, -134, -30, 26);
-        const g = clamp(this.coreGlow, 0, 2);
-        tg.addColorStop(0, toRgba('#f59e0b', 0.6 * Math.min(1, g)));
-        tg.addColorStop(1, 'transparent');
-        ctx.fillStyle = tg;
-        ctx.beginPath(); ctx.arc(-134, -30, 24, 0, Math.PI * 2); ctx.fill();
-        ctx.restore();
-        // Fangs — upper and lower rows.
-        ctx.fillStyle = '#d6d3c8';
-        for (let i = 0; i < 5; i++) {
+        // Slats.
+        ctx.strokeStyle = '#3a4150'; ctx.lineWidth = 1.5;
+        for (let i = 1; i <= 3; i++) {
             const t = i / 4;
-            const ux = lerp(-152, -122, t), uy = lerp(-26, -54, t);
             ctx.beginPath();
-            ctx.moveTo(ux, uy); ctx.lineTo(ux + 4, uy + 9); ctx.lineTo(ux + 8, uy);
-            ctx.closePath(); ctx.fill();
-            const lx = lerp(-150, -122, t), ly = lerp(-14, -20, t);
-            ctx.beginPath();
-            ctx.moveTo(lx, ly); ctx.lineTo(lx + 4, ly - 9); ctx.lineTo(lx + 8, ly);
-            ctx.closePath(); ctx.fill();
-        }
-        // Headlamp eye above the maw — a cyclopean corrupted lantern.
-        ctx.save();
-        ctx.globalCompositeOperation = 'screen';
-        const lamp = 0.6 + Math.sin(this.frame * 0.2) * 0.35 + (this.mode === 'charge' ? 0.4 : 0);
-        const lg = ctx.createRadialGradient(-108, -70, 1, -108, -70, 18);
-        lg.addColorStop(0, toRgba('#fff7ed', lamp));
-        lg.addColorStop(0.4, toRgba('#f97316', lamp * 0.8));
-        lg.addColorStop(1, 'transparent');
-        ctx.fillStyle = lg;
-        ctx.beginPath(); ctx.arc(-108, -70, 16, 0, Math.PI * 2); ctx.fill();
-        ctx.restore();
-    }
-
-    _drawStack(ctx) {
-        // Smokestack toward the cab, canted at an impossible angle.
-        ctx.save();
-        ctx.translate(-30, -92);
-        ctx.rotate(-0.12);
-        const sg = ctx.createLinearGradient(0, -34, 0, 0);
-        sg.addColorStop(0, '#2b2440');
-        sg.addColorStop(1, '#151122');
-        ctx.fillStyle = sg;
-        ctx.strokeStyle = '#0b0f1a';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(-9, 0); ctx.lineTo(-13, -34); ctx.lineTo(13, -34); ctx.lineTo(9, 0);
-        ctx.closePath(); ctx.fill(); ctx.stroke();
-        // Mouth glow.
-        ctx.save();
-        ctx.globalCompositeOperation = 'screen';
-        const mg = ctx.createRadialGradient(0, -34, 1, 0, -34, 16);
-        mg.addColorStop(0, toRgba('#4ade80', 0.7));
-        mg.addColorStop(1, 'transparent');
-        ctx.fillStyle = mg;
-        ctx.beginPath(); ctx.arc(0, -34, 15, 0, Math.PI * 2); ctx.fill();
-        ctx.restore();
-        ctx.restore();
-    }
-
-    _drawSpines(ctx) {
-        // Bone-iron spines cresting the boiler — grows more feral each phase.
-        const n = 4 + this.phase * 2;
-        ctx.fillStyle = '#e7e2d3';
-        ctx.strokeStyle = '#0b0f1a';
-        ctx.lineWidth = 1;
-        for (let i = 0; i < n; i++) {
-            const sx = lerp(-92, 60, i / (n - 1));
-            const h = 8 + ((i % 3) * 4) + this.phase * 2;
-            const sway = Math.sin(this.frame * 0.06 + i) * 1.5;
-            ctx.beginPath();
-            ctx.moveTo(sx - 4, -92);
-            ctx.lineTo(sx + sway, -92 - h);
-            ctx.lineTo(sx + 4, -92);
-            ctx.closePath();
-            ctx.fill(); ctx.stroke();
-        }
-    }
-
-    _drawTendrils(ctx, q) {
-        if (q < 1) return;
-        // Writhing shadow tendrils leaking from the seams (screen-blended so they
-        // read as corrupted light, not solid mass).
-        ctx.save();
-        ctx.globalCompositeOperation = 'screen';
-        ctx.strokeStyle = toRgba('#7c3aed', 0.4 + (this.phase - 1) * 0.12);
-        ctx.lineWidth = 2;
-        const roots = [[-70, -30], [10, -30], [50, -30]];
-        for (let r = 0; r < roots.length; r++) {
-            const [rx, ry] = roots[r];
-            ctx.beginPath();
-            ctx.moveTo(rx, ry);
-            let px = rx, py = ry;
-            for (let s = 1; s <= 4; s++) {
-                const a = Math.sin(this.frame * 0.08 + r * 2 + s) * 0.9;
-                px += Math.cos(a) * 10;
-                py += 8 + Math.sin(a) * 3;
-                ctx.lineTo(px, py);
-            }
+            ctx.moveTo(lerp(96, 106, t), -34 + t * 4);
+            ctx.lineTo(lerp(96, 118, t), -2);
             ctx.stroke();
         }
+        // Fangs jutting from the pilot.
+        ctx.fillStyle = '#d6d3c8';
+        for (let i = 0; i < 4; i++) {
+            const fx = lerp(100, 122, i / 3);
+            ctx.beginPath();
+            ctx.moveTo(fx - 3, -3); ctx.lineTo(fx, -13); ctx.lineTo(fx + 3, -3);
+            ctx.closePath(); ctx.fill();
+        }
+    }
+
+    // Glow pass (additive): firebox fire, the malevolent lamp-eyes, and the
+    // phase-3 peeled-boiler reveal. Kept last so it sits over the ironwork.
+    _drawGlow(ctx, q) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+        const gl = clamp(this.coreGlow, 0, 2);
+
+        // Firebox glow spilling from under the cab, between the rear drivers.
+        const fx = -34, fy = -30;
+        const fg = ctx.createRadialGradient(fx, fy, 1, fx, fy, 46);
+        fg.addColorStop(0, toRgba('#fde68a', 0.9 * Math.min(1, gl)));
+        fg.addColorStop(0.4, toRgba('#f97316', 0.7 * Math.min(1, gl)));
+        fg.addColorStop(1, 'transparent');
+        ctx.fillStyle = fg;
+        ctx.beginPath(); ctx.arc(fx, fy, 46, 0, Math.PI * 2); ctx.fill();
+
+        // Headlamp beam-eye on the smokebox door.
+        const lamp = 0.55 + Math.sin(this.frame * 0.18) * 0.3 + (this.mode === 'charge' ? 0.4 : 0);
+        const lg = ctx.createRadialGradient(84, -58, 1, 84, -58, 20);
+        lg.addColorStop(0, toRgba('#fff7ed', lamp));
+        lg.addColorStop(0.35, toRgba('#f97316', lamp * 0.85));
+        lg.addColorStop(1, 'transparent');
+        ctx.fillStyle = lg;
+        ctx.beginPath(); ctx.arc(84, -58, 19, 0, Math.PI * 2); ctx.fill();
+        // Slit pupil so the lamp reads as a watching eye.
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = '#1a0a02';
+        ctx.beginPath(); ctx.ellipse(84, -58, 3, 10, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.globalCompositeOperation = 'screen';
+
+        // Cab window eye.
+        const blink = 0.5 + Math.sin(this.frame * 0.07) * 0.4;
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = '#05070d';
+        ctx.beginPath(); ctx.rect(-98, -90, 16, 18); ctx.fill();
+        ctx.globalCompositeOperation = 'screen';
+        const cg = ctx.createRadialGradient(-90, -81, 1, -90, -81, 12);
+        cg.addColorStop(0, toRgba('#fecaca', blink));
+        cg.addColorStop(0.5, toRgba('#dc2626', blink * 0.7));
+        cg.addColorStop(1, 'transparent');
+        ctx.fillStyle = cg;
+        ctx.beginPath(); ctx.arc(-90, -81, 11, 0, Math.PI * 2); ctx.fill();
+
         ctx.restore();
+
+        // Phase cracks / phase-3 peeled boiler reveal.
+        if (this.phase >= 2) {
+            ctx.save();
+            ctx.globalCompositeOperation = 'screen';
+            ctx.strokeStyle = toRgba('#f97316', 0.85);
+            ctx.lineWidth = this.phase >= 3 ? 2.4 : 1.6;
+            ctx.beginPath();
+            ctx.moveTo(-30, -84); ctx.lineTo(-20, -60); ctx.lineTo(-30, -40);
+            ctx.moveTo(30, -84); ctx.lineTo(38, -58); ctx.lineTo(28, -38);
+            ctx.stroke();
+            if (this.phase >= 3) {
+                // A torn boiler panel exposing a glowing furnace ribcage.
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.fillStyle = '#0a0602';
+                ctx.beginPath();
+                ctx.moveTo(-8, -80); ctx.lineTo(24, -78); ctx.lineTo(30, -44); ctx.lineTo(-2, -46);
+                ctx.closePath(); ctx.fill();
+                ctx.globalCompositeOperation = 'screen';
+                const rg = ctx.createRadialGradient(12, -62, 2, 12, -62, 26);
+                rg.addColorStop(0, toRgba('#fde68a', 0.95));
+                rg.addColorStop(0.5, toRgba('#f97316', 0.8 * Math.min(1, gl)));
+                rg.addColorStop(1, 'transparent');
+                ctx.fillStyle = rg;
+                ctx.beginPath(); ctx.arc(12, -62, 24, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = toRgba('#1a0a02', 0.9);
+                ctx.lineWidth = 2;
+                for (let i = -1; i <= 2; i++) { ctx.beginPath(); ctx.moveTo(i * 9 + 6, -80); ctx.lineTo(i * 9 + 8, -46); ctx.stroke(); }
+            }
+            ctx.restore();
+        }
     }
 }
