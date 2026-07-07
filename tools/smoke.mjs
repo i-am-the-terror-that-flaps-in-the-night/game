@@ -119,6 +119,18 @@ try {
     });
     ok(manaSpent > 0, 'casting a spell consumes mana');
 
+    // Data-driven keybind (KeyZ -> meteor) and Escape-cancel via the real
+    // keydown path.
+    const keys = await page.evaluate(() => {
+        game.spells.mana = 999;
+        document.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyZ' }));
+        const selected = game.spells.active;
+        document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape' }));
+        return { selected, afterEscape: game.spells.active };
+    });
+    ok(keys.selected === 'meteor', 'KeyZ selects meteor (data-driven keybind)');
+    ok(keys.afterEscape === null, 'Escape cancels spell selection');
+
     // ── 4. Lifecycle: endless + defeat ───────────────────────────────────
     console.log('\n[lifecycle]');
     await page.evaluate(() => game.returnToMenu());

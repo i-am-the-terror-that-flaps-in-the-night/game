@@ -1,6 +1,7 @@
 import { CONFIG, RESOURCES } from '../config.js';
 import { SPELLS } from '../data/spells.js';
-import { cap, dist, rand } from '../utils.js';
+import { SPELL_BEHAVIORS } from './spell-behaviors.js';
+import { cap } from '../utils.js';
 
 export class SpellManager {
     constructor() {
@@ -14,11 +15,10 @@ export class SpellManager {
                 game.state !== "playing"
             )
                 return;
-            if (e.code === "KeyZ") this.select("meteor");
-            if (e.code === "KeyX") this.select("blizzard");
-            if (e.code === "KeyC") this.select("heal");
-            if (e.code === "KeyV") this.select("lightning");
-            if (e.code === "Escape") this.cancel();
+            if (e.code === "Escape") { this.cancel(); return; }
+            for (const id in SPELLS) {
+                if (SPELLS[id].key === e.code) { this.select(id); return; }
+            }
         });
         document
             .getElementById("gameCanvas")
@@ -116,120 +116,8 @@ export class SpellManager {
 
         game.audio.playMagic();
 
-        if (this.active === "meteor") {
-            game.particles.emit(
-                w.x,
-                wy - 600,
-                40,
-                "#f97316",
-                12,
-                20,
-                "fade",
-            );
-            setTimeout(() => {
-                if (game.state !== "playing") return;
-                game.audio.playExplosion();
-                game.shake = 25;
-                game.decals.add(
-                    w.x,
-                    CONFIG.GROUND_Y,
-                    "scorch",
-                    sp.radius,
-                );
-                game.particles.emit(
-                    w.x,
-                    CONFIG.GROUND_Y,
-                    100,
-                    "#ef4444",
-                    20,
-                    10,
-                    "fade",
-                );
-                const pwr =
-                    sp.damage *
-                    (1 + (game.upgrades.magic_damage || 0)); // Fix #9
-                game.enemies.forEach((en) => {
-                    if (
-                        dist(w.x, CONFIG.GROUND_Y, en.x, en.y) <
-                        sp.radius
-                    ) {
-                        en.takeDamage(pwr, "strong");
-                        // Airborne foes sit above the impact — throw fire up to
-                        // them so the strike clearly connects, not just the ground.
-                        if (en.flying) {
-                            game.particles.emit(en.x, en.y - 68, 14, "#f97316", 7, 4, "fade");
-                            game.fx.flash(en.x, en.y - 68, { r: 30, col: "#fdba74", life: 10 });
-                        }
-                    }
-                });
-            }, 800);
-        } else if (this.active === "blizzard") {
-            for (let i = 0; i < 35; i++) {
-                setTimeout(() => {
-                    if (game.state !== "playing") return;
-                    game.particles.emit(
-                        w.x + rand(-sp.radius, sp.radius),
-                        wy + rand(-80, 80),
-                        6,
-                        "#38bdf8",
-                        3,
-                        5,
-                        "float",
-                    );
-                    game.enemies.forEach((en) => {
-                        if (dist(w.x, wy, en.x, en.y) < sp.radius) {
-                            en.takeDamage(12, "magic");
-                            en.x = Math.min(
-                                CONFIG.WORLD_WIDTH - 50,
-                                en.x + en.speed * 0.9,
-                            ); // Fix #8
-                            // Frost also swirls up around airborne foes.
-                            if (en.flying && i % 5 === 0)
-                                game.particles.emit(en.x, en.y - 68, 5, "#38bdf8", 3, 4, "float");
-                        }
-                    });
-                }, i * 90);
-            }
-        } else if (this.active === "heal") {
-            game.particles.emit(
-                w.x,
-                wy,
-                60,
-                "#fde047",
-                10,
-                8,
-                "float",
-            );
-            const hPwr = sp.heal * (1 + (game.upgrades.heal || 0));
-            game.units.forEach((u) => {
-                if (dist(w.x, wy, u.x, u.y) < sp.radius)
-                    u.heal(hPwr);
-            });
-            game.buildings.forEach((b) => {
-                if (dist(w.x, wy, b.x, b.y) < sp.radius)
-                    b.heal(hPwr);
-            });
-        } else if (this.active === 'lightning') {
-            const sp2 = SPELLS.lightning;
-            // Arc endpoint sits at each foe's body — higher for airborne targets
-            // so the bolt visibly leaps up to Dragons.
-            const arcY = (en) => en.y - (en.flying ? 68 : 28);
-            let near = game.enemies.filter(e => e.hp > 0 && dist(w.x, wy, e.x, e.y) < 600);
-            near.sort((a,b) => dist(w.x,wy,a.x,a.y) - dist(w.x,wy,b.x,b.y));
-            near = near.slice(0, sp2.chains);
-            const pwr2 = sp2.damage * (1 + (game.upgrades.magic_damage || 0));
-            near.forEach((en, idx) => {
-                setTimeout(() => {
-                    if (game.state !== 'playing') return;
-                    en.takeDamage(pwr2 * Math.pow(0.82, idx), "magic");
-                    game.particles.emit(en.x, arcY(en), 12, '#7dd3fc', 6, 3, 'spark');
-                    const prev = idx === 0 ? {x: w.x, y: wy} : {x: near[idx-1].x, y: arcY(near[idx-1])};
-                    game.lightningArcs.push({ x1: prev.x, y1: prev.y, x2: en.x, y2: arcY(en), life: 14 });
-                    game.audio.playMagic();
-                }, idx * 110);
-            });
-            if (near.length === 0) game.notify('No targets in range!');
-        }
+        const behavior = SPELL_BEHAVIORS[this.active];
+        if (behavior) behavior(sp, w, wy);
         this.cancel();
     }
 }
