@@ -1,4 +1,4 @@
-import { TEAMS } from '../config.js';
+import { CONFIG, TEAMS } from '../config.js';
 import { BUILDING_TYPES } from '../data/buildings.js';
 import { TECH_TREE } from '../data/tech.js';
 import { UNIT_TYPES } from '../data/units.js';
@@ -107,14 +107,23 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
             this.notify("Insufficient Resources.");
             return;
         }
-        let bx = 380;
+        // Lay buildings out in a row on your side of the field. Scan left→right
+        // for the first gap wide enough for THIS building's actual footprint
+        // (so a slot freed by a destroyed building gets reused), packing them
+        // just clear of each other. The frontier runs to midfield, so a real
+        // base — several mines, towers, walls and every unlocker — fits without
+        // running out of room after a handful of structures.
+        const newW = d.width || 100;
+        const gap = 22; // breathing room between adjacent footprints
+        const maxX = CONFIG.WORLD_WIDTH * 0.5; // buildable out to midfield
+        let bx = 340;
         while (
             this.buildings.some(
-                (b) => Math.abs(b.x - bx) < b.w + 40,
+                (b) => Math.abs(b.x - bx) < (b.w + newW) / 2 + gap,
             )
         )
-            bx += 110;
-        if (bx > 1400) {
+            bx += 24;
+        if (bx > maxX) {
             this.audio.playError();
             this.notify("No space near castle!");
             return;
