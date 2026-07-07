@@ -204,6 +204,12 @@
 .tech-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
+    /* Size rows to their content. Without this, the grid (a definite-height
+       flex child with overflow-y:auto) collapses its auto rows to share the
+       available height, and each card's overflow:hidden clips the cost +
+       Research button. min-content keeps rows tall enough and lets the grid
+       scroll instead. */
+    grid-auto-rows: min-content;
     gap: 16px;
     margin-top: 24px;
     padding-right: 10px;
