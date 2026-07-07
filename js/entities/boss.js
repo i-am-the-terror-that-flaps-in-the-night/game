@@ -114,13 +114,18 @@ export class Boss extends Entity {
         g.notify(p >= 3
             ? 'Rustmaw sheds its hull — the core burns exposed! [PHASE 3]'
             : `Rustmaw's plating buckles and splits! [PHASE ${p}]`);
-        // Ring of cinders erupts on transition.
+        // Plating bursts outward: twin shockwaves, a flash, shrapnel, a steam
+        // eruption and a brief screen flash — the world flinches with it.
         const cx = this.x, cy = CONFIG.GROUND_Y - 48;
-        g.fx.ring(cx, cy, { r0: 10, r1: 150, col: '#a855f7', w: 5, life: 26 });
-        g.fx.ring(cx, cy, { r0: 6, r1: 100, col: '#4ade80', w: 3, life: 20 });
-        g.fx.flash(cx, cy, { r: 120, col: '#f59e0b', life: 16 });
-        g.particles.emit(cx, cy, 40, '#a855f7', 9, 4, 'float');
-        g.particles.emit(cx, cy, 24, '#f59e0b', 7, 3, 'spark');
+        g.fx.ring(cx, cy, { r0: 10, r1: 165, col: '#7c3aed', w: 5, life: 28 });
+        g.fx.ring(cx, cy, { r0: 6, r1: 110, col: '#f59e0b', w: 3, life: 22 });
+        g.fx.flash(cx, cy, { r: 130, col: '#fde68a', life: 18 });
+        g.particles.emit(cx, cy, 34, '#a855f7', 9, 4, 'float');
+        g.particles.emit(cx, cy, 22, '#f59e0b', 7, 3, 'spark');
+        this._debris(cx, cy + 8, 12, 7);
+        this._steam(this.x + this.facing * 20, CONFIG.GROUND_Y - 96, 10, '#e5e7eb', 3, 6);
+        g.decals.add(cx, CONFIG.GROUND_Y, 'scorch', 70);
+        g.bossFlash = Math.max(g.bossFlash || 0, 0.4);
     }
 
     die() {
@@ -178,6 +183,9 @@ export class Boss extends Entity {
         if (this.phase >= 3) {
             this.summonCd -= dt;
             if (this.summonCd <= 0) { this._summon(); this.summonCd = 340; }
+            // The failing engine leaks sparks from its seams.
+            if ((this.frame | 0) % 16 === 0)
+                game.particles.emit(this.x + rand(-42, 42), CONFIG.GROUND_Y - rand(42, 82), 2, '#f97316', 3, 2, 'spark');
         }
 
         this.x = clamp(this.x, 180, CONFIG.WORLD_WIDTH - 140);
@@ -192,6 +200,7 @@ export class Boss extends Entity {
             const dir = Math.sign(d);
             this.x += dir * spd * dt;
             this.facing = dir < 0 ? -1 : 1;
+            this._wheelDust(dt);
         }
     }
 
@@ -204,11 +213,19 @@ export class Boss extends Entity {
     }
 
     _telegraph(dt) {
-        // Shudder in place; vent sparks; screen jitters.
+        // Shudder in place, vent pressure, and build toward the launch. Steam
+        // jets and sparks escalate as the timer runs down; a ring converges on
+        // the furnace as a wind-up tell (the ground chevrons are drawn in draw()).
         this.x += Math.sin(this.frame * 1.4) * 0.6 * dt;
-        game.shake = Math.max(game.shake, 3);
-        if (Math.floor(this.frame) % 3 === 0)
-            game.particles.emit(this.x + this.facing * 60, CONFIG.GROUND_Y - 30, 3, '#f59e0b', 5, 3, 'spark');
+        const rampT = 1 - clamp(this.modeT / 46, 0, 1);
+        game.shake = Math.max(game.shake, 3 + rampT * 4);
+        const f = this.facing, fr = this.frame | 0;
+        if (fr % 2 === 0) {
+            game.particles.emit(this.x + f * 60, CONFIG.GROUND_Y - 30, 3, '#f59e0b', 5, 3, 'spark');
+            this._steam(this.x + f * 62, CONFIG.GROUND_Y - 12, 3, '#e5e7eb', 2.4, 4); // pressure venting
+        }
+        if (fr % 10 === 0)
+            game.fx.ring(this.x - f * 8, CONFIG.GROUND_Y - 56, { r0: 68, r1: 8, col: '#f97316', w: 3, life: 14 });
         if (this.modeT <= 0) this._beginCharge();
     }
 
@@ -219,13 +236,26 @@ export class Boss extends Entity {
         this.modeT = 200;
         this._charged.clear();
         game.audio.bossRoar();
-        game.shake = Math.max(game.shake, 12);
+        game.shake = Math.max(game.shake, 14);
+        // Launch burst: forward flash, expanding ring, steam blast and shrapnel.
+        const f = this.chargeDir;
+        game.fx.flash(this.x + f * 40, CONFIG.GROUND_Y - 40, { r: 72, col: '#f59e0b', life: 12 });
+        game.fx.ring(this.x, CONFIG.GROUND_Y - 30, { r0: 6, r1: 92, col: '#fb923c', w: 4, life: 18 });
+        this._steam(this.x + f * 60, CONFIG.GROUND_Y - 16, 8, '#e5e7eb', 3.5, 6);
+        this._debris(this.x - f * 40, CONFIG.GROUND_Y - 8, 6, 6);
     }
 
     _charge(dt) {
         this.x += this.chargeDir * this.chargeSpd * dt;
         this.facing = this.chargeDir < 0 ? -1 : 1;
-        game.shake = Math.max(game.shake, 7);
+        const f = this.chargeDir, fr = this.frame | 0;
+        // Rhythmic pounding shake on top of the sustained rumble.
+        game.shake = Math.max(game.shake, 7 + (fr % 6 === 0 ? 4 : 0));
+        // Scorched, smoking rail + grinding wheel-sparks and dust in its wake.
+        if (fr % 4 === 0) game.decals.add(this.x, CONFIG.GROUND_Y, 'scorch', rand(34, 52));
+        game.particles.emit(this.x - f * 28, CONFIG.GROUND_Y - 6, 3, '#6b5a44', 2.4, 4, 'fade');
+        game.particles.emit(this.x - f * 20, CONFIG.GROUND_Y - 10, 2, '#f97316', 4, 3, 'spark');
+        game.particles.emit(this.x - f * 70, CONFIG.GROUND_Y - 30, 2, SMOKE_COLS[fr % SMOKE_COLS.length], 3, 4, 'float');
         // Crush anything in the locomotive's path — once per target per charge.
         const halfW = 76;
         const ahead = this.x + this.chargeDir * 40;
@@ -233,21 +263,24 @@ export class Boss extends Entity {
             if (u.active && !this._charged.has(u) && Math.abs(u.x - ahead) < halfW) {
                 this._charged.add(u);
                 dealDamage(this.chargeDmg, this._chargeSrc, u);
-                game.particles.emit(u.x, u.y - 20, 8, '#f97316', 5, 3, 'spark');
+                this._crushFx(u.x, u.y - 18, false);
             }
         }
         for (const b of game.buildings) {
             if (b.active && !this._charged.has(b) && Math.abs(b.x - ahead) < halfW) {
                 this._charged.add(b);
                 dealDamage(this.chargeDmg, this._chargeSrc, b); // siege -> x2 vs buildings
-                game.fx.flash(b.x, CONFIG.GROUND_Y - 20, { r: 40, col: '#f59e0b', life: 10 });
+                this._crushFx(b.x, CONFIG.GROUND_Y - 24, true);
             }
         }
-        game.particles.emit(this.x - this.chargeDir * 70, CONFIG.GROUND_Y - 26, 2, '#7c3aed', 4, 4, 'float');
         // Stop when the lunge has run its course or reached the castle line.
         if (this.modeT <= 0 || this.x <= this.patrolMin - 260) {
             this.mode = 'recover';
             this.modeT = 70;
+            // Braking screech: showering sparks + a steam blow-off as it halts.
+            game.fx.spark(this.x + f * 40, CONFIG.GROUND_Y - 14, f < 0 ? Math.PI : 0, { n: 10, spread: 0.9, len: 26, col: '#fde68a' });
+            this._steam(this.x, CONFIG.GROUND_Y - 40, 10, '#e5e7eb', 3, 6);
+            game.shake = Math.max(game.shake, 10);
         }
     }
 
@@ -256,6 +289,7 @@ export class Boss extends Entity {
         // punish it). Full aggression resumes on the next patrol tick.
         this.x += 0.6 * spd * dt;
         this.facing = 1;
+        this._wheelDust(dt);
         if (this.modeT <= 0) {
             this.mode = 'patrol';
             this.tx = rand((this.patrolMin + this.patrolMax) / 2, this.patrolMax);
@@ -279,7 +313,12 @@ export class Boss extends Entity {
             ));
         }
         game.audio.bossCinder();
-        game.particles.emit(ox, oy, 6, '#f59e0b', 4, 3, 'float');
+        // Muzzle charge: a bright flash, an inward-collapsing charge ring, and
+        // spitting embers at the maw as the volley launches.
+        game.fx.flash(ox, oy, { r: 28, col: '#fdba74', life: 10 });
+        game.fx.ring(ox, oy, { r0: 22, r1: 2, col: '#f97316', w: 2, life: 10 });
+        game.particles.emit(ox, oy, 8, '#f59e0b', 4, 3, 'float');
+        game.particles.emit(ox, oy, 3, '#fb923c', 4, 2, 'spark');
     }
 
     // Nearest player unit by 1-D distance, falling back to the castle/buildings.
@@ -304,27 +343,73 @@ export class Boss extends Entity {
     }
 
     _emitSmoke() {
-        // Belches from the funnel, which sits toward the FRONT of the boiler.
-        const sx = this.x + this.facing * 52;
-        const sy = CONFIG.GROUND_Y - 116;
-        const col = SMOKE_COLS[(this.frame | 0) % SMOKE_COLS.length];
-        game.particles.emit(sx, sy, this.phase >= 3 ? 5 : 3, col, 2, 4, 'float');
+        const f = this.facing;
+        const fr = this.frame | 0;
+        // Funnel: layered corrupted smoke (front of the boiler) + a rising ember.
+        const fx = this.x + f * 52, fy = CONFIG.GROUND_Y - 118;
+        const col = SMOKE_COLS[fr % SMOKE_COLS.length];
+        game.particles.emit(fx, fy, this.phase >= 3 ? 4 : 3, col, 1.8, 5, 'float');
+        game.particles.emit(fx, fy - 6, 1, '#fb923c', 2.4, 2, 'spark');
+        // Steam dome venting soft white steam.
+        if (fr % 2 === 0) this._steam(this.x + f * 20, CONFIG.GROUND_Y - 104, 2, '#e5e7eb', 1.4, 4);
+        // Cylinder cocks: low steam jets by the front driving wheel.
+        if (fr % 5 === 0) this._steam(this.x + f * 66, CONFIG.GROUND_Y - 14, 3, '#cbd5e1', 1.9, 4);
+    }
+
+    // ── VFX helpers (visual only) ───────────────────────────────────────
+    // Solid metal shrapnel: opaque, gravity-driven (any non-float/fade type),
+    // salted with a few embers so hits read as hot iron tearing loose.
+    _debris(x, y, n, sp = 6) {
+        const chunk = ['#2a2f3a', '#3a4150', '#1a1f2a', '#4a3222'];
+        for (let i = 0; i < n; i++)
+            game.particles.emit(x + rand(-10, 10), y, 1, chunk[i % chunk.length], sp, rand(2, 4.5), 'debris');
+        game.particles.emit(x, y, Math.ceil(n / 2), '#f97316', sp * 0.9, 3, 'spark');
+    }
+
+    // Soft additive steam/vapour puff.
+    _steam(x, y, n, col = '#e5e7eb', sp = 2, sz = 5) {
+        game.particles.emit(x, y, n, col, sp, sz, 'float');
+    }
+
+    // Dust kicked from under the running gear as it rolls (throttled).
+    _wheelDust(dt, heavy = false) {
+        if (particleQuality() < 1) return;
+        this._dustT = (this._dustT || 0) - dt;
+        if (this._dustT > 0) return;
+        this._dustT = heavy ? 3 : 7;
+        const rx = this.x - this.facing * 46;
+        game.particles.emit(rx, CONFIG.GROUND_Y - 4, heavy ? 3 : 2, '#6b5a44', heavy ? 2.4 : 1.6, 4, 'fade');
+    }
+
+    // Charge / crush impact burst: flash, shockwave ring, spark fan, shrapnel
+    // and shake — larger against a structure (`big`), which also scorches ground.
+    _crushFx(x, y, big) {
+        game.fx.flash(x, y, { r: big ? 56 : 34, col: '#fde68a', life: 12 });
+        game.fx.ring(x, y, { r0: 4, r1: big ? 72 : 44, col: '#f59e0b', w: 3, life: 16 });
+        game.fx.spark(x, y, this.chargeDir < 0 ? Math.PI : 0, { n: big ? 9 : 6, spread: 1.1, len: 22, col: '#fed7aa' });
+        this._debris(x, y, big ? 10 : 6, big ? 7 : 5);
+        game.shake = Math.max(game.shake, big ? 12 : 8);
+        if (big) game.decals.add(x, CONFIG.GROUND_Y, 'scorch', 46);
     }
 
     _updateDying(dt) {
         this.dyingT -= dt;
         this.frame += dt;
         this.vx = 0;
+        // Rolling chain of internal detonations: flashes, shockwaves, gouts of
+        // smoke and steam, flung shrapnel and scorched ground as it comes apart.
         this._boomT -= dt;
         if (this._boomT <= 0) {
-            this._boomT = 13;
-            const bx = this.x + rand(-90, 90);
-            const by = CONFIG.GROUND_Y - rand(10, 90);
-            game.fx.flash(bx, by, { r: rand(40, 80), col: '#f59e0b', life: 14 });
-            game.fx.ring(bx, by, { r0: 4, r1: rand(40, 90), col: '#a855f7', w: 3, life: 18 });
-            game.particles.emit(bx, by, 22, SMOKE_COLS[(this.frame | 0) % SMOKE_COLS.length], 7, 4, 'float');
-            game.particles.emit(bx, by, 14, '#f97316', 6, 3, 'spark');
-            game.shake = Math.max(game.shake, 8);
+            this._boomT = 11;
+            const bx = this.x + rand(-95, 95);
+            const by = CONFIG.GROUND_Y - rand(10, 96);
+            game.fx.flash(bx, by, { r: rand(46, 86), col: '#fde68a', life: 15 });
+            game.fx.ring(bx, by, { r0: 4, r1: rand(46, 96), col: '#f59e0b', w: 3, life: 20 });
+            game.particles.emit(bx, by, 20, SMOKE_COLS[(this.frame | 0) % SMOKE_COLS.length], 6, 4, 'float');
+            this._debris(bx, by, 8, 7);
+            this._steam(bx, by + 18, 5, '#e5e7eb', 3, 6);
+            game.decals.add(bx, CONFIG.GROUND_Y, 'scorch', rand(30, 60));
+            game.shake = Math.max(game.shake, 10);
             game.audio.playExplosion();
         }
         if (this.dyingT <= 0) this.active = false;
@@ -378,18 +463,8 @@ export class Boss extends Entity {
         this._drawPilot(ctx);
         this._drawGlow(ctx, q);
 
-        // Telegraph tell — a bright forward warning glow down the track ahead.
-        if (this.mode === 'telegraph') {
-            ctx.save();
-            ctx.globalCompositeOperation = 'screen';
-            const t = clamp(1 - this.modeT / 46, 0, 1);
-            const g2 = ctx.createLinearGradient(120, 0, 300, 0);
-            g2.addColorStop(0, toRgba('#f59e0b', 0.5 * t));
-            g2.addColorStop(1, 'transparent');
-            ctx.fillStyle = g2;
-            ctx.fillRect(120, -60, 200, 64);
-            ctx.restore();
-        }
+        // Telegraph tell — warning wash + marching chevrons down the charge lane.
+        if (this.mode === 'telegraph') this._drawChargeTell(ctx);
 
         // Hit-flash overlay.
         if (this.flashT > 0) {
@@ -405,6 +480,31 @@ export class Boss extends Entity {
 
         ctx.restore();
         this.drawDmg(ctx, cam, dt);
+    }
+
+    // Ground charge-lane indicator during the wind-up: a warning wash plus
+    // chevrons marching forward (local +x) that brighten as launch nears.
+    _drawChargeTell(ctx) {
+        const t = clamp(1 - this.modeT / 46, 0, 1);
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+        const wash = ctx.createLinearGradient(120, 0, 330, 0);
+        wash.addColorStop(0, toRgba('#f97316', 0.42 * t));
+        wash.addColorStop(1, 'transparent');
+        ctx.fillStyle = wash;
+        ctx.fillRect(120, -58, 210, 58);
+        ctx.strokeStyle = toRgba('#fb923c', 0.45 + 0.55 * t);
+        ctx.lineWidth = 5;
+        const march = (this.frame * 3) % 42;
+        for (let i = 0; i < 4; i++) {
+            const cx = 140 + i * 42 + march;
+            ctx.globalAlpha = clamp((0.4 + 0.6 * t) * (1 - i * 0.14), 0, 1);
+            ctx.beginPath();
+            ctx.moveTo(cx - 12, -30); ctx.lineTo(cx, -12); ctx.lineTo(cx - 12, 6);
+            ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+        ctx.restore();
     }
 
     // Big spoked driving wheels + small pilot truck, joined by an animated

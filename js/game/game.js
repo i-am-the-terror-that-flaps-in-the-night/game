@@ -312,6 +312,10 @@ export class Game {
             this.shake *= Math.pow(0.9, dt);
             if (this.shake < 0.5) this.shake = 0;
         }
+        if (this.bossFlash > 0) {
+            this.bossFlash *= Math.pow(0.85, dt);
+            if (this.bossFlash < 0.02) this.bossFlash = 0;
+        }
 
         // Boss encounter lifecycle (warning -> arrival -> defeat rewards). The
         // Boss entity itself lives in this.enemies and is updated/drawn/removed
