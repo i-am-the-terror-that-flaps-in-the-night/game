@@ -8,12 +8,15 @@ export class Camera {
         this.y = 0;
         this.z = 1;
         this.tX = 0;
+        // Viewport width, kept in sync by Game.resize(). Read here instead of
+        // window.innerWidth so the camera has no direct window dependency.
+        this.viewW = window.innerWidth;
     }
     pan(dx) {
         this.tX = clamp(
             this.tX + dx,
             0,
-            CONFIG.WORLD_WIDTH - window.innerWidth / this.z,
+            CONFIG.WORLD_WIDTH - this.viewW / this.z,
         );
     }
     update(dt) {

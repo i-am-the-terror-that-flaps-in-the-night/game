@@ -141,6 +141,9 @@ export class Game {
             window.innerHeight - 180,
             window.innerHeight * 0.6,
         );
+        // resize() runs once in the constructor before this.camera exists (the
+        // Camera seeds viewW itself); guard for that first call.
+        if (this.camera) this.camera.viewW = window.innerWidth;
         this._buildBackdropCache();
     }
 
