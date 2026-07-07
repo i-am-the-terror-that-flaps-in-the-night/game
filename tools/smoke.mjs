@@ -159,6 +159,15 @@ try {
     await poll(`game.projectiles.length > 0`, 6000);
     ok(true, 'ranged combat spawns projectiles');
 
+    // Entities carry the kind flag combat.js discriminates on (vs instanceof).
+    const kinds = await page.evaluate(() => {
+        const castle = game.buildings.find(b => b.type === 'castle');
+        game.spawnEnemy('rabble', 1000, 0);
+        const enemy = game.enemies[game.enemies.length - 1];
+        return { castle: castle && castle.kind, enemy: enemy && enemy.kind };
+    });
+    ok(kinds.castle === 'building' && kinds.enemy === 'unit', 'entities carry kind flag (building/unit)');
+
     // ── 4. Lifecycle: endless + defeat ───────────────────────────────────
     console.log('\n[lifecycle]');
     await page.evaluate(() => game.returnToMenu());

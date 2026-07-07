@@ -2,8 +2,12 @@ import { TEAMS } from '../config.js';
 import { BUILDING_TYPES } from '../data/buildings.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { UNIT_TYPES } from '../data/units.js';
-import { Building } from '../entities/building.js';
-import { Unit } from '../entities/unit.js';
+// Targets are identified by a `kind` flag ("unit" | "building") set in the
+// entity constructors, rather than `instanceof`, so this module needs no import
+// of the entity classes — breaking the unit<->combat and building->projectile->
+// combat->building import cycles. Every target reaching resolveDamage is
+// constructed by exactly one of those two constructors, so the partition is
+// identical to the former instanceof checks.
 
 // Resolve any live entity (unit / enemy / building) to its data definition.
 export function defOf(entity) {
@@ -42,7 +46,7 @@ export const FORMATION_MODS = {
 // 'strong' (counter hit), 'weak' (resisted), 'magic', or null.
 export function resolveDamage(base, src, target) {
     let mult = 1;
-    if (target instanceof Building) {
+    if (target.kind === "building") {
         if (src.siege) mult *= 2;
         else if (src.dmgType === "blunt") mult *= 1.2;
     } else {
@@ -58,7 +62,7 @@ export function resolveDamage(base, src, target) {
         const f = typeof game !== "undefined" && FORMATION_MODS[game.formation];
         if (f) {
             if (src.team === TEAMS.PLAYER && src.isUnit) mult *= f.deal;
-            if (target.team === TEAMS.PLAYER && target instanceof Unit) mult *= f.take;
+            if (target.team === TEAMS.PLAYER && target.kind === "unit") mult *= f.take;
         }
     }
     const amt = Math.max(1, base * mult - (target.armor || 0));

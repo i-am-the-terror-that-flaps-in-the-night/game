@@ -7,6 +7,7 @@ import { nearestX } from '../systems/targeting.js';
 export class Building extends Entity {
     constructor(x, type, team) {
         super(x, CONFIG.GROUND_Y, team);
+        this.kind = "building"; // combat.js target discrimination (vs instanceof)
         this.type = type;
         const def = BUILDING_TYPES[type];
         this.name = def.name;

@@ -10,6 +10,7 @@ import { clamp, dist, rand, randInt } from '../utils.js';
 export class Unit extends Entity {
     constructor(x, type, team) {
         super(x, CONFIG.GROUND_Y, team);
+        this.kind = "unit"; // combat.js target discrimination (vs instanceof)
         this.type = type;
         const def =
             team === TEAMS.PLAYER
