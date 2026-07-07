@@ -3,6 +3,19 @@
    ============================================================ */
 
 // --- CONFIGURATION ---
+// GROUND_Y is the ONE sanctioned mutable field — it is recomputed by
+// Game.resize() as the viewport changes. Every other field is a genuine
+// constant; the readonly typing below makes an accidental write to them (e.g.
+// CONFIG.GRAVITY = …) a typecheck error, while leaving GROUND_Y writable.
+/**
+ * @type {{
+ *   readonly WORLD_WIDTH: number;
+ *   GROUND_Y: number;
+ *   readonly GRAVITY: number;
+ *   readonly EDGE_SCROLL_MARGIN: number;
+ *   readonly EDGE_SCROLL_SPEED: number;
+ * }}
+ */
 export const CONFIG = {
     WORLD_WIDTH: 4500,
     GROUND_Y: window.innerHeight - 180,
