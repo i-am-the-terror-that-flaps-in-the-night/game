@@ -66,6 +66,14 @@ export function resolveDamage(base, src, target) {
     return { amt, tag };
 }
 
+// Resolve an attack and apply it to the target in one step. Returns the same
+// { amt, tag } as resolveDamage so callers can still read `tag` for hit FX.
+export function dealDamage(base, src, target) {
+    const res = resolveDamage(base, src, target);
+    target.takeDamage(res.amt, res.tag);
+    return res;
+}
+
 // Short matchup summary for tooltips: which armor classes this damage type
 // punishes or bounces off.
 export function describeMatchups(def) {

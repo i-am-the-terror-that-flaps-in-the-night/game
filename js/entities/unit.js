@@ -1,4 +1,4 @@
-import { resolveDamage } from '../systems/combat.js';
+import { dealDamage } from '../systems/combat.js';
 import { CONFIG, NECRO_ENEMY_CAP, NECRO_MINION_TYPE, NECRO_SUMMON_INTERVAL, TEAMS } from '../config.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { UNIT_TYPES } from '../data/units.js';
@@ -289,9 +289,8 @@ export class Unit extends Entity {
                 team: this.team,
                 isUnit: true,
             };
-            const res = resolveDamage(this.dmg, src, tgt);
+            const res = dealDamage(this.dmg, src, tgt);
             const crt = res.tag === "strong"; // counter hits get the heavy FX
-            tgt.takeDamage(res.amt, res.tag);
 
             if (this.aoe) {
                 const trgs =
@@ -304,8 +303,7 @@ export class Unit extends Entity {
                         t.hp > 0 &&
                         dist(this.x, this.y, t.x, t.y) < this.aoe
                     ) {
-                        const r2 = resolveDamage(this.dmg * 0.5, src, t);
-                        t.takeDamage(r2.amt, r2.tag);
+                        dealDamage(this.dmg * 0.5, src, t);
                         t.recoil = (t.x > this.x ? 1 : -1) * 4;
                     }
                 // Ground-slam shockwave

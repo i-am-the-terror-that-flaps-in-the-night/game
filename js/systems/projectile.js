@@ -1,4 +1,4 @@
-import { resolveDamage } from './combat.js';
+import { dealDamage } from './combat.js';
 import { CONFIG, NECRO_MINION_TYPE, PROJ_CULL_MARGIN, PROJ_HIT_RADIUS, TEAMS } from '../config.js';
 import { dist, rand, shade } from '../utils.js';
 
@@ -156,8 +156,7 @@ export class Projectile {
             return;
         }
 
-        const res = resolveDamage(this.dmg, this.src, target);
-        target.takeDamage(res.amt, res.tag);
+        dealDamage(this.dmg, this.src, target);
         const ang = Math.atan2(this.vy, this.vx) + Math.PI;
         game.fx.spark(this.x, this.y, ang, {
             n: 5, len: 14, spread: 0.8, col: this.col,
@@ -195,8 +194,7 @@ export class Projectile {
                   ];
         for (const t of targets) {
             if (dist(this.x, this.y, t.x, t.y) < this.aoe) {
-                const res = resolveDamage(this.dmg * 0.6, this.src, t);
-                t.takeDamage(res.amt, res.tag);
+                dealDamage(this.dmg * 0.6, this.src, t);
             }
         }
         game.particles.emit(
