@@ -45,6 +45,17 @@ interface EntityDef {
     desc?: string;
 }
 
+interface ProjectileDef {
+    sp: number;
+    c: string;
+    sz: number;
+    arc?: boolean;
+    aoe?: boolean;
+    glow?: boolean;
+    summon?: boolean;
+    defaultDmgType: "slash" | "pierce" | "blunt" | "magic";
+}
+
 interface BuildingDef {
     name?: string;
     hp?: number;

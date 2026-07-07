@@ -153,6 +153,12 @@ try {
     });
     ok(drop === 2, 'shaman death drops 2 crystal (data-driven)');
 
+    // Ranged combat builds a Projectile (exercises PROJECTILE_TYPES lookup): an
+    // enemy archer near the castle targets it and fires an arrow.
+    await page.evaluate(() => game.spawnEnemy('archer', 400, 0));
+    await poll(`game.projectiles.length > 0`, 6000);
+    ok(true, 'ranged combat spawns projectiles');
+
     // ── 4. Lifecycle: endless + defeat ───────────────────────────────────
     console.log('\n[lifecycle]');
     await page.evaluate(() => game.returnToMenu());

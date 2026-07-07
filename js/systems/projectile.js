@@ -1,5 +1,6 @@
 import { dealDamage } from './combat.js';
 import { CONFIG, NECRO_MINION_TYPE, PROJ_CULL_MARGIN, PROJ_HIT_RADIUS, TEAMS } from '../config.js';
+import { PROJECTILE_TYPES } from '../data/projectiles.js';
 import { dist, rand, shade } from '../utils.js';
 
 // --- PROJECTILES & MAGIC ---
@@ -13,10 +14,11 @@ export class Projectile {
         this.team = team;
         this.active = true;
         this.trail = [];
+        const def = PROJECTILE_TYPES[type];
         // Combat-resolution source info (counter system)
         const o = opts || {};
         this.src = {
-            dmgType: o.dmgType || (type === "fireball" || type === "skull" ? "magic" : "pierce"),
+            dmgType: o.dmgType || def.defaultDmgType,
             armorPierce: o.armorPierce || false,
             vsLarge: o.vsLarge || 0,
             vsFlying: o.vsFlying || 0,
@@ -27,32 +29,6 @@ export class Projectile {
 
         this.tX = target.x;
         this.tY = target.y; // Fix #5: Cache coords
-
-        const def = {
-            arrow: { sp: 12, c: "#cbd5e1", sz: 2, arc: true },
-            bolt: { sp: 16, c: "#94a3b8", sz: 3, arc: false },
-            fireball: {
-                sp: 8,
-                c: "#f97316",
-                sz: 6,
-                aoe: true,
-                glow: true,
-            },
-            rock: {
-                sp: 6,
-                c: "#475569",
-                sz: 12,
-                arc: true,
-                aoe: true,
-            },
-            skull: {
-                sp: 7,
-                c: "#c084fc",
-                sz: 6,
-                glow: true,
-                summon: true,
-            },
-        }[type];
 
         this.sp = def.sp;
         this.col = def.c;
