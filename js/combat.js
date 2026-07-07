@@ -1,12 +1,16 @@
+import { TEAMS } from './config.js';
+import { Building } from './entities/building.js';
+import { Unit } from './entities/unit.js';
+
 // --- COMBAT RESOLUTION (counter system) ---
 // Every unit has a damage type and an armor class. Damage is deterministic:
 // base * counter-multiplier * formation-modifier - flat armor. No random crits.
 
-const DAMAGE_LABELS = { slash: "Slash", pierce: "Pierce", blunt: "Blunt", magic: "Magic" };
-const ARMOR_LABELS = { none: "Unarmored", light: "Light", heavy: "Heavy", shield: "Shielded" };
+export const DAMAGE_LABELS = { slash: "Slash", pierce: "Pierce", blunt: "Blunt", magic: "Magic" };
+export const ARMOR_LABELS = { none: "Unarmored", light: "Light", heavy: "Heavy", shield: "Shielded" };
 
 // COUNTER_TABLE[damageType][armorClass] = multiplier
-const COUNTER_TABLE = {
+export const COUNTER_TABLE = {
     slash:  { none: 1.2,  light: 1.0,  heavy: 0.65, shield: 0.85 },
     pierce: { none: 1.1,  light: 1.25, heavy: 0.7,  shield: 0.5  },
     blunt:  { none: 0.85, light: 1.0,  heavy: 1.35, shield: 1.25 },
@@ -14,7 +18,7 @@ const COUNTER_TABLE = {
 };
 
 // Formation stances trade damage dealt against damage taken (player units only).
-const FORMATION_MODS = {
+export const FORMATION_MODS = {
     defensive:  { deal: 0.9,  take: 0.85 },
     standard:   { deal: 1.0,  take: 1.0  },
     aggressive: { deal: 1.15, take: 1.1  },
@@ -23,7 +27,7 @@ const FORMATION_MODS = {
 // Resolve an attack. src: { dmgType, armorPierce, vsLarge, siege, team, isUnit }.
 // Returns { amt, tag } where tag drives the damage-text color:
 // 'strong' (counter hit), 'weak' (resisted), 'magic', or null.
-function resolveDamage(base, src, target) {
+export function resolveDamage(base, src, target) {
     let mult = 1;
     if (target instanceof Building) {
         if (src.siege) mult *= 2;
@@ -48,7 +52,7 @@ function resolveDamage(base, src, target) {
 
 // Short matchup summary for tooltips: which armor classes this damage type
 // punishes or bounces off.
-function describeMatchups(def) {
+export function describeMatchups(def) {
     if (!def || !def.dmgType) return "";
     const row = COUNTER_TABLE[def.dmgType];
     if (!row) return "";
@@ -64,7 +68,7 @@ function describeMatchups(def) {
 
 // One-line tactical tip for a wave composition ([{t, c}]), keyed off the most
 // dangerous enemy type present.
-const WAVE_HINTS = [
+export const WAVE_HINTS = [
     ["dragon",      "Dragons fly — only ranged attacks connect. Crossbows pierce their hide."],
     ["necromancer", "Necromancers raise skeletons — kill them before the dead pile up."],
     ["ogre",        "Ogres wear heavy armor — Spearmen and Crossbows pierce it; keep militia away."],
@@ -74,7 +78,7 @@ const WAVE_HINTS = [
     ["berserker",   "Berserkers sprint for your backline — hold a solid melee screen."],
     ["marauder",    "Light raiders — Archers and a melee line trade well."],
 ];
-function waveHint(groups) {
+export function waveHint(groups) {
     if (!groups || !groups.length) return "";
     const present = new Set(groups.map((g) => g.t));
     for (const [t, hint] of WAVE_HINTS) if (present.has(t)) return hint;

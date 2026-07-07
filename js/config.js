@@ -3,7 +3,7 @@
    ============================================================ */
 
 // --- CONFIGURATION ---
-const CONFIG = {
+export const CONFIG = {
     WORLD_WIDTH: 4500,
     GROUND_Y: window.innerHeight - 180,
     GRAVITY: 0.5,
@@ -11,8 +11,8 @@ const CONFIG = {
     EDGE_SCROLL_SPEED: 18,
 };
 
-const TEAMS = { PLAYER: 1, ENEMY: 2 };
-const RESOURCES = {
+export const TEAMS = { PLAYER: 1, ENEMY: 2 };
+export const RESOURCES = {
     START_GOLD: 150,
     START_IRON: 0,
     START_CRYSTAL: 0,

@@ -1,7 +1,17 @@
+import { AudioEngine } from '../audio.js';
+import { Camera } from '../camera.js';
+import { CONFIG, RESOURCES, TEAMS } from '../config.js';
+import { LEVELS } from '../data/levels.js';
+import { Building } from '../entities/building.js';
+import { MetaProgression } from '../meta.js';
+import { SpellManager } from '../spell-manager.js';
+import { formatTime } from '../utils.js';
+import { DecalSystem, EffectSystem, ParticleSystem, WeatherSystem } from '../vfx.js';
+
 // --- GAME: core state, lifecycle & main loop ---
 // (flow/economy/input/ui/render methods are mixed into Game.prototype
 //  from the other js/game/*.js files)
-class Game {
+export class Game {
     constructor() {
         this.canvas = document.getElementById("gameCanvas");
         this.ctx = this.canvas.getContext("2d");

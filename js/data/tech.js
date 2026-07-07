@@ -1,4 +1,4 @@
-const TECH_TREE = [
+export const TECH_TREE = [
     {
         id: "forged_blades",
         name: "Forged Blades",

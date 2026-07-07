@@ -1,5 +1,15 @@
+import { CONFIG } from '../config.js';
+import { formatTime } from '../utils.js';
+import { describeMatchups, waveHint } from '../combat.js';
+import { TEAMS } from '../config.js';
+import { BUILDING_TYPES } from '../data/buildings.js';
+import { ENEMY_TYPES } from '../data/enemies.js';
+import { TECH_TREE } from '../data/tech.js';
+import { UNIT_TYPES } from '../data/units.js';
+import { Game } from './game.js';
+
 // --- GAME: panels, notifications, HUD & minimap ---
-Object.assign(Game.prototype, {
+Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
     openTechTree() {
         if (this.state !== "playing") return;
         this.setSpeed(0);
@@ -318,4 +328,4 @@ Object.assign(Game.prototype, {
             mh - 2,
         );
     },
-});
+}));

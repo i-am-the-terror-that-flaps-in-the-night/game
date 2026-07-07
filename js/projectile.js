@@ -1,5 +1,9 @@
+import { resolveDamage } from './combat.js';
+import { CONFIG, TEAMS } from './config.js';
+import { dist, rand, shade } from './utils.js';
+
 // --- PROJECTILES & MAGIC ---
-class Projectile {
+export class Projectile {
     constructor(x, y, target, type, dmg, team, aoe, pierce, siege, opts) {
         this.x = x;
         this.y = y;

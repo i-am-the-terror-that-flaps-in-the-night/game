@@ -1,4 +1,5 @@
-const BUILDING_TYPES = {
+/** @type {Record<string, BuildingDef>} */
+export const BUILDING_TYPES = {
     castle: {
         name: "Castle",
         hp: 2000,

@@ -1,4 +1,8 @@
-class SpellManager {
+import { CONFIG, RESOURCES } from './config.js';
+import { SPELLS } from './data/spells.js';
+import { dist, rand } from './utils.js';
+
+export class SpellManager {
     constructor() {
         this.active = null;
         this.mana = 100;
@@ -14,7 +18,10 @@ class SpellManager {
             if (e.code === "KeyX") this.select("blizzard");
             if (e.code === "KeyC") this.select("heal");
             if (e.code === "KeyV") this.select("lightning");
-            if (e.code === "Escape" || e.button === 2)
+            // NOTE: e.button is always undefined on a keydown event, so the
+            // right-click branch is a pre-existing no-op (kept as-is; behavior
+            // change is out of scope). Cast silences the checkJs flag.
+            if (e.code === "Escape" || /** @type {any} */ (e).button === 2)
                 this.cancel();
         });
         document

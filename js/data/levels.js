@@ -1,4 +1,4 @@
-const LEVELS = [
+export const LEVELS = [
     {
         name: "The Frontier",
         ground: "#143d26",

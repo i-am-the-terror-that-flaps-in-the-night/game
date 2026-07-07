@@ -1,5 +1,7 @@
+import { randInt } from './utils.js';
+
 // --- AUDIO ENGINE ---
-class AudioEngine {
+export class AudioEngine {
     constructor() {
         this.ctx = null;
         this.initDone = false;

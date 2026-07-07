@@ -1,0 +1,11 @@
+# Dev-only files excluded from the Cloudflare Workers static asset upload.
+# (The game ships as ES modules + assets; type-checking config and docs are not
+# part of the runtime.)
+tsconfig.json
+package.json
+types/
+*.md
+.gitignore
+.assetsignore
+wrangler.jsonc
+.idea/

@@ -1,5 +1,11 @@
+import { TEAMS } from '../config.js';
+import { LEVELS } from '../data/levels.js';
+import { Building } from '../entities/building.js';
+import { Game } from './game.js';
+import { EndlessWave, WaveManager } from '../waves.js';
+
 // --- GAME: campaign / endless / level flow ---
-Object.assign(Game.prototype, {
+Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
     startCampaign() {
         this.audio.init();
         this.audio.startMusic();
@@ -69,4 +75,4 @@ Object.assign(Game.prototype, {
             this.returnToMenu();
         }
     },
-});
+}));

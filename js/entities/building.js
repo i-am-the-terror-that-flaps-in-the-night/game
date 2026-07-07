@@ -1,4 +1,10 @@
-class Building extends Entity {
+import { rgba } from '../utils.js';
+import { CONFIG, TEAMS } from '../config.js';
+import { BUILDING_TYPES } from '../data/buildings.js';
+import { Entity } from './entity.js';
+import { Projectile } from '../projectile.js';
+
+export class Building extends Entity {
     constructor(x, type, team) {
         super(x, CONFIG.GROUND_Y, team);
         this.type = type;

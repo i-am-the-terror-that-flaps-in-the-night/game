@@ -1,5 +1,5 @@
 // ─── ACHIEVEMENTS ────────────────────────────────────────────────
-const ACHIEVEMENTS = [
+export const ACHIEVEMENTS = [
     { id: 'first_blood',   name: 'First Blood',     icon: '⚔️',  desc: 'Slay your first enemy.' },
     { id: 'century',       name: 'Century',         icon: '💀',  desc: 'Kill 100 enemies in one session.' },
     { id: 'dragon_slayer', name: 'Dragon Slayer',   icon: '🐉',  desc: 'Defeat a Dragon in battle.' },
@@ -12,7 +12,7 @@ const ACHIEVEMENTS = [
     { id: 'veteran',       name: 'Veteran',         icon: '⭐',  desc: 'Promote a unit to Level 3.' },
 ];
 
-class AchievementSystem {
+export class AchievementSystem {
     constructor(g) {
         this.g = g;
         try { this.unlocked = new Set(JSON.parse(localStorage.getItem('sd_ach_v2') || '[]')); }
