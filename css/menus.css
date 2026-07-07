@@ -121,6 +121,27 @@
         var(--glow-cyan);
 }
 
+/* Destructive action (e.g. Settings → Reset All Saves) */
+.menu-btn--danger {
+    border-color: var(--danger);
+    color: var(--danger);
+    letter-spacing: 1px;
+    text-transform: none;
+    font-size: 14px;
+}
+.menu-btn--danger:hover {
+    border-color: var(--danger);
+    color: #fff;
+    background: linear-gradient(
+        180deg,
+        rgba(255, 77, 94, 0.28),
+        rgba(120, 20, 32, 0.35)
+    );
+    box-shadow:
+        0 15px 30px rgba(0, 0, 0, 0.6),
+        0 0 18px rgba(255, 77, 94, 0.45);
+}
+
 /* Dynamic Tooltip */
 .tooltip {
     position: absolute;
