@@ -60,7 +60,8 @@ export const UNIT_TYPES = {
         armorClass: "none",
         ranged: true,
         projectile: "arrow",
-        desc: "Shreds light infantry from range. Useless against shields — keep a screen up.",
+        vsFlying: 2.0,
+        desc: "Shreds light infantry and picks airborne foes out of the sky. Useless against shields — keep a screen up.",
         visual: "bow",
     },
     crossbow: {
@@ -79,7 +80,8 @@ export const UNIT_TYPES = {
         dmgType: "pierce",
         armorClass: "light",
         armorPierce: true,
-        desc: "Armor-piercing bolts ignore heavy plate and shields. Slow, but nothing hides from him.",
+        vsFlying: 2.0,
+        desc: "Armor-piercing bolts ignore heavy plate and shields, and skewer Dragons out of the air. Slow, but nothing hides from him.",
         visual: "crossbow",
     },
     cleric: {

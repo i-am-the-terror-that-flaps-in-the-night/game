@@ -26,9 +26,9 @@ export const SPELLS = {
     lightning: {
         name: "Chain Lightning",
         cost: 45,
-        chains: 4,
-        damage: 120,
-        color: "#38bdf8",
-        desc: "Arcs through up to 4 enemies, dealing decreasing damage.",
+        chains: 6,
+        damage: 210,
+        color: "#7dd3fc",
+        desc: "Arcs through up to 6 enemies — grounded or airborne — dealing heavy magic damage that falls off slowly with each jump.",
     },
 };

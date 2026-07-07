@@ -23,6 +23,7 @@ interface EntityDef {
     armorClass?: "none" | "light" | "heavy" | "shield";
     armorPierce?: boolean;
     vsLarge?: number;
+    vsFlying?: number;
     large?: boolean;
     ranged?: boolean;
     projectile?: string;
@@ -53,10 +54,12 @@ interface BuildingDef {
     income?: BuildingIncome;
     dmg?: number;
     range?: number;
+    flyRange?: number;
     cooldown?: number;
     projectile?: string;
     aoe?: number;
     dmgType?: "slash" | "pierce" | "blunt" | "magic";
+    vsFlying?: number;
     buildTime?: number;
     unlock?: string[];
     armor?: number;

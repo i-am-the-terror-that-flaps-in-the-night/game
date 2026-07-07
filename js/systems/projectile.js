@@ -19,6 +19,7 @@ export class Projectile {
             dmgType: o.dmgType || (type === "fireball" || type === "skull" ? "magic" : "pierce"),
             armorPierce: o.armorPierce || false,
             vsLarge: o.vsLarge || 0,
+            vsFlying: o.vsFlying || 0,
             siege: siege || false,
             team: team,
             isUnit: o.isUnit || false,

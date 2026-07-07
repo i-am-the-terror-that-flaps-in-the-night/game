@@ -27,6 +27,7 @@ export class Unit extends Entity {
         this.armorClass = def.armorClass || "none";
         this.armorPierce = def.armorPierce || false;
         this.vsLarge = def.vsLarge || 0;
+        this.vsFlying = def.vsFlying || 0;
         this.large = def.large || false;
         this.ranged = def.ranged;
         this.proj = def.projectile;
@@ -270,6 +271,7 @@ export class Unit extends Entity {
                         dmgType: this.dmgType,
                         armorPierce: this.armorPierce,
                         vsLarge: this.vsLarge,
+                        vsFlying: this.vsFlying,
                         isUnit: true,
                     },
                 ),
@@ -282,6 +284,7 @@ export class Unit extends Entity {
                 dmgType: this.dmgType,
                 armorPierce: this.armorPierce,
                 vsLarge: this.vsLarge,
+                vsFlying: this.vsFlying,
                 siege: this.siege,
                 team: this.team,
                 isUnit: true,
