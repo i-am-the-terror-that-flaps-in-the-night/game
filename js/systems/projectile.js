@@ -1,5 +1,5 @@
 import { resolveDamage } from './combat.js';
-import { CONFIG, TEAMS } from '../config.js';
+import { CONFIG, NECRO_MINION_TYPE, PROJ_CULL_MARGIN, PROJ_HIT_RADIUS, TEAMS } from '../config.js';
 import { dist, rand, shade } from '../utils.js';
 
 // --- PROJECTILES & MAGIC ---
@@ -114,10 +114,10 @@ export class Projectile {
             !this.arc &&
             this.t &&
             this.t.hp > 0 &&
-            dist(this.x, this.y, this.tX, this.tY) < 30
+            dist(this.x, this.y, this.tX, this.tY) < PROJ_HIT_RADIUS
         )
             this.hit(this.t);
-        if (this.x < -200 || this.x > CONFIG.WORLD_WIDTH + 200)
+        if (this.x < -PROJ_CULL_MARGIN || this.x > CONFIG.WORLD_WIDTH + PROJ_CULL_MARGIN)
             this.active = false;
     }
     hitFloor() {
@@ -139,7 +139,7 @@ export class Projectile {
     hit(target) {
         this.active = false;
         if (this.summon && this.team === TEAMS.ENEMY) {
-            game.spawnEnemy("skeleton", this.x, CONFIG.GROUND_Y);
+            game.spawnEnemy(NECRO_MINION_TYPE, this.x, CONFIG.GROUND_Y);
             game.particles.emit(
                 this.x,
                 this.y,

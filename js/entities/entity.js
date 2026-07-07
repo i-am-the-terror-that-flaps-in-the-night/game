@@ -1,4 +1,4 @@
-import { TEAMS } from '../config.js';
+import { HIT_FLASH_FRAMES, HIT_FLINCH_FRAMES, TEAMS } from '../config.js';
 import { rand } from '../utils.js';
 
 // --- ENTITIES ---
@@ -17,8 +17,8 @@ export class Entity {
     takeDamage(amt, tag = null) {
         if (this.hp <= 0) return;
         this.hp -= amt;
-        this.hurtT = 7;   // flinch
-        this.flashT = 5;  // white hit-flash
+        this.hurtT = HIT_FLINCH_FRAMES;   // flinch
+        this.flashT = HIT_FLASH_FRAMES;  // white hit-flash
         const col =
             tag === "strong" ? "#fbbf24"
             : tag === "weak" ? "#94a3b8"

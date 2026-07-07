@@ -18,3 +18,19 @@ export const RESOURCES = {
     MAX_MANA: 100,
     MANA_REGEN: 0.05,
 };
+
+// Combat-animation frame timers. Set on hit in entity.js (takeDamage) and read
+// back as the normalizing divisor in unit-render.js — the two MUST share one
+// value or the flinch/flash animation desyncs from its duration.
+export const HIT_FLINCH_FRAMES = 7; // flinch duration
+export const HIT_FLASH_FRAMES = 5;  // white hit-flash duration
+
+// Necromancer / skull-projectile skeleton summoning (referenced from both
+// unit.js and projectile.js — keep the minion type in one place).
+export const NECRO_MINION_TYPE = "skeleton";
+export const NECRO_SUMMON_INTERVAL = 300; // frames between necromancer summons
+export const NECRO_ENEMY_CAP = 60;        // necromancer stops summoning past this many live enemies
+
+// Projectile collision / culling.
+export const PROJ_HIT_RADIUS = 30;   // direct-hit proximity for non-arc bolts
+export const PROJ_CULL_MARGIN = 200; // despawn this far past either world edge

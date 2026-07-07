@@ -1,5 +1,5 @@
 import { resolveDamage } from '../systems/combat.js';
-import { CONFIG, TEAMS } from '../config.js';
+import { CONFIG, NECRO_ENEMY_CAP, NECRO_MINION_TYPE, NECRO_SUMMON_INTERVAL, TEAMS } from '../config.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { UNIT_TYPES } from '../data/units.js';
 import { Entity } from './entity.js';
@@ -52,7 +52,7 @@ export class Unit extends Entity {
         this.state = "walk";
         this.frame = randInt(0, 100);
         this.facing = team === TEAMS.PLAYER ? 1 : -1;
-        this.summonTimer = 300; // Fix #3: Necro timer
+        this.summonTimer = NECRO_SUMMON_INTERVAL; // Fix #3: Necro timer
         // ── XP / Leveling (player units only) ──
         this.xp = 0;
         this.level = 1;
@@ -231,10 +231,10 @@ export class Unit extends Entity {
 
         if (this.type === "necromancer") {
             this.summonTimer -= dt;
-            if (this.summonTimer <= 0 && game.enemies.length < 60) {
-                this.summonTimer = 300;
+            if (this.summonTimer <= 0 && game.enemies.length < NECRO_ENEMY_CAP) {
+                this.summonTimer = NECRO_SUMMON_INTERVAL;
                 game.spawnEnemy(
-                    "skeleton",
+                    NECRO_MINION_TYPE,
                     this.x + rand(-50, 50),
                     this.y,
                 );
