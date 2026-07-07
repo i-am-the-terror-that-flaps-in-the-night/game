@@ -1,5 +1,13 @@
+import { CONFIG } from '../config.js';
+import { describeMatchups } from '../combat.js';
+import { TEAMS } from '../config.js';
+import { BUILDING_TYPES } from '../data/buildings.js';
+import { ENEMY_TYPES } from '../data/enemies.js';
+import { UNIT_TYPES } from '../data/units.js';
+import { Game } from './game.js';
+
 // --- GAME: event binding, spell selection & formations ---
-Object.assign(Game.prototype, {
+Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
     bindEvents() {
         // Native hover titles on the recruit/build bars explaining each role
         const idFor = (t) =>
@@ -234,4 +242,4 @@ Object.assign(Game.prototype, {
             if (b) b.classList.toggle('active', id === f);
         });
     },
-});
+}));

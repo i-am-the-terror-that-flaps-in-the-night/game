@@ -1,5 +1,8 @@
+import { CONFIG } from './config.js';
+import { lerp, rand, randInt, toRgba } from './utils.js';
+
 // --- VISUAL SYSTEMS ---
-class DecalSystem {
+export class DecalSystem {
     constructor() {
         this.decals = [];
     }
@@ -58,7 +61,7 @@ class DecalSystem {
     }
 }
 
-class ParticleSystem {
+export class ParticleSystem {
     constructor() {
         this.p = [];
     }
@@ -132,7 +135,7 @@ class ParticleSystem {
 
 // Transient combat-feedback effects: weapon-swing crescents,
 // impact shockwave rings, hit flashes and directional spark bursts.
-class EffectSystem {
+export class EffectSystem {
     constructor() { this.e = []; }
     _q() {
         const el = document.getElementById("particleQuality");
@@ -240,7 +243,7 @@ class EffectSystem {
     }
 }
 
-class WeatherSystem {
+export class WeatherSystem {
     constructor() {
         this.particles = [];
         this.type = "none";

@@ -1,5 +1,8 @@
+import { CONFIG } from './config.js';
+import { clamp } from './utils.js';
+
 // --- SYSTEMS ---
-class Camera {
+export class Camera {
     constructor() {
         this.x = 0;
         this.y = 0;

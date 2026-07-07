@@ -42,10 +42,43 @@ js/
     game-input.js     Event binding, spell selection, formations (mixin)
     game-ui.js        Panels, notifications, HUD updates, minimap (mixin)
     game-render.js    Backdrop, foreground, post-FX, frame draw (mixin)
+  ui/
+    action-bar.js     Generates the 18 recruit/build buttons from the data tables
   waves.js            WaveManager, EndlessWave
   achievements.js     ACHIEVEMENTS + AchievementSystem
-  main.js             Bootstrap: creates the Game, home-screen embers
+  main.js             ES-module entry: renders the action bar, creates the Game
+types/                Ambient TS declarations for the type-check gate
+  globals.d.ts        `game` global + DOM widening
+  augment.d.ts        Permissive index signatures for the mixin-built classes
+  data.d.ts           EntityDef / BuildingDef shapes for the data tables
+tsconfig.json         checkJs config (`npm run typecheck` → tsc --noEmit)
 ```
+
+## Modules & tooling
+
+The code is loaded as **ES modules** from a single entry point
+(`index.html` has one `<script type="module" src="js/main.js">`); the import
+graph resolves load order, so there is no fragile hand-ordered script list.
+Each file `import`s exactly the classes/data/utils it uses and `export`s its own
+definitions. The one intentional global is the `game` singleton on `window.game`
+— inline HTML handlers (`onclick="game.…"`) and entity/system code reference it
+by that name; decoupling it further is deliberately out of scope.
+
+`Game` and `Unit` are still assembled from `Object.assign(*.prototype, {…})`
+mixins across `game/*.js` and `entities/unit-render.js`; `js/main.js` imports
+those modules for their side effects before constructing the game.
+
+**Static analysis:** `npm run typecheck` (`tsc --noEmit` with `checkJs`) covers
+the whole codebase — it validates every cross-file import/export and, via the
+`EntityDef`/`BuildingDef` typedefs in `types/data.d.ts`, flags a mistyped field
+in `js/data/*.js` (e.g. `dmgg` → *"did you mean 'dmg'"*). No build step ships:
+the raw modules are what deploy (`.assetsignore` keeps dev-only files out of the
+Cloudflare upload).
+
+The **action bar** is generated from `UNIT_TYPES`/`BUILDING_TYPES` by
+`js/ui/action-bar.js` rather than hand-written HTML, so unit cost/roster live in
+one place; it produces the same button ids/classes/handlers the HUD code
+expects.
 
 ## Strategy systems
 
@@ -109,9 +142,5 @@ group; unit/build hotkeys work regardless of the visible tab. Overlay dialogs
 size via `.dialog` / `.dialog--wide` / `.dialog--narrow` classes (tokenized
 widths) rather than inline pixel widths, which `responsive.css` targets directly.
 
-All scripts are classic (non-module) scripts sharing one global scope, loaded
-in dependency order by `index.html` — data first, then systems, entities, the
-`Game` class and its prototype mixins, and finally `main.js` which instantiates
-the game. The `game/*.js` and `entities/unit-render.js` files attach methods
-via `Object.assign(X.prototype, {...})`, so they must load after the file that
-defines the class.
+(See **Modules & tooling** above for the ES-module loading model that replaced
+the old hand-ordered classic-script list.)

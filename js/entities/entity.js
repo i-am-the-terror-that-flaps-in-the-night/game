@@ -1,5 +1,8 @@
+import { TEAMS } from '../config.js';
+import { rand } from '../utils.js';
+
 // --- ENTITIES ---
-class Entity {
+export class Entity {
     constructor(x, y, team) {
         this.x = x;
         this.y = y;

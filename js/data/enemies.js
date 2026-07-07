@@ -1,4 +1,5 @@
-const ENEMY_TYPES = {
+/** @type {Record<string, EntityDef>} */
+export const ENEMY_TYPES = {
     rabble: {
         name: "Rabble",
         hp: 50,

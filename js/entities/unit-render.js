@@ -1,5 +1,10 @@
+import { rgba } from '../utils.js';
+import { TEAMS } from '../config.js';
+import { Unit } from './unit.js';
+import { clamp, ik2, lerp, shade, toRgba } from '../utils.js';
+
 // --- UNIT RENDERING (stickman drawing, split from Unit class) ---
-Object.assign(Unit.prototype, {
+Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
     draw(ctx, cam, dt) {
         if (!this.active) {
             this.drawDmg(ctx, cam, dt);
@@ -651,4 +656,4 @@ Object.assign(Unit.prototype, {
         }
         this.drawDmg(ctx, cam, dt);
     }
-});
+}));

@@ -1,4 +1,12 @@
-class Unit extends Entity {
+import { resolveDamage } from '../combat.js';
+import { CONFIG, TEAMS } from '../config.js';
+import { ENEMY_TYPES } from '../data/enemies.js';
+import { UNIT_TYPES } from '../data/units.js';
+import { Entity } from './entity.js';
+import { Projectile } from '../projectile.js';
+import { clamp, dist, rand, randInt } from '../utils.js';
+
+export class Unit extends Entity {
     constructor(x, type, team) {
         super(x, CONFIG.GROUND_Y, team);
         this.type = type;
@@ -424,7 +432,7 @@ class Unit extends Entity {
             // Dragon kill flag for achievement
             if (this.type === "dragon") game._dragonKilled = true;
             // Grant XP to nearest player unit
-            let ckr = null, ckrD = 260;
+            let ckr = /** @type {any} */ (null), ckrD = 260;
             game.units.forEach(u => {
                 if (u.hp > 0 && u.team === TEAMS.PLAYER) {
                     const d = dist(u.x, u.y, this.x, this.y);

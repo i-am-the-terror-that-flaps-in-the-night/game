@@ -1,13 +1,13 @@
 // --- UTILS ---
-const rand = (min, max) => Math.random() * (max - min) + min;
-const randInt = (min, max) => Math.floor(rand(min, max + 1));
-const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const dist = (x1, y1, x2, y2) => Math.hypot(x2 - x1, y2 - y1);
-const lerp = (a, b, t) => a + (b - a) * t;
+export const rand = (min, max) => Math.random() * (max - min) + min;
+export const randInt = (min, max) => Math.floor(rand(min, max + 1));
+export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+export const dist = (x1, y1, x2, y2) => Math.hypot(x2 - x1, y2 - y1);
+export const lerp = (a, b, t) => a + (b - a) * t;
 
 // --- COLOR UTILS (for cinematic environment) ---
-const _hexCache = {};
-const hexToRgb = (hex) => {
+export const _hexCache = {};
+export const hexToRgb = (hex) => {
     if (typeof hex !== "string") return hex; // already an {r,g,b}
     if (_hexCache[hex]) return _hexCache[hex];
     let h = hex.replace("#", "");
@@ -18,7 +18,7 @@ const hexToRgb = (hex) => {
     return o;
 };
 // Mix two colors (hex or {r,g,b}); returns {r,g,b}
-const mixRgb = (a, b, t) => {
+export const mixRgb = (a, b, t) => {
     const A = hexToRgb(a), B = hexToRgb(b);
     return {
         r: lerp(A.r, B.r, t),
@@ -26,24 +26,24 @@ const mixRgb = (a, b, t) => {
         b: lerp(A.b, B.b, t),
     };
 };
-const toRgb = (o) => `rgb(${o.r|0},${o.g|0},${o.b|0})`;
-const toRgba = (o, a) => {
+export const toRgb = (o) => `rgb(${o.r|0},${o.g|0},${o.b|0})`;
+export const toRgba = (o, a) => {
     const c = hexToRgb(o);
     return `rgba(${c.r|0},${c.g|0},${c.b|0},${a})`;
 };
 // Mix two colors -> rgb string (convenience)
-const mixCol = (a, b, t) => toRgb(mixRgb(a, b, t));
+export const mixCol = (a, b, t) => toRgb(mixRgb(a, b, t));
 // Lighten (>0) or darken (<0); returns rgb string
-const shade = (col, amt) => {
+export const shade = (col, amt) => {
     const c = hexToRgb(col);
     const f = amt < 0 ? { r: 0, g: 0, b: 0 } : { r: 255, g: 255, b: 255 };
     return toRgb(mixRgb(c, f, Math.abs(amt)));
 };
-const rgba = toRgba;
+export const rgba = toRgba;
 // 2-bone IK solver for articulated limbs. Returns the joint (knee/elbow)
 // position plus the (length-clamped) end position. bend = +1/-1 chooses
 // which way the joint folds.
-const ik2 = (rx, ry, tx, ty, l1, l2, bend) => {
+export const ik2 = (rx, ry, tx, ty, l1, l2, bend) => {
     let dx = tx - rx, dy = ty - ry;
     let d = Math.hypot(dx, dy) || 0.0001;
     const maxD = l1 + l2 - 0.01, minD = Math.abs(l1 - l2) + 0.01;
@@ -59,7 +59,7 @@ const ik2 = (rx, ry, tx, ty, l1, l2, bend) => {
         ex: rx + dx, ey: ry + dy,
     };
 };
-const formatTime = (s) => {
+export const formatTime = (s) => {
     const m = Math.floor(s / 60);
     const sec = Math.floor(s % 60);
     return m + ":" + (sec < 10 ? "0" : "") + sec;

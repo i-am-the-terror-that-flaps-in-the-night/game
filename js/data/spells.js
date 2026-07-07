@@ -1,5 +1,5 @@
 // --- DEFINITIONS ---
-const SPELLS = {
+export const SPELLS = {
     meteor: {
         name: "Meteor Strike",
         cost: 50,

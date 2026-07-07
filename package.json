@@ -1,0 +1,14 @@
+{
+  "name": "stickman-dominion-warlords",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Stickman Dominion: Warlords — a browser RTS/tower-defense. Static site (ES modules, no bundler).",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "serve": "python3 -m http.server 8000"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.0"
+  }
+}

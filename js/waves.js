@@ -1,4 +1,8 @@
-class WaveManager {
+import { CONFIG } from './config.js';
+import { LEVELS } from './data/levels.js';
+import { rand } from './utils.js';
+
+export class WaveManager {
     constructor(g, lvl) {
         this.g = g;
         this.wvs = JSON.parse(JSON.stringify(LEVELS[lvl].waves));
@@ -65,7 +69,7 @@ class WaveManager {
     }
 }
 
-class EndlessWave {
+export class EndlessWave {
     constructor(g) {
         this.g = g;
         this.wave = 0;

@@ -1,4 +1,5 @@
-const UNIT_TYPES = {
+/** @type {Record<string, EntityDef>} */
+export const UNIT_TYPES = {
     militia: {
         name: "Militia",
         hp: 80,

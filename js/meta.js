@@ -1,3 +1,5 @@
+import { UNIT_TYPES } from './data/units.js';
+
 // ─── META PROGRESSION (permanent unit unlocks) ───────────────────────
 // Renown is a persistent currency earned by clearing campaign regions and
 // surviving endless waves. Spend it in the War Council to permanently unlock
@@ -6,7 +8,7 @@
 //
 // Militia and Archer are always free; the eight advanced units below are the
 // permanent-unlock pool. Costs roughly track combat value.
-const ADVANCED_UNITS = [
+export const ADVANCED_UNITS = [
     { id: "swordsman", cost: 25,  icon: "🗡️" },
     { id: "spearman",  cost: 30,  icon: "🔱" },
     { id: "cleric",    cost: 40,  icon: "✨" },
@@ -17,7 +19,7 @@ const ADVANCED_UNITS = [
     { id: "paladin",   cost: 110, icon: "🛡️" },
 ];
 
-class MetaProgression {
+export class MetaProgression {
     constructor(g) {
         this.g = g;
         this.renown = 0;
