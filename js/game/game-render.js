@@ -420,6 +420,23 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
             vg.addColorStop(1, `rgba(200,0,0,${alpha2})`);
             ctx.fillStyle = vg; ctx.fillRect(0, 0, w, h);
         }
+        // Boss presence: the world dims under the Hollow Engine, and entrance /
+        // impact flashes wash the screen. Both are purely cosmetic overlays
+        // gated on the encounter state (no gameplay effect).
+        if (this.bossState === "active" || this.bossState === "warning") {
+            const pulse = (Math.sin(Date.now() * 0.003) + 1) * 0.5;
+            const a = 0.12 + pulse * 0.06;
+            const bv = ctx.createRadialGradient(w / 2, h * 0.46, h * 0.2, w / 2, h * 0.5, h * 0.95);
+            bv.addColorStop(0, "transparent");
+            bv.addColorStop(1, `rgba(38,10,58,${a})`);
+            ctx.fillStyle = bv;
+            ctx.fillRect(0, 0, w, h);
+        }
+        if (this.bossFlash > 0) {
+            ctx.fillStyle = `rgba(255,240,222,${Math.min(0.6, this.bossFlash)})`;
+            ctx.fillRect(0, 0, w, h);
+        }
+
         // Lightning arc rendering
         for (let i = this.lightningArcs.length - 1; i >= 0; i--) {
             const arc = this.lightningArcs[i];
