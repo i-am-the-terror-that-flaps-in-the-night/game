@@ -11,7 +11,11 @@ import { DecalSystem, EffectSystem, ParticleSystem, WeatherSystem } from '../sys
 
 // --- GAME: core state, lifecycle & main loop ---
 // (flow/economy/input/ui/render methods are mixed into Game.prototype
-//  from the other js/game/*.js files)
+//  from the other js/game/*.js files — see js/main.js for the boot ordering
+//  contract those mixins depend on.)
+// Constructor order is load-bearing: systems that others depend on (audio,
+// camera, spells) are built first; loadSave() runs before bindEvents(); and
+// bindEvents() runs before loop() starts the frame cycle.
 export class Game {
     constructor() {
         this.canvas = document.getElementById("gameCanvas");
