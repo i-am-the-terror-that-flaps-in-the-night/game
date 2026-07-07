@@ -41,7 +41,13 @@ interface EntityDef {
     summon?: boolean;
     scale?: number;
     color?: string;
-    visual?: string;
+    // The renderer (unit-render.js) dispatches on these visual tags; the union
+    // makes a mistyped value (e.g. "swrod") fail typecheck instead of silently
+    // falling through to the default stickman.
+    visual?:
+        | "bow" | "catapult" | "club" | "crossbow" | "dragon" | "dual"
+        | "horse" | "mage" | "spear" | "staff" | "sword" | "sword_shield"
+        | "tower_shield";
     desc?: string;
 }
 
