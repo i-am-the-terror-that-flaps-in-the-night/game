@@ -5,6 +5,7 @@ import { LEVELS } from '../data/levels.js';
 import { Building } from '../entities/building.js';
 import { MetaProgression } from '../systems/meta.js';
 import { SpellManager } from '../systems/spell-manager.js';
+import { loadJSON, saveJSON } from '../systems/storage.js';
 import { formatTime } from '../utils.js';
 import { DecalSystem, EffectSystem, ParticleSystem, WeatherSystem } from '../systems/vfx.js';
 
@@ -86,9 +87,7 @@ export class Game {
     // Fix #20: Local Storage Persistence
     loadSave() {
         try {
-            const s = JSON.parse(
-                localStorage.getItem("stickman_dominion_save"),
-            );
+            const s = loadJSON("stickman_dominion_save");
             if (s) {
                 this.maxUnlockedLevel = s.maxUnlockedLevel || 0;
                 this.bestEndlessWave = s.bestEndlessWave || 0;
@@ -115,16 +114,17 @@ export class Game {
     }
 
     saveGame() {
-        localStorage.setItem(
+        saveJSON(
             "stickman_dominion_save",
-            JSON.stringify({
+            {
                 maxUnlockedLevel: this.maxUnlockedLevel,
                 bestEndlessWave: this.bestEndlessWave,
                 volSound: document.getElementById("volSound").value,
                 volMusic: document.getElementById("volMusic").value,
                 pq: document.getElementById("particleQuality")
                     .value,
-            }),
+            },
+            { swallow: false },
         );
         document.getElementById("btnStartCampaign").innerText =
             `Resume Campaign (${this.maxUnlockedLevel + 1})`;
