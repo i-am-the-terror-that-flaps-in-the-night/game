@@ -3,7 +3,9 @@
 # part of the runtime.)
 tsconfig.json
 package.json
+package-lock.json
 types/
+tools/
 *.md
 .gitignore
 .assetsignore
