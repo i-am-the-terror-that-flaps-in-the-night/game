@@ -1,7 +1,7 @@
 import { CONFIG } from '../config.js';
 import { LEVELS } from '../data/levels.js';
 import { Game } from './game.js';
-import { clamp, mixCol, mixRgb, rand, rgba, shade, toRgb, toRgba } from '../utils.js';
+import { clamp, mixCol, mixRgb, particleQuality, rand, rgba, shade, toRgb, toRgba } from '../utils.js';
 
 // --- GAME: backdrop, foreground, post-FX & frame draw ---
 Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
@@ -87,7 +87,7 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
 
     drawBackdrop(ctx, w, h, cam, lvl, dP) {
         const sky = lvl.sky, gnd = lvl.ground;
-        const q = +(document.getElementById("particleQuality")?.value || 1);
+        const q = particleQuality();
         const sun = clamp(dP, 0, 1);
         const night = clamp(-dP, 0, 1);
         const dawn = clamp(1 - Math.abs(dP) * 1.7, 0, 1);
@@ -288,7 +288,7 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
     },
 
     drawForeground(ctx, w, h, cam, lvl, dP) {
-        const q = +(document.getElementById("particleQuality")?.value || 1);
+        const q = particleQuality();
         // Ambient drifting motes / embers in front of the action
         if (q >= 1) {
             ctx.save();
@@ -328,7 +328,7 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
             ctx.fillStyle = this._vignette;
             ctx.fillRect(0, 0, w, h);
         }
-        const q = +(document.getElementById("particleQuality")?.value || 1);
+        const q = particleQuality();
         if (q >= 1 && this._grainPat) {
             ctx.save();
             ctx.globalAlpha = 0.045;

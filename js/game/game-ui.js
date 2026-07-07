@@ -1,7 +1,6 @@
 import { CONFIG } from '../config.js';
-import { formatTime } from '../utils.js';
-import { describeMatchups, waveHint } from '../combat.js';
-import { TEAMS } from '../config.js';
+import { btnId, costStr, formatTime } from '../utils.js';
+import { defOf, describeMatchups, waveHint } from '../systems/combat.js';
 import { BUILDING_TYPES } from '../data/buildings.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { TECH_TREE } from '../data/tech.js';
@@ -101,11 +100,7 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
             return;
         }
         const s = this.sel,
-            d =
-                BUILDING_TYPES[s.type] ||
-                (s.team === TEAMS.PLAYER
-                    ? UNIT_TYPES[s.type]
-                    : ENEMY_TYPES[s.type]);
+            d = defOf(s);
         const mu = describeMatchups(d);
         e.innerHTML = `<strong style="color:var(--gold);font-size:15px; letter-spacing:1px; text-transform:uppercase;">${d ? d.name : "Unknown"}</strong><br>HP: ${Math.floor(s.hp)}/${s.maxHp}<br>${s.dmg ? "Damage: " + Math.round(s.dmg) + "<br>" : ""}${s.armor ? "Armor: " + s.armor + "<br>" : ""}${mu ? `<span style="font-size:12px;">${mu}</span>` : ""}`;
     },
@@ -216,31 +211,15 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
             (Date.now() - this.stats.start) / 1000,
         );
 
-        const bMap = {
-            militia: "btnMilitia",
-            swordsman: "btnSwordsman",
-            spearman: "btnSpearman",
-            archer: "btnArcher",
-            crossbow: "btnCrossbow",
-            cleric: "btnCleric",
-            knight: "btnKnight",
-            mage: "btnMage",
-            catapult: "btnCatapult",
-            paladin: "btnPaladin",
-        };
         // Which building unlocks each unit (for the lock label)
         const unlockedBy = {};
         for (const [bt, bd] of Object.entries(BUILDING_TYPES))
             if (bd.unlock)
                 bd.unlock.forEach((u) => (unlockedBy[u] = bd.name));
 
-        const costStr = (c) =>
-            `${c.g || 0}g` +
-            (c.i ? ` ${c.i}i` : "") +
-            (c.c ? ` ${c.c}c` : "");
-
-        for (const [t, id] of Object.entries(bMap)) {
-            const b = document.getElementById(id),
+        // Recruit buttons — one per unit type (ids derived from the data table).
+        for (const t of Object.keys(UNIT_TYPES)) {
+            const b = document.getElementById(btnId(t)),
                 d = UNIT_TYPES[t];
             if (!b) continue;
             const locked = !this.unlocked.u.has(t);
@@ -255,18 +234,9 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
                     ? `🔒 ${unlockedBy[t] || "?"}`
                     : costStr(cost);
         }
-        const blMap = {
-            mine: "btnMine",
-            barracks: "btnBarracks",
-            tower: "btnTower",
-            wall: "btnWall",
-            academy: "btnAcademy",
-            obelisk: "btnObelisk",
-            archery: "btnArchery",
-            forge: "btnForge",
-        };
-        for (const [t, id] of Object.entries(blMap)) {
-            const b = document.getElementById(id);
+        // Build buttons — castle has no button, so getElementById skips it.
+        for (const t of Object.keys(BUILDING_TYPES)) {
+            const b = document.getElementById(btnId(t));
             if (!b) continue;
             const cost = this.buildCost(t);
             b.disabled =

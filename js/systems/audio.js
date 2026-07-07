@@ -1,4 +1,4 @@
-import { randInt } from './utils.js';
+import { randInt } from '../utils.js';
 
 // --- AUDIO ENGINE ---
 export class AudioEngine {

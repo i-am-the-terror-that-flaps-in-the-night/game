@@ -1,7 +1,6 @@
-import { rgba } from '../utils.js';
 import { TEAMS } from '../config.js';
 import { Unit } from './unit.js';
-import { clamp, ik2, lerp, shade, toRgba } from '../utils.js';
+import { clamp, ik2, lerp, particleQuality, shade, toRgba } from '../utils.js';
 
 // --- UNIT RENDERING (stickman drawing, split from Unit class) ---
 Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
@@ -13,7 +12,7 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
         const p = cam.toScreen(this.x, this.y);
         const s = this.scale * cam.z;
         const f = this.facing;
-        const q = (() => { const el = document.getElementById("particleQuality"); return el ? parseFloat(el.value || 1) : 1; })();
+        const q = particleQuality();
         const lowQ = q < 1;
 
         // ── Animation drivers ──

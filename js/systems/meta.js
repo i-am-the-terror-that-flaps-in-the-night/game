@@ -1,4 +1,4 @@
-import { UNIT_TYPES } from './data/units.js';
+import { UNIT_TYPES } from '../data/units.js';
 
 // ─── META PROGRESSION (permanent unit unlocks) ───────────────────────
 // Renown is a persistent currency earned by clearing campaign regions and
@@ -48,8 +48,6 @@ export class MetaProgression {
             }));
         } catch (e) { /* storage unavailable */ }
     }
-
-    isUnlocked(id) { return this.unlocked.has(id); }
 
     addRenown(n) {
         n = Math.floor(n);

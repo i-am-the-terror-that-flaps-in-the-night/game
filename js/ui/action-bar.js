@@ -10,28 +10,26 @@
 // btn.id and queries .unit-btn).
 import { UNIT_TYPES } from '../data/units.js';
 import { BUILDING_TYPES } from '../data/buildings.js';
+import { btnId, cap, costStr } from '../utils.js';
 
-// [type, hotkey-display-char] in on-screen order.
-const UNIT_ROSTER = [
+// [type, hotkey-display-char] in on-screen order. Exported as the single source
+// of the roster + hotkeys — game-input.js derives its keyboard map from these.
+export const UNIT_ROSTER = [
     ['militia', '1'], ['swordsman', '2'], ['spearman', '3'], ['archer', '4'],
     ['crossbow', '5'], ['cleric', '6'], ['knight', '7'], ['mage', '8'],
     ['catapult', '9'], ['paladin', '0'],
 ];
-const BUILDING_ROSTER = [
+export const BUILDING_ROSTER = [
     ['mine', 'Q'], ['barracks', 'W'], ['tower', 'E'], ['wall', 'R'],
     ['academy', 'T'], ['obelisk', 'F'], ['archery', 'G'], ['forge', 'H'],
 ];
 // Per-button accent modifiers (premium/fire units).
 const MODIFIER = { paladin: ' btn--gold', forge: ' btn--ember' };
 
-const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
-const costStr = (c) =>
-    `${c.g || 0}g` + (c.i ? ` ${c.i}i` : '') + (c.c ? ` ${c.c}c` : '');
-
 function unitButton([type, key]) {
     const mod = MODIFIER[type] || '';
     return (
-        `<button class="btn unit-btn${mod}" id="btn${cap(type)}"` +
+        `<button class="btn unit-btn${mod}" id="${btnId(type)}"` +
         ` oncontextmenu="game.toggleAuto('${type}'); return false;"` +
         ` onclick="game.buyUnit('${type}')">` +
         `${cap(type)}<span class="hotkey">${key}</span>` +
@@ -42,7 +40,7 @@ function unitButton([type, key]) {
 function buildingButton([type, key]) {
     const mod = MODIFIER[type] || '';
     return (
-        `<button class="btn bldg-btn${mod}" id="btn${cap(type)}"` +
+        `<button class="btn bldg-btn${mod}" id="${btnId(type)}"` +
         ` onclick="game.build('${type}')">` +
         `${cap(type)}<span class="hotkey">${key}</span>` +
         `<span class="cost">${costStr(BUILDING_TYPES[type].cost)}</span></button>`

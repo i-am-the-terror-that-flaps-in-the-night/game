@@ -2,7 +2,7 @@ import { TEAMS } from '../config.js';
 import { LEVELS } from '../data/levels.js';
 import { Building } from '../entities/building.js';
 import { Game } from './game.js';
-import { EndlessWave, WaveManager } from '../waves.js';
+import { EndlessWave, WaveManager } from '../systems/waves.js';
 
 // --- GAME: campaign / endless / level flow ---
 Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({

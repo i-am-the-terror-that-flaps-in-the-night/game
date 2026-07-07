@@ -1,5 +1,5 @@
-import { CONFIG } from './config.js';
-import { lerp, rand, randInt, toRgba } from './utils.js';
+import { CONFIG } from '../config.js';
+import { lerp, particleQuality, rand, randInt, toRgba } from '../utils.js';
 
 // --- VISUAL SYSTEMS ---
 export class DecalSystem {
@@ -66,9 +66,7 @@ export class ParticleSystem {
         this.p = [];
     }
     emit(x, y, c, color, sp, sz, type) {
-        const q = parseFloat(
-            document.getElementById("particleQuality").value || 1,
-        );
+        const q = particleQuality();
         c = Math.floor(c * q);
         for (let i = 0; i < c; i++) {
             const a = rand(0, Math.PI * 2),
@@ -137,10 +135,6 @@ export class ParticleSystem {
 // impact shockwave rings, hit flashes and directional spark bursts.
 export class EffectSystem {
     constructor() { this.e = []; }
-    _q() {
-        const el = document.getElementById("particleQuality");
-        return el ? parseFloat(el.value || 1) : 1;
-    }
     slash(x, y, ang, opt = {}) {
         this.e.push({
             type: "slash", x, y, ang,
@@ -166,7 +160,7 @@ export class EffectSystem {
         });
     }
     spark(x, y, ang, opt = {}) {
-        if (this._q() < 1 && Math.random() < 0.5) return;
+        if (particleQuality() < 1 && Math.random() < 0.5) return;
         const n = opt.n || 5, spread = opt.spread || 0.6, len = opt.len || 16;
         const rays = [];
         for (let k = 0; k < n; k++)
@@ -254,9 +248,7 @@ export class WeatherSystem {
     }
     update(dt, cam) {
         if (this.type === "none") return;
-        const q = parseFloat(
-            document.getElementById("particleQuality").value || 1,
-        );
+        const q = particleQuality();
         const count = this.type === "rain" ? 4 * q : 2 * q;
 
         for (let i = 0; i < count * dt; i++) {

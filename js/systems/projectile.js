@@ -1,6 +1,6 @@
 import { resolveDamage } from './combat.js';
-import { CONFIG, TEAMS } from './config.js';
-import { dist, rand, shade } from './utils.js';
+import { CONFIG, TEAMS } from '../config.js';
+import { dist, rand, shade } from '../utils.js';
 
 // --- PROJECTILES & MAGIC ---
 export class Projectile {

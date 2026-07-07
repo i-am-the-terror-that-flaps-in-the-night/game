@@ -9,7 +9,7 @@ import './game/game-render.js';
 import './entities/unit-render.js';
 
 import { Game } from './game/game.js';
-import { AchievementSystem } from './achievements.js';
+import { AchievementSystem } from './systems/achievements.js';
 import { renderActionBar } from './ui/action-bar.js';
 
 // Build the recruit/build buttons from UNIT_TYPES/BUILDING_TYPES before the

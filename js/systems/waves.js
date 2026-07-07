@@ -1,6 +1,6 @@
-import { CONFIG } from './config.js';
-import { LEVELS } from './data/levels.js';
-import { rand } from './utils.js';
+import { CONFIG } from '../config.js';
+import { LEVELS } from '../data/levels.js';
+import { rand } from '../utils.js';
 
 export class WaveManager {
     constructor(g, lvl) {

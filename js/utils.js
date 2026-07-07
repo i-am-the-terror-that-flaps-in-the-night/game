@@ -64,3 +64,17 @@ export const formatTime = (s) => {
     const sec = Math.floor(s % 60);
     return m + ":" + (sec < 10 ? "0" : "") + sec;
 };
+
+// --- UI / DATA HELPERS ---
+// Capitalize the first letter (unit/building/spell type -> display / id fragment).
+export const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+// The action-bar button id for a unit/building type (e.g. "militia" -> "btnMilitia").
+export const btnId = (type) => "btn" + cap(type);
+// Format a { g, i, c } cost object as "10g 5i 2c" (omitting zero components).
+export const costStr = (c) =>
+    `${c.g || 0}g` + (c.i ? ` ${c.i}i` : "") + (c.c ? ` ${c.c}c` : "");
+// Current particle-quality multiplier from the settings <select> (defaults to 1).
+export const particleQuality = () => {
+    const el = document.getElementById("particleQuality");
+    return el ? parseFloat(el.value) || 1 : 1;
+};

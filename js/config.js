@@ -13,7 +13,6 @@ export const CONFIG = {
 
 export const TEAMS = { PLAYER: 1, ENEMY: 2 };
 export const RESOURCES = {
-    START_GOLD: 150,
     START_IRON: 0,
     START_CRYSTAL: 0,
     MAX_MANA: 100,

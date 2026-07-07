@@ -1,9 +1,9 @@
-import { resolveDamage } from '../combat.js';
+import { resolveDamage } from '../systems/combat.js';
 import { CONFIG, TEAMS } from '../config.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { UNIT_TYPES } from '../data/units.js';
 import { Entity } from './entity.js';
-import { Projectile } from '../projectile.js';
+import { Projectile } from '../systems/projectile.js';
 import { clamp, dist, rand, randInt } from '../utils.js';
 
 export class Unit extends Entity {
@@ -56,11 +56,6 @@ export class Unit extends Entity {
         this.xp = 0;
         this.level = 1;
         this.xpNeeded = 60;
-        // ── Paladin self-heal ──
-        const ud = team === TEAMS.PLAYER ? UNIT_TYPES[type] : null;
-        this.selfHealAmt = (ud && ud.selfHeal) || 0;
-        this.selfHealCd  = (ud && ud.selfHealCd)  || 0;
-        this.selfHealTimer = 0;
         // ── Combat animation state ──
         this.atk = 0;        // melee/ranged swing energy (1 -> 0)
         this.atkKind = 0;    // 1 = melee swing, 2 = ranged draw
@@ -117,16 +112,6 @@ export class Unit extends Entity {
         if (this.recoil !== 0) {
             this.recoil *= Math.pow(0.78, dt);
             if (Math.abs(this.recoil) < 0.2) this.recoil = 0;
-        }
-
-        // Paladin / self-healer tick
-        if (this.selfHealAmt > 0 && this.hp > 0 && this.hp < this.maxHp) {
-            if (this.selfHealTimer > 0) this.selfHealTimer -= dt;
-            else {
-                this.heal(this.selfHealAmt);
-                game.particles.emit(this.x, this.y - 25, 6, '#fde047', 2, 3, 'float');
-                this.selfHealTimer = this.selfHealCd;
-            }
         }
 
         if (this.healAmt > 0) {
