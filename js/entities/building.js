@@ -17,6 +17,10 @@ export class Building extends Entity {
         this.income = def.income || {};
         this.dmg = def.dmg || 0;
         this.range = def.range || 0;
+        // Anti-air: some structures (the castle) reach much farther against
+        // flying foes than against ground troops, and hit them harder.
+        this.flyRange = def.flyRange || 0;
+        this.vsFlying = def.vsFlying || 0;
         this.cooldown = def.cooldown || 0;
         this.cdTimer = 0;
         this.projType = def.projectile || "bolt";
@@ -62,16 +66,25 @@ export class Building extends Entity {
                         ? game.enemies
                         : game.units;
                 let c = null,
-                    cd = this.range;
+                    cd = Infinity;
                 for (const t of trgs) {
                     if (t.hp <= 0) continue;
+                    // Flyers can be engaged from farther out (flak-fire); ground
+                    // targets use the normal, shorter range.
+                    const reach =
+                        t.flying && this.flyRange
+                            ? this.flyRange
+                            : this.range;
                     const d = Math.abs(t.x - this.x);
-                    if (d < cd) {
+                    if (d <= reach && d < cd) {
                         cd = d;
                         c = t;
                     }
                 }
                 if (c) {
+                    const opts = {};
+                    if (this.projDmgType) opts.dmgType = this.projDmgType;
+                    if (this.vsFlying) opts.vsFlying = this.vsFlying;
                     game.projectiles.push(
                         new Projectile(
                             this.x,
@@ -83,9 +96,7 @@ export class Building extends Entity {
                             this.projAoe,
                             0,
                             false,
-                            this.projDmgType
-                                ? { dmgType: this.projDmgType }
-                                : undefined,
+                            Object.keys(opts).length ? opts : undefined,
                         ),
                     );
                     game.audio.playShoot();

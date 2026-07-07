@@ -51,6 +51,9 @@ export function resolveDamage(base, src, target) {
         if (src.armorPierce && (ac === "heavy" || ac === "shield")) ac = "light";
         mult *= (COUNTER_TABLE[src.dmgType || "slash"] || COUNTER_TABLE.slash)[ac] || 1;
         if (src.vsLarge && target.large) mult *= src.vsLarge;
+        // Anti-air: arrows/bolts and the castle's battlements bite far harder
+        // into airborne foes (Dragons) than melee ever could.
+        if (src.vsFlying && target.flying) mult *= src.vsFlying;
 
         const f = typeof game !== "undefined" && FORMATION_MODS[game.formation];
         if (f) {
@@ -74,6 +77,7 @@ export function describeMatchups(def) {
     let s = `⚔ ${DAMAGE_LABELS[def.dmgType]} · 🛡 ${ARMOR_LABELS[def.armorClass || "none"]}`;
     if (def.armorPierce) s += " · punches through armor";
     if (def.vsLarge) s += ` · ×${def.vsLarge} vs large foes`;
+    if (def.vsFlying) s += ` · ×${def.vsFlying} vs flying`;
     if (strong.length) s += `<br><span style="color:#4ade80">Strong vs ${strong.join(", ")}</span>`;
     if (weak.length) s += `<br><span style="color:#f87171">Weak vs ${weak.join(", ")}</span>`;
     return s;
@@ -82,7 +86,7 @@ export function describeMatchups(def) {
 // One-line tactical tip for a wave composition ([{t, c}]), keyed off the most
 // dangerous enemy type present.
 export const WAVE_HINTS = [
-    ["dragon",      "Dragons fly — only ranged attacks connect. Crossbows pierce their hide."],
+    ["dragon",      "Dragons fly — melee can't reach them. Archers and Crossbows hit them hard, and your Castle's flak scorches them from range."],
     ["necromancer", "Necromancers raise skeletons — kill them before the dead pile up."],
     ["ogre",        "Ogres wear heavy armor — Spearmen and Crossbows pierce it; keep militia away."],
     ["shieldman",   "Shield wall — arrows bounce off. Crack it with Blunt (Catapult, Paladin) or Magic."],
