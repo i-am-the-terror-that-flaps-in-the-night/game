@@ -1,11 +1,13 @@
 // ── Data-driven action bar ───────────────────────────────────────────
 // Generates the 10 recruit buttons and 8 build buttons from UNIT_TYPES /
 // BUILDING_TYPES instead of hand-written HTML, so cost/roster live in one place
-// (js/data/*.js). The generated markup is byte-equivalent to the old inline
-// buttons — same ids (btn<Capitalized>), classes (.btn .unit-btn / .bldg-btn),
-// .hotkey/.cost spans, and onclick/oncontextmenu handlers — because game-ui.js
-// updates .cost/.disabled every frame and game-input.js derives the unit type
-// from btn.id and queries .unit-btn.
+// (js/data/*.js). The generated buttons are functionally equivalent to the old
+// inline ones — identical DOM (same ids btn<Capitalized>, classes .btn
+// .unit-btn / .bldg-btn, .hotkey/.cost spans, onclick/oncontextmenu handlers),
+// differing only in source formatting (compact single line vs the original's
+// indented multi-line). That contract is what game-ui.js relies on (updates
+// .cost/.disabled by id every frame) and game-input.js (derives unit type from
+// btn.id and queries .unit-btn).
 import { UNIT_TYPES } from '../data/units.js';
 import { BUILDING_TYPES } from '../data/buildings.js';
 
