@@ -131,6 +131,18 @@ try {
     ok(keys.selected === 'meteor', 'KeyZ selects meteor (data-driven keybind)');
     ok(keys.afterEscape === null, 'Escape cancels spell selection');
 
+    // Campaign victory gate: scheduled-but-unspawned enemies keep pending > 0
+    // and isComplete() false (checked synchronously, before any spawn fires).
+    const pend = await page.evaluate(() => {
+        game.returnToMenu();
+        game.startCampaignWithDiff(1.0);
+        const before = game.waveM.pending;
+        game.callWave();
+        return { before, after: game.waveM.pending, complete: game.waveM.isComplete() };
+    });
+    ok(pend.before === 0 && pend.after > 0, 'campaign tracks pending spawns');
+    ok(pend.complete === false, 'isComplete() false while spawns pending (no premature victory)');
+
     // ── 4. Lifecycle: endless + defeat ───────────────────────────────────
     console.log('\n[lifecycle]');
     await page.evaluate(() => game.returnToMenu());
