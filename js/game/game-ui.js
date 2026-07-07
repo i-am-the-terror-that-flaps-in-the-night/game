@@ -2,6 +2,7 @@ import { CONFIG } from '../config.js';
 import { el } from '../ui/dom.js';
 import { btnId, costStr, formatTime } from '../utils.js';
 import { defOf, describeMatchups, waveHint } from '../systems/combat.js';
+import { clearSaves } from '../systems/storage.js';
 import { BUILDING_TYPES } from '../data/buildings.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { TECH_TREE } from '../data/tech.js';
@@ -66,6 +67,20 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
         this.audio.updateVols();
         el("settingsOverlay").classList.add("hidden");
         this.saveGame();
+    },
+
+    // Erase all persisted progress (campaign, endless records, renown &
+    // unlocks, achievements). Confirm first, then reload so every system
+    // rebuilds from defaults instead of leaving stale in-memory state.
+    resetSaves() {
+        const ok = window.confirm(
+            "Reset all progress?\n\n" +
+                "This permanently erases campaign progress, endless records, " +
+                "renown, unit unlocks, and achievements. This cannot be undone.",
+        );
+        if (!ok) return;
+        clearSaves();
+        location.reload();
     },
 
     showHelp() {

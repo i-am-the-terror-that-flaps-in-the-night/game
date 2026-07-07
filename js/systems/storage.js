@@ -24,3 +24,24 @@ export function saveJSON(key, value, { swallow = true } = {}) {
         /* storage unavailable */
     }
 }
+
+// Every localStorage key the game persists. Keep in sync with the load/save
+// sites: game.js (campaign progress + settings), meta.js (renown/unlocks/
+// cleared), and achievements.js (unlocked achievements).
+export const SAVE_KEYS = [
+    "stickman_dominion_save",
+    "sd_meta_v1",
+    "sd_ach_v2",
+];
+
+// Wipe every persisted save. Backs the Settings "Reset Progress" option;
+// callers reload afterwards so in-memory state rebuilds from defaults.
+export function clearSaves() {
+    SAVE_KEYS.forEach((k) => {
+        try {
+            localStorage.removeItem(k);
+        } catch (e) {
+            /* storage unavailable */
+        }
+    });
+}
