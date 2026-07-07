@@ -9,6 +9,11 @@ export class SpellManager {
         this.mana = 100;
         this.maxMana = 100;
         this.dynamicRegen = 0;
+    }
+    // Register spell input listeners. Called from Game.bindEvents() so every
+    // event binding lives in one place; the canvas must exist (it does — the
+    // Game constructor builds it before bindEvents runs).
+    bindInput() {
         document.addEventListener("keydown", (e) => {
             if (
                 typeof game !== "undefined" &&

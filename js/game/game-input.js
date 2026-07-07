@@ -15,6 +15,12 @@ const KEY_MAP = Object.fromEntries(
 // --- GAME: event binding, spell selection & formations ---
 Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
     bindEvents() {
+        // Spell input registers first (it did so at SpellManager construction
+        // before this refactor); the two canvas mousedown handlers are mutually
+        // exclusive (this one bails when a spell is active, the spell one only
+        // acts when a spell is active), so order is not observable regardless.
+        this.spells.bindInput();
+
         // Native hover titles on the recruit/build bars explaining each role
         Object.entries(UNIT_TYPES).forEach(([t, d]) => {
             const btn = document.getElementById(btnId(t));
