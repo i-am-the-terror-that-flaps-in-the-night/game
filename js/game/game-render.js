@@ -1,10 +1,9 @@
 import { CONFIG } from '../config.js';
 import { LEVELS } from '../data/levels.js';
-import { Game } from './game.js';
 import { clamp, mixCol, mixRgb, particleQuality, rand, rgba, shade, toRgb, toRgba } from '../utils.js';
 
-// --- GAME: backdrop, foreground, post-FX & frame draw ---
-Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
+// --- GAME: backdrop, foreground, post-FX & frame draw (installed by install-mixins.js) ---
+export const renderMethods = /** @type {ThisType<any>} */ ({
 
     // ─── CINEMATIC ENVIRONMENT ──────────────────────────────
     _buildBackdropCache() {
@@ -454,4 +453,4 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
         ctx.restore();
         this.drawMinimap();
     },
-}));
+});

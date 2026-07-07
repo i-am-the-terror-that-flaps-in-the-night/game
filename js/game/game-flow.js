@@ -1,11 +1,11 @@
 import { TEAMS } from '../config.js';
 import { LEVELS } from '../data/levels.js';
 import { Building } from '../entities/building.js';
-import { Game } from './game.js';
 import { EndlessWave, WaveManager } from '../systems/waves.js';
 
-// --- GAME: campaign / endless / level flow ---
-Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
+// --- GAME: campaign / endless / level flow (installed onto Game.prototype by
+// install-mixins.js) ---
+export const flowMethods = /** @type {ThisType<any>} */ ({
     startCampaign() {
         this.audio.init();
         this.audio.startMusic();
@@ -75,4 +75,4 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
             this.returnToMenu();
         }
     },
-}));
+});

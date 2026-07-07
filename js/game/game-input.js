@@ -4,7 +4,6 @@ import { BUILDING_TYPES } from '../data/buildings.js';
 import { UNIT_TYPES } from '../data/units.js';
 import { btnId } from '../utils.js';
 import { BUILDING_ROSTER, UNIT_ROSTER } from '../ui/action-bar.js';
-import { Game } from './game.js';
 
 // Hotkey -> unit/building type, derived from the on-screen roster so the
 // keyboard bindings and the action-bar share a single source of truth.
@@ -12,8 +11,8 @@ const KEY_MAP = Object.fromEntries(
     [...UNIT_ROSTER, ...BUILDING_ROSTER].map(([type, disp]) => [disp.toLowerCase(), type]),
 );
 
-// --- GAME: event binding, spell selection & formations ---
-Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
+// --- GAME: event binding, spell selection & formations (installed by install-mixins.js) ---
+export const inputMethods = /** @type {ThisType<any>} */ ({
     bindEvents() {
         // Spell input registers first (it did so at SpellManager construction
         // before this refactor); the two canvas mousedown handlers are mutually
@@ -194,4 +193,4 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
             if (b) b.classList.toggle('active', id === f);
         });
     },
-}));
+});

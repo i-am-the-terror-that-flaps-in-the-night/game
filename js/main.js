@@ -1,16 +1,18 @@
 // ── Entry point (ES module) ──────────────────────────────────────────
-// Import the prototype-mixin modules for their side effects so Game.prototype
-// and Unit.prototype are fully assembled BEFORE anything is instantiated.
-import './game/game-flow.js';
-import './game/game-economy.js';
-import './game/game-input.js';
-import './game/game-ui.js';
-import './game/game-render.js';
+// install-mixins assembles Game.prototype from the game/*.js concern modules in
+// one place; unit-render is imported for its side effect (Unit.prototype.draw).
+// Both must run BEFORE anything is instantiated.
+import './game/install-mixins.js';
 import './entities/unit-render.js';
 
 import { Game } from './game/game.js';
 import { AchievementSystem } from './systems/achievements.js';
 import { renderActionBar } from './ui/action-bar.js';
+
+// Fail loud and early if the prototype was not assembled (e.g. an import was
+// dropped), instead of a confusing "game.bindEvents is not a function" at boot.
+if (typeof Game.prototype.bindEvents !== 'function')
+    throw new Error('Game mixins not installed — check js/game/install-mixins.js');
 
 // ── Boot ordering contract (load-bearing — do not reorder) ───────────
 // 1. The side-effect imports above install every Game.prototype / Unit.prototype

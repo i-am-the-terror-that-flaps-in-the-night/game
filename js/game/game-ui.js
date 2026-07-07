@@ -6,10 +6,9 @@ import { BUILDING_TYPES } from '../data/buildings.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { TECH_TREE } from '../data/tech.js';
 import { UNIT_TYPES } from '../data/units.js';
-import { Game } from './game.js';
 
-// --- GAME: panels, notifications, HUD & minimap ---
-Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
+// --- GAME: panels, notifications, HUD & minimap (installed by install-mixins.js) ---
+export const uiMethods = /** @type {ThisType<any>} */ ({
     openTechTree() {
         if (this.state !== "playing") return;
         this.setSpeed(0);
@@ -291,4 +290,4 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
             mh - 2,
         );
     },
-}));
+});
