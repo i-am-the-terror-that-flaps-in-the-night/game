@@ -280,6 +280,13 @@ export const LEVELS = [
                     { t: "berserker", c: 30 },
                 ],
             },
+            {
+                // Campaign finale: the dragon storm breaks and Rustmaw, the
+                // Hollow Engine, tears onto the field as the last stand.
+                time: 265,
+                enemies: [{ t: "ogre", c: 3 }],
+                boss: true,
+            },
         ],
         startGold: 900,
         reward: 600,

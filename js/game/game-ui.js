@@ -98,6 +98,7 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
     },
 
     updateUI() {
+        this.updateBossBar(); // sync boss health bar while an encounter is live
         el("goldDisplay").innerText = Math.floor(this.gold);
         // Income per second display
         const incomeMult2 = 1 + (this.upgrades.income || 0);
@@ -275,7 +276,12 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
             }
         });
         this.enemies.forEach((e) => {
-            if (e.active) {
+            if (!e.active) return;
+            if (e.isBoss) {
+                // The boss gets a larger, unmistakable marker.
+                cx.fillStyle = "#a855f7";
+                cx.fillRect(e.x * sX - 3, mh - 13, 6, 11);
+            } else {
                 cx.fillStyle = "#ef4444";
                 cx.fillRect(e.x * sX, mh - 8, 2, 4);
             }

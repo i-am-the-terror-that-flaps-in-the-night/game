@@ -32,4 +32,15 @@ export const PROJECTILE_TYPES = {
         summon: true,
         defaultDmgType: "magic",
     },
+    // Corrupted furnace ember hurled by the boss "Rustmaw" — a slow, glowing
+    // AoE magic bolt (splash radius supplied by the boss, per the note above).
+    cinder: {
+        sp: 7,
+        c: "#fb923c",
+        sz: 6,
+        arc: true,
+        aoe: true,
+        glow: true,
+        defaultDmgType: "magic",
+    },
 };
