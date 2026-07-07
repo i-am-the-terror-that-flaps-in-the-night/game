@@ -12,7 +12,6 @@ export const SPELLS = {
         name: "Blizzard",
         cost: 40,
         radius: 220,
-        duration: 300,
         color: "#38bdf8",
         desc: "Freezes enemies and deals DOT.",
     },

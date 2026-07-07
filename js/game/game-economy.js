@@ -5,7 +5,7 @@ import { UNIT_TYPES } from '../data/units.js';
 import { Building } from '../entities/building.js';
 import { Unit } from '../entities/unit.js';
 import { Game } from './game.js';
-import { rand } from '../utils.js';
+import { btnId, rand } from '../utils.js';
 
 // --- GAME: resources, recruiting, building & tech ---
 Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
@@ -57,9 +57,7 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
     toggleAuto(type) {
         if (!this.unlocked.u.has(type)) return;
         this.autoQueue[type] = !this.autoQueue[type];
-        const btn = document.getElementById(
-            "btn" + type.charAt(0).toUpperCase() + type.slice(1),
-        );
+        const btn = document.getElementById(btnId(type));
         if (this.autoQueue[type]) {
             btn.classList.add("auto-queued");
             this.audio.playTone(800, 0.1, "sine", 0.1);

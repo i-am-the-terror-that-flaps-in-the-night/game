@@ -1,6 +1,6 @@
-import { CONFIG, RESOURCES } from './config.js';
-import { SPELLS } from './data/spells.js';
-import { dist, rand } from './utils.js';
+import { CONFIG, RESOURCES } from '../config.js';
+import { SPELLS } from '../data/spells.js';
+import { cap, dist, rand } from '../utils.js';
 
 export class SpellManager {
     constructor() {
@@ -18,11 +18,7 @@ export class SpellManager {
             if (e.code === "KeyX") this.select("blizzard");
             if (e.code === "KeyC") this.select("heal");
             if (e.code === "KeyV") this.select("lightning");
-            // NOTE: e.button is always undefined on a keydown event, so the
-            // right-click branch is a pre-existing no-op (kept as-is; behavior
-            // change is out of scope). Cast silences the checkJs flag.
-            if (e.code === "Escape" || /** @type {any} */ (e).button === 2)
-                this.cancel();
+            if (e.code === "Escape") this.cancel();
         });
         document
             .getElementById("gameCanvas")
@@ -71,10 +67,8 @@ export class SpellManager {
         document.getElementById("manaDisplay").innerText =
             Math.floor(this.mana) + "/" + this.maxMana;
 
-        ["meteor", "blizzard", "heal", "lightning"].forEach((s) => {
-            const btn = document.getElementById(
-                "btnSpell" + s.charAt(0).toUpperCase() + s.slice(1),
-            );
+        Object.keys(SPELLS).forEach((s) => {
+            const btn = document.getElementById("btnSpell" + cap(s));
             if (btn) btn.disabled = this.mana < SPELLS[s].cost;
         });
     }
@@ -88,11 +82,7 @@ export class SpellManager {
             .querySelectorAll(".spell-btn")
             .forEach((b) => b.classList.remove("active-spell"));
         document
-            .getElementById(
-                "btnSpell" +
-                    spellId.charAt(0).toUpperCase() +
-                    spellId.slice(1),
-            )
+            .getElementById("btnSpell" + cap(spellId))
             .classList.add("active-spell");
         const overlay = document.getElementById("targetOverlay");
         overlay.style.display = "block";

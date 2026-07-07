@@ -1,5 +1,5 @@
-import { CONFIG } from './config.js';
-import { clamp } from './utils.js';
+import { CONFIG } from '../config.js';
+import { clamp } from '../utils.js';
 
 // --- SYSTEMS ---
 export class Camera {

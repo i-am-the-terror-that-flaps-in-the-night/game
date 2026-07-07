@@ -127,7 +127,6 @@ export const ENEMY_TYPES = {
         armor: 2,
         ranged: true,
         projectile: "skull",
-        summon: true,
         dmgType: "magic",
         armorClass: "light",
         desc: "Raises skeletons endlessly. The longer he lives, the worse it gets.",

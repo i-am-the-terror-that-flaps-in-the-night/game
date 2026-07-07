@@ -17,7 +17,6 @@
     --accent-dim: rgba(45, 226, 255, 0.5);
     --teal: #2dd4bf;              /* secondary lead */
     --magenta: #e64bff;           /* tertiary accent (spells / alerts) */
-    --electric-blue: #3b82f6;     /* legacy blue, kept available */
 
     /* ---- currency / semantic (names preserved for JS/inline refs) ---- */
     --gold: #fbbf24;
@@ -39,7 +38,6 @@
 
     /* ---- radius (angular = small) ---- */
     --r-sm: 3px; --r-md: 6px; --r-lg: 10px; --r-pill: 999px;
-    --notch: 12px;
 
     /* ---- borders / glow / shadow ---- */
     --edge: 1px solid var(--panel-border);

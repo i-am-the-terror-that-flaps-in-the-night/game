@@ -10,13 +10,12 @@ css/
   base.css            Fonts + the full design-token layer (:root), resets, canvas
   hud.css             In-game HUD: holo-panels, resource bar, tabbed action bar, minimap
   menus.css           Overlays & menus, tooltips, notifications, tech tree, dialog classes
-  components.css      Small widgets: vignette, formation bar, difficulty, achievements
+  components.css      Small widgets: formation bar, wave preview, difficulty, achievements
   responsive.css      Mobile/tablet breakpoints (target the .dialog--* classes)
   home.css            Home screen: data-motes, title, menu buttons
 js/
   config.js           CONFIG, TEAMS, RESOURCES constants
-  combat.js           Counter system: damage types × armor classes, formation mods, wave hints
-  meta.js             MetaProgression: Renown currency + permanent unit unlocks (War Council)
+  utils.js            Math/color helpers + shared UI helpers (cap, btnId, costStr, particleQuality)
   data/               Pure data definitions (balance lives here)
     spells.js         SPELLS
     units.js          UNIT_TYPES (player roster)
@@ -24,28 +23,30 @@ js/
     buildings.js      BUILDING_TYPES
     tech.js           TECH_TREE
     levels.js         LEVELS (campaign definitions)
-  utils.js            Math/color helpers
-  audio.js            AudioEngine (WebAudio SFX/music)
-  vfx.js              DecalSystem, ParticleSystem, EffectSystem, WeatherSystem
-  projectile.js       Projectile physics & rendering
   entities/
     entity.js         Entity base class
     building.js       Building
     unit.js           Unit logic: stats, XP, AI update, combat
     unit-render.js    Unit.draw — stickman rendering (mixed into Unit.prototype)
-  camera.js           Camera
-  spell-manager.js    SpellManager (targeting & casting)
+  systems/            Engine & progression systems (no per-entity or Game state)
+    combat.js         Counter system + resolveDamage/defOf (damage×armor, formations, wave hints)
+    audio.js          AudioEngine (WebAudio SFX/music)
+    vfx.js            DecalSystem, ParticleSystem, EffectSystem, WeatherSystem
+    projectile.js     Projectile physics & rendering
+    camera.js         Camera
+    spell-manager.js  SpellManager (targeting & casting)
+    waves.js          WaveManager, EndlessWave
+    achievements.js   ACHIEVEMENTS + AchievementSystem
+    meta.js           MetaProgression: Renown currency + permanent unit unlocks (War Council)
   game/               The Game class, split by concern
     game.js           Core state, save/load, update loop, victory/defeat
     game-flow.js      Campaign/endless/level flow (mixin)
     game-economy.js   Gold/iron/crystal, recruiting, building, tech (mixin)
-    game-input.js     Event binding, spell selection, formations (mixin)
+    game-input.js     Event binding, entity picking, spell selection, formations (mixin)
     game-ui.js        Panels, notifications, HUD updates, minimap (mixin)
     game-render.js    Backdrop, foreground, post-FX, frame draw (mixin)
   ui/
-    action-bar.js     Generates the 18 recruit/build buttons from the data tables
-  waves.js            WaveManager, EndlessWave
-  achievements.js     ACHIEVEMENTS + AchievementSystem
+    action-bar.js     Generates the 18 recruit/build buttons + the roster/hotkey source
   main.js             ES-module entry: renders the action bar, creates the Game
 types/                Ambient TS declarations for the type-check gate
   globals.d.ts        `game` global + DOM widening
@@ -84,7 +85,7 @@ expects.
 
 Combat is deterministic — no crits, no dice. Every unit has a damage type
 (slash / pierce / blunt / magic) and an armor class (unarmored / light /
-heavy / shielded); `js/combat.js` holds the counter table and the single
+heavy / shielded); `js/systems/combat.js` holds the counter table and the single
 `resolveDamage()` used by melee, projectiles, and towers. Spamming one unit
 is punished twice: waves are themed around armor classes that hard-counter
 monocultures, and recruiting the same unit repeatedly costs +18% per living
@@ -112,7 +113,7 @@ given an attack; towers are unaffected since they don't set those fields.
 
 ## Meta progression
 
-`js/meta.js` (`MetaProgression`, mirrors `AchievementSystem`) adds a
+`js/systems/meta.js` (`MetaProgression`, mirrors `AchievementSystem`) adds a
 persistent **Renown** currency saved under `sd_meta_v1`. Clearing a campaign
 region (`victory()`) and reaching each endless wave (`EndlessWave.update`)
 bank Renown immediately. The home-screen **War Council** panel spends it to

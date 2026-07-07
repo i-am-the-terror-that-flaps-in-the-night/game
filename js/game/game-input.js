@@ -1,23 +1,27 @@
 import { CONFIG } from '../config.js';
-import { describeMatchups } from '../combat.js';
-import { TEAMS } from '../config.js';
+import { defOf, describeMatchups } from '../systems/combat.js';
 import { BUILDING_TYPES } from '../data/buildings.js';
-import { ENEMY_TYPES } from '../data/enemies.js';
 import { UNIT_TYPES } from '../data/units.js';
+import { btnId } from '../utils.js';
+import { BUILDING_ROSTER, UNIT_ROSTER } from '../ui/action-bar.js';
 import { Game } from './game.js';
+
+// Hotkey -> unit/building type, derived from the on-screen roster so the
+// keyboard bindings and the action-bar share a single source of truth.
+const KEY_MAP = Object.fromEntries(
+    [...UNIT_ROSTER, ...BUILDING_ROSTER].map(([type, disp]) => [disp.toLowerCase(), type]),
+);
 
 // --- GAME: event binding, spell selection & formations ---
 Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
     bindEvents() {
         // Native hover titles on the recruit/build bars explaining each role
-        const idFor = (t) =>
-            "btn" + t.charAt(0).toUpperCase() + t.slice(1);
         Object.entries(UNIT_TYPES).forEach(([t, d]) => {
-            const btn = document.getElementById(idFor(t));
+            const btn = document.getElementById(btnId(t));
             if (btn && d.desc) btn.title = `${d.name} — ${d.desc}`;
         });
         Object.entries(BUILDING_TYPES).forEach(([t, d]) => {
-            const btn = document.getElementById(idFor(t));
+            const btn = document.getElementById(btnId(t));
             if (btn && d.desc) btn.title = `${d.name} — ${d.desc}`;
         });
 
@@ -26,22 +30,7 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
             this.mouse.y = e.clientY;
             const w = this.camera.toWorld(e.clientX, e.clientY);
             const tt = document.getElementById("tooltip");
-            let hov = null;
-
-            for (const u of [...this.units, ...this.enemies])
-                if (
-                    Math.abs(u.x - w.x) < 35 &&
-                    Math.abs(u.y - w.y) < 60
-                )
-                    hov = u;
-            if (!hov)
-                for (const b of this.buildings)
-                    if (
-                        Math.abs(b.x - w.x) < b.w / 2 &&
-                        w.y > b.y - b.h &&
-                        w.y < b.y
-                    )
-                        hov = b;
+            const hov = this.pickAt(w.x, w.y);
 
             if (hov) {
                 tt.classList.remove("hidden");
@@ -51,11 +40,7 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
                         window.innerWidth - 320,
                     ) + "px"; // Fix #14
                 tt.style.top = e.clientY + 20 + "px";
-                const def =
-                    BUILDING_TYPES[hov.type] ||
-                    (hov.team === TEAMS.PLAYER
-                        ? UNIT_TYPES[hov.type]
-                        : ENEMY_TYPES[hov.type]);
+                const def = defOf(hov);
                 if (def) {
                     const mu = describeMatchups(def);
                     tt.innerHTML = `<div class="tt-name">${def.name}</div><div class="tt-desc">${def.desc || ""}</div>HP: ${Math.floor(hov.hp)}/${hov.maxHp}<br>${def.dmg ? "DMG: " + def.dmg + "<br>" : ""}${def.armor ? "Armor: " + def.armor + "<br>" : ""}${mu ? `<span style="font-size:11px;">${mu}</span>` : ""}`;
@@ -75,22 +60,7 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
         this.canvas.addEventListener("mousedown", (e) => {
             if (e.button !== 0 || this.spells.active) return;
             const w = this.camera.toWorld(e.clientX, e.clientY);
-            let c = null;
-            for (const u of [...this.units, ...this.enemies])
-                if (
-                    Math.abs(u.x - w.x) < 35 &&
-                    Math.abs(u.y - w.y) < 60
-                )
-                    c = u;
-            if (!c)
-                for (const b of this.buildings)
-                    if (
-                        Math.abs(b.x - w.x) < b.w / 2 &&
-                        w.y > b.y - b.h &&
-                        w.y < b.y
-                    )
-                        c = b;
-            this.sel = c;
+            this.sel = this.pickAt(w.x, w.y);
             this.updateSelUI();
         });
 
@@ -106,25 +76,7 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
                             e.touches[0].clientX,
                             e.touches[0].clientY,
                         );
-                        let c = null;
-                        for (const u of [
-                            ...this.units,
-                            ...this.enemies,
-                        ])
-                            if (
-                                Math.abs(u.x - w.x) < 45 &&
-                                Math.abs(u.y - w.y) < 80
-                            )
-                                c = u;
-                        if (!c)
-                            for (const b of this.buildings)
-                                if (
-                                    Math.abs(b.x - w.x) < b.w / 2 &&
-                                    w.y > b.y - b.h &&
-                                    w.y < b.y
-                                )
-                                    c = b;
-                        this.sel = c;
+                        this.sel = this.pickAt(w.x, w.y, 45, 80);
                         this.updateSelUI();
                     }
                 }
@@ -173,31 +125,11 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
         window.addEventListener("keydown", (e) => {
             if (this.state !== "playing") return;
             const k = e.key.toLowerCase();
-            const m = {
-                1: "militia",
-                2: "swordsman",
-                3: "spearman",
-                4: "archer",
-                5: "crossbow",
-                6: "cleric",
-                7: "knight",
-                8: "mage",
-                9: "catapult",
-                0: "paladin",
-                q: "mine",
-                w: "barracks",
-                e: "tower",
-                r: "wall",
-                t: "academy",
-                f: "obelisk",
-                g: "archery",
-                h: "forge",
-            };
-            if (m[k]) {
-                if ("1234567890".includes(k) && UNIT_TYPES[m[k]]) this.buyUnit(m[k]);
-                else if (BUILDING_TYPES[m[k]]) this.build(m[k]);
+            const type = KEY_MAP[k];
+            if (type) {
+                if (UNIT_TYPES[type]) this.buyUnit(type);
+                else if (BUILDING_TYPES[type]) this.build(type);
             }
-            if ("0123456789".includes(k)) { if (m[k]) this.buyUnit(m[k]); }
             if (k === " " || k === "p" || k === "escape")
                 this.setSpeed(this.ts === 0 ? 1 : 0);
             if (k === "y") this.openTechTree();
@@ -229,6 +161,20 @@ Object.assign(Game.prototype, /** @type {ThisType<any>} */ ({
             },
             { passive: true },
         );
+    },
+
+    // Topmost unit/enemy (falling back to a building) under a world point, or
+    // null. ur/ury are the unit hit paddings — touch input passes a larger box
+    // than the mouse. Last match in iteration order wins, as before.
+    pickAt(wx, wy, ur = 35, ury = 60) {
+        let hit = null;
+        for (const u of [...this.units, ...this.enemies])
+            if (Math.abs(u.x - wx) < ur && Math.abs(u.y - wy) < ury) hit = u;
+        if (!hit)
+            for (const b of this.buildings)
+                if (Math.abs(b.x - wx) < b.w / 2 && wy > b.y - b.h && wy < b.y)
+                    hit = b;
+        return hit;
     },
 
     selectSpell(spellId) {

@@ -40,8 +40,6 @@ interface EntityDef {
     scale?: number;
     color?: string;
     visual?: string;
-    selfHeal?: number;
-    selfHealCd?: number;
     desc?: string;
 }
 

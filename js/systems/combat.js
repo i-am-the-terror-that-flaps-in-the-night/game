@@ -1,6 +1,19 @@
-import { TEAMS } from './config.js';
-import { Building } from './entities/building.js';
-import { Unit } from './entities/unit.js';
+import { TEAMS } from '../config.js';
+import { BUILDING_TYPES } from '../data/buildings.js';
+import { ENEMY_TYPES } from '../data/enemies.js';
+import { UNIT_TYPES } from '../data/units.js';
+import { Building } from '../entities/building.js';
+import { Unit } from '../entities/unit.js';
+
+// Resolve any live entity (unit / enemy / building) to its data definition.
+export function defOf(entity) {
+    return (
+        BUILDING_TYPES[entity.type] ||
+        (entity.team === TEAMS.PLAYER
+            ? UNIT_TYPES[entity.type]
+            : ENEMY_TYPES[entity.type])
+    );
+}
 
 // --- COMBAT RESOLUTION (counter system) ---
 // Every unit has a damage type and an armor class. Damage is deterministic:

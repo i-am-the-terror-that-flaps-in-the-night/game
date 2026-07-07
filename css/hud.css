@@ -1,13 +1,4 @@
 /* UI Layers */
-.ui-layer {
-    position: absolute;
-    pointer-events: none;
-    width: 100%;
-    height: 100%;
-    top: 0;
-    left: 0;
-    z-index: 10;
-}
 .ui-element {
     pointer-events: auto;
 }
@@ -25,8 +16,7 @@
     box-shadow: var(--shadow-panel), var(--inset-glow), var(--inset-hair);
 }
 /* Cyan corner brackets — 8 static gradients (2 arms x 4 corners) */
-.glass-panel::after,
-.holo-corners::after {
+.glass-panel::after {
     content: "";
     position: absolute;
     inset: 0;
@@ -44,29 +34,6 @@
     filter: drop-shadow(0 0 3px var(--accent-dim));
     opacity: 0.9;
 }
-.holo-corners { position: relative; }
-/* Opt-in animated top-edge sweep (only a couple of panels use this) */
-.glass-panel--sweep { overflow: hidden; }
-.glass-panel--sweep::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 2px;
-    width: 40%;
-    background: linear-gradient(90deg, transparent, var(--accent-bright), transparent);
-    animation: holoSweep 4.5s linear infinite;
-    pointer-events: none;
-    z-index: 1;
-}
-/* Opt-in true notched corners (hero dialogs only) */
-.glass-panel--notch {
-    clip-path: polygon(
-        0 0, calc(100% - var(--notch)) 0, 100% var(--notch),
-        100% 100%, var(--notch) 100%, 0 calc(100% - var(--notch))
-    );
-}
-.glass-panel--notch::after { display: none; }
 
 /* Top Resources */
 #topBar {
@@ -451,14 +418,6 @@
     0%, 100% { box-shadow: var(--glow-cyan); }
     50% { box-shadow: var(--glow-cyan-strong); }
 }
-@keyframes holoSweep {
-    from { transform: translateX(-100%); }
-    to { transform: translateX(320%); }
-}
-@keyframes radarSweep {
-    to { transform: translate(-50%, -50%) rotate(360deg); }
-}
-.is-pulsing { animation: neonPulse 1.4s ease-in-out infinite; }
 
 /* Bottom action bar — Units / Buildings tabs */
 .action-tabs {

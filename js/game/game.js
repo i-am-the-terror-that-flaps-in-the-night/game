@@ -1,12 +1,12 @@
-import { AudioEngine } from '../audio.js';
-import { Camera } from '../camera.js';
+import { AudioEngine } from '../systems/audio.js';
+import { Camera } from '../systems/camera.js';
 import { CONFIG, RESOURCES, TEAMS } from '../config.js';
 import { LEVELS } from '../data/levels.js';
 import { Building } from '../entities/building.js';
-import { MetaProgression } from '../meta.js';
-import { SpellManager } from '../spell-manager.js';
+import { MetaProgression } from '../systems/meta.js';
+import { SpellManager } from '../systems/spell-manager.js';
 import { formatTime } from '../utils.js';
-import { DecalSystem, EffectSystem, ParticleSystem, WeatherSystem } from '../vfx.js';
+import { DecalSystem, EffectSystem, ParticleSystem, WeatherSystem } from '../systems/vfx.js';
 
 // --- GAME: core state, lifecycle & main loop ---
 // (flow/economy/input/ui/render methods are mixed into Game.prototype
