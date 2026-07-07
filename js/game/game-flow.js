@@ -45,6 +45,7 @@ export const flowMethods = /** @type {ThisType<any>} */ ({
 
     returnToMenu() {
         this.state = "menu";
+        this.clearBoss();
         this.audio.stopMusic();
         this.spells.cancel();
         document

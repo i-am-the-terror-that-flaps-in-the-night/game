@@ -466,6 +466,98 @@
 .btn--ember { border-color: rgba(249, 115, 22, 0.45); }
 .btn--ember:hover:not(:disabled) { border-color: #f97316; box-shadow: 0 6px 15px rgba(0,0,0,0.4), 0 0 12px rgba(249,115,22,0.4); }
 
+/* ── Boss encounter: warning klaxon + health bar ─────────────────────── */
+#bossWarning,
+#bossBar { /* both default to hidden until the encounter toggles them */ }
+#bossWarning.hidden,
+#bossBar.hidden { display: none; }
+
+#bossWarning {
+    position: absolute;
+    top: 34%;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    pointer-events: none;
+    z-index: 60;
+    animation: bossKlaxon 0.9s steps(1) infinite;
+}
+.boss-warning-title {
+    font-family: var(--font-display, sans-serif);
+    font-size: clamp(34px, 7vw, 74px);
+    font-weight: 900;
+    letter-spacing: 6px;
+    color: #ff4d5e;
+    text-shadow: 0 0 18px rgba(255, 77, 94, 0.9), 0 0 42px rgba(168, 85, 247, 0.7);
+}
+.boss-warning-sub {
+    display: block;
+    margin-top: 8px;
+    font-family: var(--font-mono, monospace);
+    font-size: clamp(12px, 1.6vw, 18px);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #fca5a5;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
+}
+@keyframes bossKlaxon {
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0.35; }
+}
+
+#bossBar {
+    position: absolute;
+    top: 150px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(60vw, 520px);
+    text-align: center;
+    padding: 10px 18px 12px;
+    border-radius: var(--r-md, 8px);
+    background:
+        repeating-linear-gradient(180deg, rgba(168, 85, 247, 0.05) 0 1px, transparent 1px 4px),
+        rgba(10, 6, 16, 0.82);
+    border: 1px solid rgba(255, 77, 94, 0.55);
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.6), 0 0 22px rgba(168, 85, 247, 0.3),
+        inset 0 0 16px rgba(168, 85, 247, 0.1);
+    backdrop-filter: blur(var(--blur-sm, 4px));
+    z-index: var(--z-hud, 30);
+}
+#bossBarName {
+    font-family: var(--font-display, sans-serif);
+    font-size: 14px;
+    font-weight: 900;
+    letter-spacing: 3px;
+    color: #ff6b7a;
+    text-transform: uppercase;
+    text-shadow: 0 0 12px rgba(255, 77, 94, 0.7);
+    margin-bottom: 7px;
+}
+.boss-bar-track {
+    height: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid rgba(255, 77, 94, 0.4);
+    border-radius: var(--r-sm, 4px);
+    overflow: hidden;
+    box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.8);
+}
+#bossBarFill {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, #4c1d95, #b91c1c 45%, #f97316 80%, #fde047);
+    box-shadow: 0 0 14px rgba(249, 115, 22, 0.6);
+    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+#bossBarPhase {
+    margin-top: 6px;
+    font-family: var(--font-mono, monospace);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #c4b5fd;
+    text-transform: uppercase;
+}
+
 /* Minimap */
 #minimapContainer {
     position: absolute;

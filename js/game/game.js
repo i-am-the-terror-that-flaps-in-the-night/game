@@ -148,6 +148,7 @@ export class Game {
     }
 
     reset(g) {
+        this.clearBoss(); // tear down any prior boss encounter + engine audio
         if (this.difficultyMult < 1.0) g = Math.floor(g * 1.25);
         if (this.difficultyMult > 1.0) g = Math.floor(g * (this.difficultyMult > 1.2 ? 0.75 : 0.88));
         this.gold = g;
@@ -312,9 +313,17 @@ export class Game {
             if (this.shake < 0.5) this.shake = 0;
         }
 
+        // Boss encounter lifecycle (warning -> arrival -> defeat rewards). The
+        // Boss entity itself lives in this.enemies and is updated/drawn/removed
+        // by the normal enemy path; this only drives the encounter meta-state.
+        this.updateBoss(dt);
+
         if (this.waveM) {
             this.waveM.update(dt);
-            if (this.waveM.isComplete()) this.victory();
+            // Don't declare victory while a boss is still inbound or fighting —
+            // the enemies array can momentarily empty during its warning phase.
+            const bossBusy = this.bossState === "warning" || this.bossState === "active";
+            if (this.waveM.isComplete() && !bossBusy) this.victory();
         }
         if (this.achievements && this.frames % 180 === 0) this.achievements.check();
 
@@ -328,6 +337,7 @@ export class Game {
     }
 
     victory() {
+        this.clearBoss();
         this.setSpeed(0);
         this.state = "victory";
         // Last Stand achievement
@@ -361,6 +371,7 @@ export class Game {
 
     defeat() {
         if (this.state === "defeat") return; // Fix #16: Prevent defeat loop
+        this.clearBoss();
         this.setSpeed(0);
         this.state = "defeat";
         this.audio.playError();

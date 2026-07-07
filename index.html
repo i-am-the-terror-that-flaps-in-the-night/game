@@ -178,6 +178,21 @@
             <button id="btnCallWave" onclick="game.callWave()" title="Send the next wave immediately (N)">⚔ Call Wave Now <span class="hotkey">N</span></button>
         </div>
 
+        <!-- Boss encounter: inbound-warning klaxon + health bar (both hidden
+             until game-boss.js toggles them). -->
+        <div id="bossWarning" class="hidden">
+            <div class="boss-warning-title">⚠ WARNING ⚠</div>
+            <div class="boss-warning-sub">A colossal presence tears down the rails…</div>
+        </div>
+
+        <div id="bossBar" class="hidden">
+            <div id="bossBarName">RUSTMAW · THE HOLLOW ENGINE</div>
+            <div class="boss-bar-track">
+                <div id="bossBarFill"></div>
+            </div>
+            <div id="bossBarPhase">PHASE 1 / 3</div>
+        </div>
+
         <div id="bottomContainer" class="ui-element">
             <div id="formationBar">
                 <span class="form-label">Formation:</span>

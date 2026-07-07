@@ -50,9 +50,13 @@ export class WaveManager {
         if (this.t >= this.wvs[this.cw].time * 60) this.advance();
     }
     advance() {
-        this.spawn(this.wvs[this.cw]);
+        const w = this.wvs[this.cw];
+        this.spawn(w);
         this.cw++;
         this.t = 0;
+        // A wave flagged `boss:true` summons the Hollow Engine as a special
+        // event alongside its (usually light) escort — a scripted boss finale.
+        if (w && w.boss) this.g.spawnBossEncounter();
         this.g.audio.playTone(400, 0.5, "sine", 0.1);
         this.g.audio.playTone(600, 0.5, "sine", 0.1, 0.2);
         this.g.notify(`Wave ${this.cw} incoming!`);
@@ -134,6 +138,9 @@ export class EndlessWave {
                 `[BOSS WAVE ${this.wave}] A mighty force approaches!`,
             );
             this.g.shake = 15;
+            // Every tenth wave, the Hollow Engine itself derails onto the field
+            // as a full boss encounter (on top of the elite Boss March).
+            if (this.wave % 10 === 0) this.g.spawnBossEncounter();
         } else {
             this.g.audio.playTone(400, 0.5, "sine", 0.1);
             this.g.notify(

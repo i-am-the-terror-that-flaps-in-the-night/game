@@ -9,9 +9,12 @@ import { UNIT_TYPES } from '../data/units.js';
 // constructed by exactly one of those two constructors, so the partition is
 // identical to the former instanceof checks.
 
-// Resolve any live entity (unit / enemy / building) to its data definition.
+// Resolve any live entity (unit / enemy / building) to its data definition. An
+// entity may carry its own inline `def` (e.g. the boss, which has no data-table
+// row); that takes precedence so tooltips/selection resolve a name + matchup.
 export function defOf(entity) {
     return (
+        entity.def ||
         BUILDING_TYPES[entity.type] ||
         (entity.team === TEAMS.PLAYER
             ? UNIT_TYPES[entity.type]

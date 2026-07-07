@@ -12,6 +12,7 @@ export const ACHIEVEMENTS = [
     { id: 'holy_order',    name: 'Holy Order',      icon: '✨',  desc: 'Field 3 Paladins simultaneously.' },
     { id: 'max_pop',       name: 'Total War',       icon: '⚔️',  desc: 'Reach maximum population cap.' },
     { id: 'veteran',       name: 'Veteran',         icon: '⭐',  desc: 'Promote a unit to Level 3.' },
+    { id: 'boss_slayer',   name: 'Engine Breaker',  icon: '🚂',  desc: 'Unmake Rustmaw, the Hollow Engine.' },
 ];
 
 export class AchievementSystem {
