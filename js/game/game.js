@@ -267,12 +267,23 @@ export class Game {
             }
         }
 
-        [
-            ...this.buildings,
-            ...this.units,
-            ...this.enemies,
-            ...this.projectiles,
-        ].forEach((e) => e.update(dt));
+        // Update every entity that existed at the START of this frame. Capture
+        // all four counts up front so anything spawned mid-frame (necromancer
+        // summons -> enemies, towers/archers -> projectiles) is first updated
+        // NEXT frame — exactly what the old combined-snapshot array did, but
+        // without allocating that array every frame. The pre-captured lengths
+        // are essential: a plain `i < this.arr.length` loop (or four forEach
+        // calls) would re-read the grown array and process those new entities a
+        // frame early. No entity update splices these arrays (removal is the
+        // filter pass below), so indices 0..N-1 stay stable through the loop.
+        const bN = this.buildings.length,
+            uN = this.units.length,
+            eN = this.enemies.length,
+            pN = this.projectiles.length;
+        for (let i = 0; i < bN; i++) this.buildings[i].update(dt);
+        for (let i = 0; i < uN; i++) this.units[i].update(dt);
+        for (let i = 0; i < eN; i++) this.enemies[i].update(dt);
+        for (let i = 0; i < pN; i++) this.projectiles[i].update(dt);
 
         this.units = this.units.filter(
             (u) => u.active || u.dmgTexts.length > 0,
