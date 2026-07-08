@@ -21,6 +21,7 @@ import { clamp, lerp, particleQuality, rand, toRgba } from '../utils.js';
 
 const PHASE_HI = 0.66; // hp ratio: phase 1 -> 2
 const PHASE_LO = 0.33; // hp ratio: phase 2 -> 3
+const DEATH_DUR = 175; // frames of escalating self-destruction before it vanishes
 
 // Corrupted-exhaust palette — sooty smoke lit by amber embers and void-violet.
 // Emitted additively, so these read as glowing exhaust, not solid billows.
@@ -107,25 +108,40 @@ export class Boss extends Entity {
         this.mode = 'patrol';
         this.modeT = 0;
         this.dashCd = Math.min(this.dashCd, 60);
-        this.coreGlow = 1.6;
+        this.coreGlow = 2;           // furnace flares white-hot at the break
         const g = game;
-        g.shake = Math.max(g.shake, 16);
+        g.shake = Math.max(g.shake, 22);
         g.audio.bossPhase(p);
         g.notify(p >= 3
             ? 'Rustmaw sheds its hull — the core burns exposed! [PHASE 3]'
             : `Rustmaw's plating buckles and splits! [PHASE ${p}]`);
-        // Plating bursts outward: twin shockwaves, a flash, shrapnel, a steam
-        // eruption and a brief screen flash — the world flinches with it.
+        // The plating detonates outward: a white core flash, stacked shockwaves,
+        // a spark storm, a shrapnel burst, twin steam geysers and a scorched
+        // footprint — the whole field lurches with it.
         const cx = this.x, cy = CONFIG.GROUND_Y - 48;
-        g.fx.ring(cx, cy, { r0: 10, r1: 165, col: '#7c3aed', w: 5, life: 28 });
-        g.fx.ring(cx, cy, { r0: 6, r1: 110, col: '#f59e0b', w: 3, life: 22 });
-        g.fx.flash(cx, cy, { r: 130, col: '#fde68a', life: 18 });
-        g.particles.emit(cx, cy, 34, '#a855f7', 9, 4, 'float');
-        g.particles.emit(cx, cy, 22, '#f59e0b', 7, 3, 'spark');
-        this._debris(cx, cy + 8, 12, 7);
-        this._steam(this.x + this.facing * 20, CONFIG.GROUND_Y - 96, 10, '#e5e7eb', 3, 6);
-        g.decals.add(cx, CONFIG.GROUND_Y, 'scorch', 70);
-        g.bossFlash = Math.max(g.bossFlash || 0, 0.4);
+        g.fx.flash(cx, cy, { r: 195, col: '#fffbeb', life: 22 });
+        g.fx.flash(cx, cy, { r: 110, col: '#fde68a', life: 16 });
+        g.fx.ring(cx, cy, { r0: 10, r1: 235, col: '#7c3aed', w: 6, life: 32 });
+        g.fx.ring(cx, cy, { r0: 6, r1: 170, col: '#f59e0b', w: 4, life: 26 });
+        g.fx.ring(cx, CONFIG.GROUND_Y, { r0: 6, r1: 195, col: '#fbbf24', w: 3, life: 28 });
+        for (let a = 0; a < 6; a++)
+            g.fx.spark(cx, cy, (a / 6) * Math.PI * 2, { n: 5, spread: 0.5, len: 34, col: '#fed7aa' });
+        g.particles.emit(cx, cy, 46, '#a855f7', 9, 4, 'float');
+        g.particles.emit(cx, cy, 34, '#fbbf24', 8, 4, 'spark');
+        g.particles.emit(cx, cy, 26, '#f59e0b', 6, 5, 'float');
+        this._debris(cx, cy + 8, 18, 8);
+        this._steam(this.x - 30, CONFIG.GROUND_Y - 96, 8, '#e5e7eb', 3, 6);
+        this._steam(this.x + 30, CONFIG.GROUND_Y - 96, 8, '#e5e7eb', 3, 6);
+        // Phase 3 is the hull-shedding reveal — give it an extra violet ring and
+        // a spit of embers over the base burst.
+        if (p >= 3) {
+            g.fx.ring(cx, cy, { r0: 4, r1: 150, col: '#c084fc', w: 3, life: 30 });
+            g.particles.emit(cx, cy, 22, '#f97316', 7, 3, 'spark');
+        }
+        g.decals.add(cx, CONFIG.GROUND_Y, 'scorch', 84);
+        g.decals.add(cx - 54, CONFIG.GROUND_Y, 'scorch', 44);
+        g.decals.add(cx + 54, CONFIG.GROUND_Y, 'scorch', 44);
+        g.bossFlash = Math.max(g.bossFlash || 0, 0.6);
     }
 
     die() {
@@ -137,8 +153,9 @@ export class Boss extends Entity {
         this.slain = true;
         this.mode = 'dead';
         this.vx = 0;
-        this.dyingT = 130;
+        this.dyingT = DEATH_DUR;
         this._boomT = 0;
+        this._finalBlown = false; // guards the one-shot climactic detonation
     }
 
     // ── Update ──────────────────────────────────────────────────────────
@@ -396,23 +413,85 @@ export class Boss extends Entity {
         this.dyingT -= dt;
         this.frame += dt;
         this.vx = 0;
-        // Rolling chain of internal detonations: flashes, shockwaves, gouts of
-        // smoke and steam, flung shrapnel and scorched ground as it comes apart.
+        const g = game;
+        // Death progress 0 -> 1 across the whole throe.
+        const t = clamp(1 - this.dyingT / DEATH_DUR, 0, 1);
+
+        // The boiler over-pressurizes: the exposed furnace blazes ever brighter
+        // (read clamped in draw, but the seams/bloom scale with it) as it nears
+        // going critical.
+        this.coreGlow = 1.4 + t * 2.6;
+
+        // Rolling chain of internal detonations that grow BIGGER and FASTER as
+        // the pressure peaks, so the rhythm builds toward the final blast rather
+        // than plodding at one size. They stop just before the climax.
         this._boomT -= dt;
-        if (this._boomT <= 0) {
-            this._boomT = 11;
-            const bx = this.x + rand(-95, 95);
-            const by = CONFIG.GROUND_Y - rand(10, 96);
-            game.fx.flash(bx, by, { r: rand(46, 86), col: '#fde68a', life: 15 });
-            game.fx.ring(bx, by, { r0: 4, r1: rand(46, 96), col: '#f59e0b', w: 3, life: 20 });
-            game.particles.emit(bx, by, 20, SMOKE_COLS[(this.frame | 0) % SMOKE_COLS.length], 6, 4, 'float');
-            this._debris(bx, by, 8, 7);
+        if (this._boomT <= 0 && t < 0.84) {
+            this._boomT = lerp(13, 4, t);          // detonations accelerate
+            const reach = 70 + t * 55;
+            const sz = lerp(0.7, 1.9, t);
+            const bx = this.x + rand(-reach, reach);
+            const by = CONFIG.GROUND_Y - rand(10, 100);
+            g.fx.flash(bx, by, { r: rand(46, 90) * sz, col: '#fde68a', life: 15 });
+            g.fx.ring(bx, by, { r0: 4, r1: rand(46, 100) * sz, col: t > 0.5 ? '#fbbf24' : '#f59e0b', w: 3, life: 20 });
+            g.particles.emit(bx, by, 22 * sz, SMOKE_COLS[(this.frame | 0) % SMOKE_COLS.length], 6, 4, 'float');
+            g.particles.emit(bx, by, 8 * sz, '#fb923c', 5, 3, 'spark');
+            this._debris(bx, by, Math.round(8 * sz), 7);
             this._steam(bx, by + 18, 5, '#e5e7eb', 3, 6);
-            game.decals.add(bx, CONFIG.GROUND_Y, 'scorch', rand(30, 60));
-            game.shake = Math.max(game.shake, 10);
-            game.audio.playExplosion();
+            g.decals.add(bx, CONFIG.GROUND_Y, 'scorch', rand(30, 62));
+            g.shake = Math.max(g.shake, 8 + t * 9);
+            g.audio.playExplosion();
         }
+
+        // Final over-pressure shudder: fire jets scream from every widening seam
+        // and the hull rattles harder the closer it gets to letting go.
+        if (t > 0.55 && (this.frame | 0) % 3 === 0) {
+            g.particles.emit(this.x + rand(-72, 72), CONFIG.GROUND_Y - rand(34, 104), 2, '#fde68a', 5, 2, 'spark');
+            this._steam(this.x + rand(-44, 44), CONFIG.GROUND_Y - rand(60, 112), 2, '#e5e7eb', 2.4, 5);
+            g.shake = Math.max(g.shake, 6 + (t - 0.55) * 34);
+        }
+
+        // ── THE FINAL BLAST ── one colossal detonation tears the Engine apart,
+        // then a short beat of raining wreckage before it's gone (no hard cut).
+        if (!this._finalBlown && this.dyingT <= DEATH_DUR * 0.15) {
+            this._finalBlown = true;
+            this._detonate();
+        }
+
         if (this.dyingT <= 0) this.active = false;
+    }
+
+    // The climax: a single overwhelming explosion — whiteout, stacked
+    // shockwaves, an omnidirectional spark storm, a fireball, a shrapnel field
+    // and a scorched crater. Fired once from _updateDying.
+    _detonate() {
+        const g = game;
+        const cx = this.x, cy = CONFIG.GROUND_Y - 44;
+        g.audio.bossRoar();
+        g.audio.playExplosion();
+        g.bossFlash = Math.max(g.bossFlash || 0, 1);   // full whiteout
+        g.shake = Math.max(g.shake, 40);
+        // Core flash + stacked shockwaves rolling outward.
+        g.fx.flash(cx, cy, { r: 250, col: '#fffbeb', life: 30 });
+        g.fx.flash(cx, cy, { r: 130, col: '#fde68a', life: 22 });
+        for (let i = 0; i < 5; i++)
+            g.fx.ring(cx, cy, { r0: 6 + i * 14, r1: 250 + i * 90, col: i % 2 ? '#7c3aed' : '#f59e0b', w: 6 - i * 0.7, life: 30 + i * 8 });
+        // Ground shockwave hugging the rails.
+        g.fx.ring(cx, CONFIG.GROUND_Y, { r0: 10, r1: 380, col: '#fbbf24', w: 4, life: 34 });
+        // Omnidirectional spark storm.
+        for (let a = 0; a < 8; a++)
+            g.fx.spark(cx, cy, (a / 8) * Math.PI * 2, { n: 6, spread: 0.5, len: 48, col: '#fde68a' });
+        // Fireball + ember + smoke bloom.
+        g.particles.emit(cx, cy, 52, '#fbbf24', 9, 6, 'float');
+        g.particles.emit(cx, cy, 40, '#f97316', 8, 4, 'spark');
+        g.particles.emit(cx, cy, 34, '#fde68a', 6, 5, 'float');
+        // A field of hurled shrapnel flung across a wide arc.
+        for (let i = 0; i < 4; i++)
+            this._debris(cx + rand(-72, 72), cy + rand(-20, 30), 12, 9);
+        // Steam geyser + a scorched crater stamped across the rails.
+        this._steam(cx, cy + 20, 18, '#e5e7eb', 4, 8);
+        for (let i = -2; i <= 2; i++)
+            g.decals.add(cx + i * 54, CONFIG.GROUND_Y, 'scorch', rand(50, 94));
     }
 
     // ── Rendering ───────────────────────────────────────────────────────
@@ -428,7 +507,9 @@ export class Boss extends Entity {
         const p = cam.toScreen(this.x, this.y);
         const z = cam.z * this.scale;
         const q = particleQuality();
-        const wob = this.dyingT > 0 ? Math.sin(this.frame * 0.6) * 3 : 0;
+        // Death throe: the hull judders harder the closer it is to blowing.
+        const dprog = this.dyingT > 0 ? clamp(1 - this.dyingT / DEATH_DUR, 0, 1) : 0;
+        const wob = this.dyingT > 0 ? Math.sin(this.frame * 0.9) * (2 + dprog * 7) : 0;
 
         ctx.save();
         ctx.translate(p.x, p.y + wob * z);
@@ -462,6 +543,22 @@ export class Boss extends Entity {
         this._drawTopworks(ctx);
         this._drawPilot(ctx);
         this._drawGlow(ctx, q);
+
+        // Meltdown bloom while dying: a white-hot core swelling out of the
+        // boiler as the pressure runs away, peaking just before the final blast.
+        if (this.dyingT > 0) {
+            ctx.save();
+            ctx.globalCompositeOperation = 'screen';
+            const r = 30 + dprog * 95;
+            const mg = ctx.createRadialGradient(6, -54, 2, 6, -54, r);
+            mg.addColorStop(0, toRgba('#fffbeb', 0.5 + dprog * 0.45));
+            mg.addColorStop(0.4, toRgba('#fbbf24', 0.4 + dprog * 0.4));
+            mg.addColorStop(0.75, toRgba('#f97316', 0.25 * (1 - dprog * 0.3)));
+            mg.addColorStop(1, 'transparent');
+            ctx.fillStyle = mg;
+            ctx.beginPath(); ctx.arc(6, -54, r, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+        }
 
         // Telegraph tell — warning wash + marching chevrons down the charge lane.
         if (this.mode === 'telegraph') this._drawChargeTell(ctx);
