@@ -8,6 +8,7 @@ import { SpellManager } from '../systems/spell-manager.js';
 import { loadJSON, saveJSON } from '../systems/storage.js';
 import { formatTime } from '../utils.js';
 import { DecalSystem, EffectSystem, ParticleSystem, WeatherSystem } from '../systems/vfx.js';
+import { GFX, refreshGraphics } from '../systems/graphics.js';
 
 // --- GAME: core state, lifecycle & main loop ---
 // (flow/economy/input/ui/render methods are mixed into Game.prototype
@@ -19,7 +20,7 @@ import { DecalSystem, EffectSystem, ParticleSystem, WeatherSystem } from '../sys
 export class Game {
     constructor() {
         this.canvas = document.getElementById("gameCanvas");
-        this.ctx = this.canvas.getContext("2d");
+        this.ctx = this.canvas.getContext("2d", { alpha: false });
         this.resize();
         window.addEventListener("resize", () => this.resize());
 
@@ -83,6 +84,8 @@ export class Game {
         this.achievements    = null; // inited after game is declared
         this.meta            = new MetaProgression(this); // permanent unlocks
         this.loadSave(); // Fix #20
+        refreshGraphics();
+        this.resize();
         this.bindEvents();
         this.loop();
     }
@@ -135,8 +138,11 @@ export class Game {
     }
 
     resize() {
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
+        const rs = GFX.renderScale || 1;
+        this.vw = window.innerWidth;
+        this.vh = window.innerHeight;
+        this.canvas.width = Math.round(this.vw * rs);
+        this.canvas.height = Math.round(this.vh * rs);
         CONFIG.GROUND_Y = Math.max(
             window.innerHeight - 180,
             window.innerHeight * 0.6,

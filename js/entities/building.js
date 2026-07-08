@@ -114,11 +114,12 @@ export class Building extends Entity {
         if (this.type === "castle") game.defeat();
     }
     draw(ctx, cam, dt) {
-        const p = cam.toScreen(this.x, this.y);
+        const px = cam.sx(this.x);
+        const py = cam.sy(this.y);
         const w = this.w * cam.z,
             h = this.h * cam.z,
-            x = p.x - w / 2,
-            y = p.y - h;
+            x = px - w / 2,
+            y = py - h;
 
         if (this.building) {
             ctx.fillStyle = "rgba(59,130,246,0.15)";
@@ -130,7 +131,7 @@ export class Building extends Entity {
                 1 -
                 this.bTimer / BUILDING_TYPES[this.type].buildTime;
             ctx.fillStyle = "#10b981";
-            ctx.fillRect(x, p.y - 8 * cam.z, w * pct, 4 * cam.z);
+            ctx.fillRect(x, py - 8 * cam.z, w * pct, 4 * cam.z);
             return;
         }
 
@@ -162,31 +163,31 @@ export class Building extends Entity {
             );
             ctx.strokeStyle = "#cbd5e1";
             ctx.beginPath();
-            ctx.moveTo(p.x, y);
-            ctx.lineTo(p.x, y - 45 * cam.z);
+            ctx.moveTo(px, y);
+            ctx.lineTo(px, y - 45 * cam.z);
             ctx.stroke();
             ctx.fillStyle = "#ef4444";
             const wave = Math.sin(this.frame * 0.1) * 6;
             ctx.beginPath();
-            ctx.moveTo(p.x, y - 45 * cam.z);
-            ctx.lineTo(p.x + 25 * cam.z, y - 35 * cam.z + wave);
-            ctx.lineTo(p.x, y - 25 * cam.z);
+            ctx.moveTo(px, y - 45 * cam.z);
+            ctx.lineTo(px + 25 * cam.z, y - 35 * cam.z + wave);
+            ctx.lineTo(px, y - 25 * cam.z);
             ctx.fill();
         } else if (this.type === "mine") {
             ctx.fillStyle = "#78350f";
             ctx.beginPath();
-            ctx.arc(p.x, p.y, w * 0.45, Math.PI, 0);
+            ctx.arc(px, py, w * 0.45, Math.PI, 0);
             ctx.fill();
             ctx.fillStyle = "#000";
             ctx.beginPath();
-            ctx.arc(p.x, p.y, w * 0.25, Math.PI, 0);
+            ctx.arc(px, py, w * 0.25, Math.PI, 0);
             ctx.fill();
             if (this.frame % 60 < 30) {
                 ctx.fillStyle = "var(--gold)";
                 ctx.beginPath();
                 ctx.arc(
-                    p.x,
-                    p.y - 12 * cam.z,
+                    px,
+                    py - 12 * cam.z,
                     4 * cam.z,
                     0,
                     Math.PI * 2,
@@ -239,25 +240,25 @@ export class Building extends Entity {
             const ff = 0.3 + Math.abs(Math.sin(this.frame * 0.12)) * 0.4;
             ctx.fillStyle = `rgba(251,146,60,${ff})`;
             ctx.beginPath();
-            ctx.arc(p.x, y + h*0.35, 14*cam.z, 0, Math.PI*2);
+            ctx.arc(px, y + h*0.35, 14*cam.z, 0, Math.PI*2);
             ctx.fill();
             ctx.fillStyle = `rgba(255,220,100,${ff*0.6})`;
             ctx.beginPath();
-            ctx.arc(p.x, y + h*0.3, 7*cam.z, 0, Math.PI*2);
+            ctx.arc(px, y + h*0.3, 7*cam.z, 0, Math.PI*2);
             ctx.fill();
             ctx.globalCompositeOperation = "source-over";
         } else if (this.type === "obelisk") {
             ctx.fillStyle = "#1e1b4b";
             ctx.beginPath();
-            ctx.moveTo(p.x, y);
-            ctx.lineTo(x + w, p.y);
-            ctx.lineTo(x, p.y);
+            ctx.moveTo(px, y);
+            ctx.lineTo(x + w, py);
+            ctx.lineTo(x, py);
             ctx.closePath();
             ctx.fill();
             ctx.globalCompositeOperation = "screen";
             ctx.fillStyle = `rgba(192, 132, 252, ${0.5 + Math.sin(this.frame * 0.05) * 0.3})`;
             ctx.beginPath();
-            ctx.arc(p.x, y + h * 0.6, 15 * cam.z, 0, Math.PI * 2);
+            ctx.arc(px, y + h * 0.6, 15 * cam.z, 0, Math.PI * 2);
             ctx.fill();
             ctx.globalCompositeOperation = "source-over";
         }

@@ -2,6 +2,7 @@ import { dealDamage } from './combat.js';
 import { CONFIG, NECRO_MINION_TYPE, PROJ_CULL_MARGIN, PROJ_HIT_RADIUS, TEAMS } from '../config.js';
 import { PROJECTILE_TYPES } from '../data/projectiles.js';
 import { dist, rand, shade } from '../utils.js';
+import { GFX } from './graphics.js';
 
 // --- PROJECTILES & MAGIC ---
 export class Projectile {
@@ -196,18 +197,21 @@ export class Projectile {
     }
     draw(ctx, cam) {
         if (!this.active) return;
-        const p = cam.toScreen(this.x, this.y);
+        const px = cam.sx(this.x);
+        const py = cam.sy(this.y);
         ctx.fillStyle = this.col;
 
         if (this.glow) {
             ctx.globalCompositeOperation = "screen";
-            ctx.shadowBlur = 20 * cam.z;
-            ctx.shadowColor = this.col;
+            if (GFX.shadows) {
+                ctx.shadowBlur = 20 * cam.z;
+                ctx.shadowColor = this.col;
+            }
         }
 
         if (this.type === "arrow" || this.type === "bolt") {
             ctx.save();
-            ctx.translate(p.x, p.y);
+            ctx.translate(px, py);
             ctx.rotate(Math.atan2(this.vy, this.vx));
             ctx.fillRect(
                 -6 * cam.z,
@@ -218,7 +222,7 @@ export class Projectile {
             ctx.restore();
         } else {
             ctx.beginPath();
-            ctx.arc(p.x, p.y, this.sz * cam.z, 0, Math.PI * 2);
+            ctx.arc(px, py, this.sz * cam.z, 0, Math.PI * 2);
             ctx.fill();
         }
         ctx.shadowBlur = 0;
@@ -231,12 +235,10 @@ export class Projectile {
             if (this.glow) ctx.globalCompositeOperation = "screen";
             ctx.beginPath();
             for (let i = 0; i < this.trail.length; i++) {
-                const tp = cam.toScreen(
-                    this.trail[i].x,
-                    this.trail[i].y,
-                );
-                if (i === 0) ctx.moveTo(tp.x, tp.y);
-                else ctx.lineTo(tp.x, tp.y);
+                const tx = cam.sx(this.trail[i].x);
+                const ty = cam.sy(this.trail[i].y);
+                if (i === 0) ctx.moveTo(tx, ty);
+                else ctx.lineTo(tx, ty);
             }
             ctx.stroke();
             ctx.globalAlpha = 1;

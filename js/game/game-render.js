@@ -1,14 +1,19 @@
 import { CONFIG } from '../config.js';
 import { LEVELS } from '../data/levels.js';
-import { clamp, mixCol, mixRgb, particleQuality, rand, rgba, shade, toRgb, toRgba } from '../utils.js';
+import { clamp, mixCol, mixRgb, rand, rgba, shade, toRgb, toRgba } from '../utils.js';
+import { GFX } from '../systems/graphics.js';
 
 // --- GAME: backdrop, foreground, post-FX & frame draw (installed by install-mixins.js) ---
 export const renderMethods = /** @type {ThisType<any>} */ ({
 
     // ─── CINEMATIC ENVIRONMENT ──────────────────────────────
+    // NOTE: w/h here are the LOGICAL (CSS-pixel) viewport dims (this.vw/this.vh),
+    // not the canvas backing-store size — the Performance tier renders the
+    // backing store smaller and lets ctx.scale()+CSS handle the upscale, so
+    // every cached gradient must be built in logical space (see draw()).
     _buildBackdropCache() {
-        const w = this.canvas.width,
-            h = this.canvas.height,
+        const w = this.vw,
+            h = this.vh,
             ctx = this.ctx;
         if (!w || !h || !ctx) return;
         const vg = ctx.createRadialGradient(
@@ -19,6 +24,22 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
         vg.addColorStop(0.65, "rgba(0,0,0,0.08)");
         vg.addColorStop(1, "rgba(0,0,0,0.46)");
         this._vignette = vg;
+
+        // Castle-danger / boss-presence vignettes: baked at full alpha and
+        // modulated per-frame via ctx.globalAlpha instead of rebuilding the
+        // gradient every frame — mathematically identical premultiplied output
+        // (interpolating transparent->rgba(c,1) then scaling by alpha 'a' gives
+        // the same result at every stop fraction t as transparent->rgba(c,a)).
+        const dv = ctx.createRadialGradient(w / 2, h / 2, h * 0.22, w / 2, h / 2, h * 0.85);
+        dv.addColorStop(0, "transparent");
+        dv.addColorStop(1, "rgba(200,0,0,1)");
+        this._dangerVignette = dv;
+
+        const bv = ctx.createRadialGradient(w / 2, h * 0.46, h * 0.2, w / 2, h * 0.5, h * 0.95);
+        bv.addColorStop(0, "transparent");
+        bv.addColorStop(1, "rgba(38,10,58,1)");
+        this._bossVignette = bv;
+
         if (!this._grainPat) {
             const nc = document.createElement("canvas");
             nc.width = 64; nc.height = 64;
@@ -31,6 +52,27 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
             }
             nx.putImageData(id, 0, 0);
             this._grainPat = ctx.createPattern(nc, "repeat");
+        }
+
+        // Sun/moon corona templates: fixed radius per body, built once at a
+        // local origin and positioned each frame via ctx.translate (a
+        // translate never distorts a radial gradient, so this is
+        // bit-identical to rebuilding the gradient at (cX,cY) every frame).
+        if (!this._sunCorona) {
+            const sr = 32 * 7;
+            const cor = ctx.createRadialGradient(0, 0, 0, 0, 0, sr);
+            cor.addColorStop(0, rgba("#ffe7a8", 0.5));
+            cor.addColorStop(0.25, rgba("#ffb86b", 0.2));
+            cor.addColorStop(1, "transparent");
+            this._sunCorona = cor;
+        }
+        if (!this._moonCorona) {
+            const mr = 24 * 4.8;
+            const cor = ctx.createRadialGradient(0, 0, 0, 0, 0, mr);
+            cor.addColorStop(0, rgba("#cdd9ff", 0.5));
+            cor.addColorStop(0.25, rgba("#9db4ff", 0.2));
+            cor.addColorStop(1, "transparent");
+            this._moonCorona = cor;
         }
     },
 
@@ -86,7 +128,6 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
 
     drawBackdrop(ctx, w, h, cam, lvl, dP) {
         const sky = lvl.sky, gnd = lvl.ground;
-        const q = particleQuality();
         const sun = clamp(dP, 0, 1);
         const night = clamp(-dP, 0, 1);
         const dawn = clamp(1 - Math.abs(dP) * 1.7, 0, 1);
@@ -98,14 +139,29 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
         const horizonO = mixRgb(mixRgb(sky, cool, night * 0.45), warm, glowT);
         const skyTop = shade(sky, -0.5 - night * 0.12);
 
-        // Sky
-        const sg = ctx.createLinearGradient(0, 0, 0, gy + 30);
-        sg.addColorStop(0, skyTop);
-        sg.addColorStop(0.45, sky);
-        sg.addColorStop(0.82, toRgb(mixRgb(sky, horizonO, 0.7)));
-        sg.addColorStop(1, toRgb(horizonO));
-        ctx.fillStyle = sg;
-        ctx.fillRect(0, 0, w, gy + 30);
+        // Sky — gradient cached & rebuilt only when its resolved stop colors
+        // actually change (dP drifts ~0.0002/frame, so truncated color
+        // strings stay identical for many consecutive frames); Performance
+        // uses a flat fill instead of a gradient entirely.
+        if (GFX.flatScenery) {
+            ctx.fillStyle = toRgb(mixRgb(skyTop, sky, 0.6));
+            ctx.fillRect(0, 0, w, gy + 30);
+        } else {
+            const horizonMid = toRgb(mixRgb(sky, horizonO, 0.7));
+            const horizonEdge = toRgb(horizonO);
+            const skyKey = skyTop + "|" + sky + "|" + horizonMid + "|" + horizonEdge + "|" + gy;
+            if (this._skyKey !== skyKey) {
+                const sg = ctx.createLinearGradient(0, 0, 0, gy + 30);
+                sg.addColorStop(0, skyTop);
+                sg.addColorStop(0.45, sky);
+                sg.addColorStop(0.82, horizonMid);
+                sg.addColorStop(1, horizonEdge);
+                this._skyKey = skyKey;
+                this._skyGrad = sg;
+            }
+            ctx.fillStyle = this._skyGrad;
+            ctx.fillRect(0, 0, w, gy + 30);
+        }
 
         // Stars (night)
         if (night > 0.02) {
@@ -127,26 +183,26 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
         const isSun = dP > -0.05;
         const bodyCol = isSun ? mixCol("#fff3c4", "#ff8a3d", 1 - sun) : "#dbe4ff";
         const bodyR = isSun ? 32 : 24;
-        // Corona
+        // Corona (cached template, positioned via translate — see
+        // _buildBackdropCache for why this is bit-identical to a fresh
+        // per-frame gradient at (cX,cY))
         ctx.save();
         ctx.globalCompositeOperation = "screen";
-        const cor = ctx.createRadialGradient(cX, cY, 0, cX, cY, bodyR * (isSun ? 7 : 4.8));
-        cor.addColorStop(0, rgba(isSun ? "#ffe7a8" : "#cdd9ff", 0.5));
-        cor.addColorStop(0.25, rgba(isSun ? "#ffb86b" : "#9db4ff", 0.2));
-        cor.addColorStop(1, "transparent");
-        ctx.fillStyle = cor;
-        ctx.fillRect(cX - bodyR * 8, cY - bodyR * 8, bodyR * 16, bodyR * 16);
-        // God rays
-        if (isSun && sun > 0.12 && q >= 1) {
-            ctx.translate(cX, cY);
+        ctx.translate(cX, cY);
+        ctx.fillStyle = isSun ? this._sunCorona : this._moonCorona;
+        ctx.fillRect(-bodyR * 8, -bodyR * 8, bodyR * 16, bodyR * 16);
+        // God rays — one gradient built per frame and reused for all 9 rays
+        // (the stops never varied by ray index, so this is bit-identical to
+        // the previous 9-separate-gradients version).
+        if (isSun && sun > 0.12 && GFX.postFX) {
             ctx.rotate(this.dayT * 0.08);
             const rays = 9, len = h;
+            const rg = ctx.createLinearGradient(0, 0, 0, len);
+            rg.addColorStop(0, rgba("#ffe7a8", 0.045 * sun));
+            rg.addColorStop(1, "transparent");
+            ctx.fillStyle = rg;
             for (let i = 0; i < rays; i++) {
                 ctx.rotate((Math.PI * 2) / rays);
-                const rg = ctx.createLinearGradient(0, 0, 0, len);
-                rg.addColorStop(0, rgba("#ffe7a8", 0.045 * sun));
-                rg.addColorStop(1, "transparent");
-                ctx.fillStyle = rg;
                 ctx.beginPath();
                 ctx.moveTo(-6, 0); ctx.lineTo(6, 0);
                 ctx.lineTo(30, len); ctx.lineTo(-30, len);
@@ -157,8 +213,10 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
         // Body
         ctx.save();
         ctx.fillStyle = bodyCol;
-        ctx.shadowBlur = isSun ? 42 : 22;
-        ctx.shadowColor = bodyCol;
+        if (GFX.shadows) {
+            ctx.shadowBlur = isSun ? 42 : 22;
+            ctx.shadowColor = bodyCol;
+        }
         ctx.beginPath(); ctx.arc(cX, cY, bodyR, 0, Math.PI * 2); ctx.fill();
         if (!isSun) {
             ctx.shadowBlur = 0;
@@ -169,27 +227,58 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
         }
         ctx.restore();
 
-        // Clouds
+        // Clouds — gradient puffs cached per radius bucket and repositioned
+        // via translate (bit-identical) while the tint is unchanged;
+        // Performance draws flat circles instead (3 clouds, no gradients).
         {
             const cloudTint = mixRgb(mixRgb({ r: 248, g: 251, b: 255 }, sky, 0.35 + night * 0.4), warm, dawn * 0.4);
             const ca = clamp((0.2 + sun * 0.16) * (1 - night * 0.45), 0.05, 0.36);
             ctx.save();
             ctx.globalAlpha = ca;
-            const nClouds = q < 1 ? 3 : 6;
-            for (let i = 0; i < nClouds; i++) {
-                const m = w + 800;
-                const cx = (((i * 660 + this.frames * (0.2 + (i % 3) * 0.06) - cam.x * 0.05) % m) + m) % m - 400;
-                const cy = gy * (0.13 + (i % 3) * 0.12);
-                const sc = 0.7 + (i % 4) * 0.25;
-                for (let b = 0; b < 5; b++) {
-                    const bx = cx + (b - 2) * 42 * sc;
-                    const by = cy + Math.sin(b * 1.3 + i) * 9 * sc;
-                    const br = (36 - Math.abs(b - 2) * 6) * sc * 1.6;
-                    const cg = ctx.createRadialGradient(bx, by, 0, bx, by, br);
-                    cg.addColorStop(0, toRgba(cloudTint, 1));
-                    cg.addColorStop(1, "transparent");
-                    ctx.fillStyle = cg;
-                    ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.fill();
+            if (GFX.flatScenery) {
+                ctx.fillStyle = toRgb(cloudTint);
+                const nClouds = 3;
+                for (let i = 0; i < nClouds; i++) {
+                    const m = w + 800;
+                    const cx = (((i * 660 + this.frames * (0.2 + (i % 3) * 0.06) - cam.x * 0.05) % m) + m) % m - 400;
+                    const cy = gy * (0.13 + (i % 3) * 0.12);
+                    const sc = 0.7 + (i % 4) * 0.25;
+                    for (let b = 0; b < 5; b++) {
+                        const bx = cx + (b - 2) * 42 * sc;
+                        const by = cy + Math.sin(b * 1.3 + i) * 9 * sc;
+                        const br = (36 - Math.abs(b - 2) * 6) * sc * 1.6;
+                        ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.fill();
+                    }
+                }
+            } else {
+                const nClouds = 6;
+                const tintKey = toRgba(cloudTint, 1);
+                if (this._cloudTintKey !== tintKey) {
+                    this._cloudTintKey = tintKey;
+                    this._cloudGrads = new Map();
+                }
+                for (let i = 0; i < nClouds; i++) {
+                    const m = w + 800;
+                    const cx = (((i * 660 + this.frames * (0.2 + (i % 3) * 0.06) - cam.x * 0.05) % m) + m) % m - 400;
+                    const cy = gy * (0.13 + (i % 3) * 0.12);
+                    const sc = 0.7 + (i % 4) * 0.25;
+                    for (let b = 0; b < 5; b++) {
+                        const bx = cx + (b - 2) * 42 * sc;
+                        const by = cy + Math.sin(b * 1.3 + i) * 9 * sc;
+                        const br = (36 - Math.abs(b - 2) * 6) * sc * 1.6;
+                        const rKey = Math.round(br * 100);
+                        let cg = this._cloudGrads.get(rKey);
+                        if (!cg) {
+                            cg = ctx.createRadialGradient(0, 0, 0, 0, 0, br);
+                            cg.addColorStop(0, toRgba(cloudTint, 1));
+                            cg.addColorStop(1, "transparent");
+                            this._cloudGrads.set(rKey, cg);
+                        }
+                        ctx.translate(bx, by);
+                        ctx.fillStyle = cg;
+                        ctx.beginPath(); ctx.arc(0, 0, br, 0, Math.PI * 2); ctx.fill();
+                        ctx.translate(-bx, -by);
+                    }
                 }
             }
             ctx.restore();
@@ -211,11 +300,20 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
         });
 
         // Horizon haze band — fuses mountain bases into the atmosphere
-        const hz = ctx.createLinearGradient(0, gy - gy * 0.3, 0, gy + 6);
-        hz.addColorStop(0, "transparent");
-        hz.addColorStop(1, toRgba(horizonO, 0.55 + dawn * 0.2));
-        ctx.fillStyle = hz;
-        ctx.fillRect(0, gy - gy * 0.3, w, gy * 0.3 + 6);
+        // (skipped on the flat/Performance tier as a minor atmosphere layer)
+        if (!GFX.flatScenery) {
+            const hazeCol = toRgba(horizonO, 0.55 + dawn * 0.2);
+            const hazeKey = hazeCol + "|" + gy;
+            if (this._hazeKey !== hazeKey) {
+                const hz = ctx.createLinearGradient(0, gy - gy * 0.3, 0, gy + 6);
+                hz.addColorStop(0, "transparent");
+                hz.addColorStop(1, hazeCol);
+                this._hazeKey = hazeKey;
+                this._hazeGrad = hz;
+            }
+            ctx.fillStyle = this._hazeGrad;
+            ctx.fillRect(0, gy - gy * 0.3, w, gy * 0.3 + 6);
+        }
 
         // Tree-line silhouette
         this._drawRidge(ctx, w, gy, cam, {
@@ -226,12 +324,23 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
 
         // ── GROUND ──
         const gTop = mixCol(gnd, "#fff7e0", 0.1 * sun + 0.02);
-        const gg = ctx.createLinearGradient(0, gy, 0, h);
-        gg.addColorStop(0, gTop);
-        gg.addColorStop(0.22, gnd);
-        gg.addColorStop(1, shade(gnd, -0.58));
-        ctx.fillStyle = gg;
-        ctx.fillRect(0, gy, w, h - gy);
+        if (GFX.flatScenery) {
+            ctx.fillStyle = gnd;
+            ctx.fillRect(0, gy, w, h - gy);
+        } else {
+            const gndDark = shade(gnd, -0.58);
+            const gndKey = gTop + "|" + gnd + "|" + gndDark + "|" + gy + "|" + h;
+            if (this._gndKey !== gndKey) {
+                const gg = ctx.createLinearGradient(0, gy, 0, h);
+                gg.addColorStop(0, gTop);
+                gg.addColorStop(0.22, gnd);
+                gg.addColorStop(1, gndDark);
+                this._gndKey = gndKey;
+                this._gndGrad = gg;
+            }
+            ctx.fillStyle = this._gndGrad;
+            ctx.fillRect(0, gy, w, h - gy);
+        }
 
         // Lit rim where grass catches the sky + shadow line beneath
         ctx.fillStyle = toRgba(mixRgb(gnd, { r: 255, g: 255, b: 240 }, 0.5), 0.45 + sun * 0.3);
@@ -287,13 +396,12 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
     },
 
     drawForeground(ctx, w, h, cam, lvl, dP) {
-        const q = particleQuality();
-        // Ambient drifting motes / embers in front of the action
-        if (q >= 1) {
+        // Ambient drifting motes / embers in front of the action (Cinematic only)
+        if (GFX.postFX) {
             ctx.save();
             ctx.globalCompositeOperation = "screen";
             const moteCol = dP > 0 ? "#fff2c4" : "#a9c2ff";
-            const n = q >= 2 ? 20 : 12;
+            const n = 20;
             for (let i = 0; i < n; i++) {
                 const m = w + 60;
                 const mx = (((i * 173 + this.frames * (0.3 + (i % 3) * 0.18)) % m) + m) % m - 30;
@@ -327,8 +435,7 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
             ctx.fillStyle = this._vignette;
             ctx.fillRect(0, 0, w, h);
         }
-        const q = particleQuality();
-        if (q >= 1 && this._grainPat) {
+        if (GFX.postFX && this._grainPat) {
             ctx.save();
             ctx.globalAlpha = 0.045;
             ctx.globalCompositeOperation = "overlay";
@@ -342,10 +449,19 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
 
     draw(dt) {
         const ctx = this.ctx,
-            w = this.canvas.width,
-            h = this.canvas.height,
+            w = this.vw,
+            h = this.vh,
             cam = this.camera;
         ctx.save();
+        // Render-scale (Performance tier only, otherwise a no-op identity
+        // scale): drawing happens entirely in logical (CSS-pixel) space via
+        // w/h above; this maps it down to the smaller physical backing
+        // store, and the CSS width/height:100vw/100vh on #gameCanvas
+        // upscales it back to fill the viewport. Must come BEFORE the shake
+        // translate below so the shake amplitude round-trips unchanged
+        // through the scale-down + CSS-upscale.
+        const rs = GFX.renderScale || 1;
+        if (rs !== 1) ctx.scale(rs, rs);
         if (this.shake > 0)
             ctx.translate(
                 rand(-this.shake, this.shake),
@@ -409,28 +525,29 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
             ctx.fillRect(0, 0, w, h);
         }
 
-        // Castle danger vignette
+        // Castle danger vignette (cached gradient, pulse via globalAlpha)
         const cas2 = this.buildings.find(b => b.type === "castle" && b.active && b.hp > 0);
-        if (cas2 && cas2.hp / cas2.maxHp < 0.35) {
+        if (cas2 && cas2.hp / cas2.maxHp < 0.35 && this._dangerVignette) {
             const ratio2 = 1 - (cas2.hp / cas2.maxHp) / 0.35;
             const pulse2 = (Math.sin(Date.now() * 0.004) + 1) * 0.5;
             const alpha2 = (0.08 + ratio2 * 0.22) * (0.5 + pulse2 * 0.5);
-            const vg = ctx.createRadialGradient(w/2, h/2, h*0.22, w/2, h/2, h*0.85);
-            vg.addColorStop(0, "transparent");
-            vg.addColorStop(1, `rgba(200,0,0,${alpha2})`);
-            ctx.fillStyle = vg; ctx.fillRect(0, 0, w, h);
+            ctx.save();
+            ctx.globalAlpha = alpha2;
+            ctx.fillStyle = this._dangerVignette;
+            ctx.fillRect(0, 0, w, h);
+            ctx.restore();
         }
         // Boss presence: the world dims under the Hollow Engine, and entrance /
         // impact flashes wash the screen. Both are purely cosmetic overlays
         // gated on the encounter state (no gameplay effect).
-        if (this.bossState === "active" || this.bossState === "warning") {
+        if ((this.bossState === "active" || this.bossState === "warning") && this._bossVignette) {
             const pulse = (Math.sin(Date.now() * 0.003) + 1) * 0.5;
             const a = 0.12 + pulse * 0.06;
-            const bv = ctx.createRadialGradient(w / 2, h * 0.46, h * 0.2, w / 2, h * 0.5, h * 0.95);
-            bv.addColorStop(0, "transparent");
-            bv.addColorStop(1, `rgba(38,10,58,${a})`);
-            ctx.fillStyle = bv;
+            ctx.save();
+            ctx.globalAlpha = a;
+            ctx.fillStyle = this._bossVignette;
             ctx.fillRect(0, 0, w, h);
+            ctx.restore();
         }
         if (this.bossFlash > 0) {
             ctx.fillStyle = `rgba(255,240,222,${Math.min(0.6, this.bossFlash)})`;
@@ -449,7 +566,7 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
             ctx.globalCompositeOperation = "screen";
             ctx.strokeStyle = "#7dd3fc";
             ctx.lineWidth = 2.5 * cam.z;
-            ctx.shadowBlur = 18; ctx.shadowColor = "#38bdf8";
+            if (GFX.shadows) { ctx.shadowBlur = 18; ctx.shadowColor = "#38bdf8"; }
             ctx.beginPath();
             const steps = 7;
             ctx.moveTo(p1.x, p1.y);
@@ -461,7 +578,8 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
             }
             ctx.lineTo(p2.x, p2.y);
             ctx.stroke();
-            ctx.shadowBlur = 0; ctx.restore();
+            if (GFX.shadows) ctx.shadowBlur = 0;
+            ctx.restore();
         }
 
         // Cinematic post-processing (vignette + film grain)

@@ -4,6 +4,7 @@ import { BUILDING_TYPES } from '../data/buildings.js';
 import { UNIT_TYPES } from '../data/units.js';
 import { btnId } from '../utils.js';
 import { BUILDING_ROSTER, UNIT_ROSTER } from '../ui/action-bar.js';
+import { refreshGraphics } from '../systems/graphics.js';
 
 // Hotkey -> unit/building type, derived from the on-screen roster so the
 // keyboard bindings and the action-bar share a single source of truth.
@@ -143,6 +144,12 @@ export const inputMethods = /** @type {ThisType<any>} */ ({
                 this.camera.pan(-40);
             if (e.code === "ArrowRight" || e.code === "KeyD")
                 this.camera.pan(40);
+        });
+
+        const pqSel = document.getElementById("particleQuality");
+        if (pqSel) pqSel.addEventListener("change", () => {
+            refreshGraphics();
+            this.resize();
         });
 
         // Minimap

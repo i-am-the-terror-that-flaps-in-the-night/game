@@ -1,5 +1,6 @@
 import { CONFIG } from '../config.js';
 import { lerp, particleQuality, rand, randInt, toRgba } from '../utils.js';
+import { GFX } from './graphics.js';
 
 // --- VISUAL SYSTEMS ---
 export class DecalSystem {
@@ -27,14 +28,14 @@ export class DecalSystem {
     }
     draw(ctx, cam) {
         for (const d of this.decals) {
-            const p = cam.toScreen(d.x, d.y);
+            const px = cam.sx(d.x), py = cam.sy(d.y);
             ctx.globalAlpha = d.alpha;
             if (d.type === "blood") {
                 ctx.fillStyle = "#7f1d1d";
                 ctx.beginPath();
                 ctx.ellipse(
-                    p.x,
-                    p.y + 2,
+                    px,
+                    py + 2,
                     d.size * cam.z,
                     d.size * 0.4 * cam.z,
                     0,
@@ -46,8 +47,8 @@ export class DecalSystem {
                 ctx.fillStyle = "#020617";
                 ctx.beginPath();
                 ctx.ellipse(
-                    p.x,
-                    p.y + 2,
+                    px,
+                    py + 2,
                     d.size * cam.z,
                     d.size * 0.3 * cam.z,
                     0,
@@ -83,6 +84,8 @@ export class ParticleSystem {
                 type,
             });
         }
+        if (this.p.length > GFX.particleCap)
+            this.p.splice(0, this.p.length - GFX.particleCap);
     }
     update(dt) {
         for (let i = this.p.length - 1; i >= 0; i--) {
@@ -99,7 +102,7 @@ export class ParticleSystem {
     }
     draw(ctx, cam) {
         for (const p of this.p) {
-            const pos = cam.toScreen(p.x, p.y);
+            const px = cam.sx(p.x), py = cam.sy(p.y);
             ctx.globalAlpha = Math.max(0, p.life / p.maxL);
             ctx.fillStyle = p.col;
             if (p.type === "float" || p.type === "spark")
@@ -107,18 +110,18 @@ export class ParticleSystem {
 
             ctx.beginPath();
             if (p.type === "spark") {
-                ctx.moveTo(pos.x, pos.y);
+                ctx.moveTo(px, py);
                 ctx.lineTo(
-                    pos.x - p.vx * 2 * cam.z,
-                    pos.y - p.vy * 2 * cam.z,
+                    px - p.vx * 2 * cam.z,
+                    py - p.vy * 2 * cam.z,
                 );
                 ctx.strokeStyle = p.col;
                 ctx.lineWidth = p.sz * cam.z;
                 ctx.stroke();
             } else {
                 ctx.arc(
-                    pos.x,
-                    pos.y,
+                    px,
+                    py,
                     Math.max(0.1, p.sz * cam.z),
                     0,
                     Math.PI * 2,
@@ -185,7 +188,7 @@ export class EffectSystem {
         for (const f of this.e) {
             const a = Math.max(0, f.life / f.maxL); // 1 -> 0
             const t = 1 - a; // progress 0 -> 1
-            const p = cam.toScreen(f.x, f.y);
+            const px = cam.sx(f.x), py = cam.sy(f.y);
             if (f.type === "slash") {
                 const rad = f.len * cam.z * (0.55 + t * 0.75);
                 const a0 = f.ang - f.arc / 2, a1 = f.ang + f.arc / 2;
@@ -193,13 +196,13 @@ export class EffectSystem {
                 ctx.strokeStyle = f.col;
                 ctx.lineWidth = f.w * cam.z * (1 - t * 0.65);
                 ctx.beginPath();
-                ctx.arc(p.x, p.y, rad, a0, a1);
+                ctx.arc(px, py, rad, a0, a1);
                 ctx.stroke();
                 // bright leading tip
                 ctx.globalAlpha = a * 0.95;
                 ctx.lineWidth = Math.max(0.5, f.w * 0.45 * cam.z);
                 ctx.beginPath();
-                ctx.arc(p.x, p.y, rad, a1 - 0.3, a1);
+                ctx.arc(px, py, rad, a1 - 0.3, a1);
                 ctx.stroke();
             } else if (f.type === "ring") {
                 const r = lerp(f.r0, f.r1, t) * cam.z;
@@ -207,17 +210,17 @@ export class EffectSystem {
                 ctx.strokeStyle = f.col;
                 ctx.lineWidth = Math.max(0.5, f.w * cam.z * a);
                 ctx.beginPath();
-                ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+                ctx.arc(px, py, r, 0, Math.PI * 2);
                 ctx.stroke();
             } else if (f.type === "flash") {
                 const r = Math.max(1, f.r * cam.z * (0.5 + t * 0.8));
-                const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+                const g = ctx.createRadialGradient(px, py, 0, px, py, r);
                 g.addColorStop(0, toRgba(f.col, 0.85 * a));
                 g.addColorStop(0.5, toRgba(f.col, 0.3 * a));
                 g.addColorStop(1, toRgba(f.col, 0));
                 ctx.fillStyle = g;
                 ctx.beginPath();
-                ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+                ctx.arc(px, py, r, 0, Math.PI * 2);
                 ctx.fill();
             } else if (f.type === "spark") {
                 ctx.globalAlpha = a;
@@ -226,8 +229,8 @@ export class EffectSystem {
                 for (const r of f.rays) {
                     const L = r.L * cam.z * (0.5 + t * 0.9);
                     ctx.beginPath();
-                    ctx.moveTo(p.x, p.y);
-                    ctx.lineTo(p.x + Math.cos(r.a) * L, p.y + Math.sin(r.a) * L);
+                    ctx.moveTo(px, py);
+                    ctx.lineTo(px + Math.cos(r.a) * L, py + Math.sin(r.a) * L);
                     ctx.stroke();
                 }
             }
@@ -278,20 +281,20 @@ export class WeatherSystem {
                 ? "rgba(150,200,255,0.4)"
                 : "rgba(255,255,255,0.6)";
         for (const p of this.particles) {
-            const pos = cam.toScreen(p.x, p.y);
+            const px = cam.sx(p.x), py = cam.sy(p.y);
             if (this.type === "rain") {
                 ctx.beginPath();
-                ctx.moveTo(pos.x, pos.y);
+                ctx.moveTo(px, py);
                 ctx.lineTo(
-                    pos.x - p.vx * cam.z,
-                    pos.y - p.s * cam.z,
+                    px - p.vx * cam.z,
+                    py - p.s * cam.z,
                 );
                 ctx.strokeStyle = ctx.fillStyle;
                 ctx.lineWidth = p.sz * cam.z;
                 ctx.stroke();
             } else {
                 ctx.beginPath();
-                ctx.arc(pos.x, pos.y, p.sz * cam.z, 0, Math.PI * 2);
+                ctx.arc(px, py, p.sz * cam.z, 0, Math.PI * 2);
                 ctx.fill();
             }
         }

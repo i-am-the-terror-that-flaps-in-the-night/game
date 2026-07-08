@@ -3,6 +3,7 @@ import { CONFIG, HIT_FLASH_FRAMES, TEAMS } from '../config.js';
 import { dealDamage } from '../systems/combat.js';
 import { Projectile } from '../systems/projectile.js';
 import { clamp, lerp, particleQuality, rand, toRgba } from '../utils.js';
+import { GFX } from '../systems/graphics.js';
 
 // --- BOSS: "Rustmaw, the Hollow Engine" ---------------------------------
 // A colossal eldritch locomotive — not a member of ENEMY_TYPES and not driven
@@ -525,7 +526,7 @@ export class Boss extends Entity {
 
         // Faint corrupted heat-haze behind the hull (small, so it doesn't wash
         // the machine into a glowing blob).
-        if (q >= 1) {
+        if (GFX.postFX) {
             ctx.save();
             ctx.globalCompositeOperation = 'screen';
             const aA = 0.05 + this.coreGlow * 0.03 + (this.phase - 1) * 0.02;

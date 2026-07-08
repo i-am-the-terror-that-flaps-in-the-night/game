@@ -54,22 +54,24 @@ export class Entity {
     }
     drawHp(ctx, cam, w, offY) {
         if (this.hp >= this.maxHp || this.hp <= 0) return;
-        const p = cam.toScreen(this.x, this.y);
+        const px = cam.sx(this.x);
+        const py = cam.sy(this.y);
         const bw = w * cam.z,
             bh = 5 * cam.z;
         ctx.fillStyle = "rgba(0,0,0,0.8)";
-        ctx.fillRect(p.x - bw / 2, p.y + offY * cam.z, bw, bh);
+        ctx.fillRect(px - bw / 2, py + offY * cam.z, bw, bh);
         ctx.fillStyle =
             this.team === TEAMS.PLAYER ? "#34d399" : "#ef4444";
         ctx.fillRect(
-            p.x - bw / 2 + 1,
-            p.y + offY * cam.z + 1,
+            px - bw / 2 + 1,
+            py + offY * cam.z + 1,
             (bw - 2) * (Math.max(0, this.hp) / this.maxHp),
             bh - 2,
         );
     }
     drawDmg(ctx, cam, dt) {
-        const p = cam.toScreen(this.x, this.y);
+        const px = cam.sx(this.x);
+        const py = cam.sy(this.y);
         for (let i = this.dmgTexts.length - 1; i >= 0; i--) {
             const d = this.dmgTexts[i];
             d.life -= dt;
@@ -86,10 +88,10 @@ export class Entity {
             ctx.lineWidth = 4 * cam.z;
             ctx.strokeText(
                 d.v,
-                p.x + d.x * cam.z,
-                p.y + d.y * cam.z,
+                px + d.x * cam.z,
+                py + d.y * cam.z,
             );
-            ctx.fillText(d.v, p.x + d.x * cam.z, p.y + d.y * cam.z);
+            ctx.fillText(d.v, px + d.x * cam.z, py + d.y * cam.z);
         }
         ctx.globalAlpha = 1;
     }
