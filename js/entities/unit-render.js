@@ -1,6 +1,7 @@
 import { HIT_FLASH_FRAMES, HIT_FLINCH_FRAMES, TEAMS } from '../config.js';
 import { Unit } from './unit.js';
-import { clamp, ik2, lerp, particleQuality, shade, toRgba } from '../utils.js';
+import { clamp, ik2, lerp, shade, toRgba } from '../utils.js';
+import { GFX } from '../systems/graphics.js';
 
 // --- UNIT RENDERING (stickman drawing, split from Unit class) ---
 Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
@@ -9,11 +10,10 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
             this.drawDmg(ctx, cam, dt);
             return;
         }
-        const p = cam.toScreen(this.x, this.y);
+        const px = cam.sx(this.x), py = cam.sy(this.y);
         const s = this.scale * cam.z;
         const f = this.facing;
-        const q = particleQuality();
-        const lowQ = q < 1;
+        const lowQ = GFX.flatScenery;
 
         // ── Animation drivers ──
         const walking = this.state === "walk";
@@ -42,7 +42,7 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
         const fPh = gp, bPh = gp + Math.PI;
 
         ctx.save();
-        ctx.translate(p.x, p.y);
+        ctx.translate(px, py);
         if (this.recoil) ctx.translate(this.recoil * 0.6 * cam.z, 0);
         ctx.scale(f * s, s);
         ctx.lineCap = "round";
@@ -456,7 +456,7 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
         else { const k = swing; wa = lerp(-0.7, 0.6, k); }
 
         // Weapon-tip motion trail
-        if (this.atkKind === 1 && meleeBlade && Math.abs(swing) > 0.06 && q >= 1) {
+        if (this.atkKind === 1 && meleeBlade && Math.abs(swing) > 0.06 && GFX.postFX) {
             const L = this.vis === "spear" ? 34 : this.vis === "club" ? 18 : 20;
             this.wTrail.push({ x: fhx + Math.cos(wa) * L, y: fhy + Math.sin(wa) * L, l: 6 });
             if (this.wTrail.length > 12) this.wTrail.shift();
@@ -644,13 +644,13 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
         this.drawHp(ctx, cam, 35 * this.scale, -75 * this.scale);
         // Level star badge
         if (this.team === TEAMS.PLAYER && this.level > 1 && this.active) {
-            const pL = cam.toScreen(this.x, this.y);
+            const plx = cam.sx(this.x), ply = cam.sy(this.y);
             ctx.save();
             ctx.fillStyle = '#fbbf24';
-            ctx.shadowBlur = 8; ctx.shadowColor = '#fbbf24';
+            if (GFX.shadows) { ctx.shadowBlur = 8; ctx.shadowColor = '#fbbf24'; }
             ctx.font = `bold ${10 * cam.z}px system-ui`;
             ctx.textAlign = 'center';
-            ctx.fillText('★'.repeat(this.level - 1), pL.x, pL.y - (82 * this.scale + 2) * cam.z);
+            ctx.fillText('★'.repeat(this.level - 1), plx, ply - (82 * this.scale + 2) * cam.z);
             ctx.shadowBlur = 0; ctx.restore();
         }
         this.drawDmg(ctx, cam, dt);

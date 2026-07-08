@@ -31,4 +31,10 @@ export class Camera {
     toWorld(sx, sy) {
         return { x: sx / this.z + this.x, y: sy / this.z + this.y };
     }
+    sx(wx) {
+        return (wx - this.x) * this.z;
+    }
+    sy(wy) {
+        return (wy - this.y) * this.z;
+    }
 }
