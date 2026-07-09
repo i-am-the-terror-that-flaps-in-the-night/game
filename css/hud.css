@@ -255,6 +255,19 @@
     border-color: var(--accent);
     box-shadow: var(--glow-cyan);
 }
+.time-btn--quit {
+    margin-left: 8px;
+    padding: 8px 16px;
+    font-size: 20px;
+    color: var(--danger);
+    border-color: rgba(255, 77, 94, 0.4);
+}
+.time-btn--quit:hover {
+    color: #fff;
+    background: rgba(70, 12, 18, 0.92);
+    border-color: var(--danger);
+    box-shadow: 0 0 14px rgba(255, 77, 94, 0.4);
+}
 
 /* Side Panels */
 #sidePanel {

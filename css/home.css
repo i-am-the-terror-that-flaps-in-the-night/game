@@ -127,6 +127,62 @@ animation-delay: var(--delay, 0s);
     box-shadow: 0 0 24px rgba(251,191,36,0.35), 0 15px 30px rgba(0,0,0,0.6);
 }
 
+.menu-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    width: 300px;
+}
+
+.menu-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Sub-menu panels: only one visible at a time */
+.menu-panel {
+    animation: menuPanelIn 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.menu-panel.hidden {
+    display: none;
+}
+@keyframes menuPanelIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Back button — quieter than the action buttons */
+.menu-btn--back {
+    margin-top: 8px;
+    border-color: rgba(255,255,255,0.18);
+    background: rgba(8, 14, 22, 0.6);
+    opacity: 0.85;
+}
+.menu-btn--back:hover {
+    border-color: var(--panel-border-bright);
+    opacity: 1;
+}
+
+.menu-group-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.65);
+    margin: 0 2px 2px;
+}
+.menu-group-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--panel-border-bright), transparent);
+    opacity: 0.6;
+}
+
 /* Version badge */
 .version-badge {
     font-family: var(--font-mono);
