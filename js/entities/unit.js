@@ -376,11 +376,14 @@ export class Unit extends Entity {
             isUnit: true,
         };
         const enemies = this.team === TEAMS.PLAYER ? game.enemies : game.units;
-        const RAYS = 4; // a few raycasts stand in for a hail of gravel
-        const hits = enemies
+        const RAYS = 5; // always fires 5 raycast shots, not just however many targets are clustered
+        const nearby = enemies
             .filter((e) => e.hp > 0 && dist(tgt.x, tgt.y, e.x, e.y) < this.aoe)
-            .sort((a, b) => dist(tgt.x, tgt.y, a.x, a.y) - dist(tgt.x, tgt.y, b.x, b.y))
-            .slice(0, RAYS);
+            .sort((a, b) => dist(tgt.x, tgt.y, a.x, a.y) - dist(tgt.x, tgt.y, b.x, b.y));
+        // Fewer than 5 targets in the blast radius? Re-hit the nearest ones so
+        // every attack is still 5 real shots landing, not fewer.
+        const hits = [];
+        for (let i = 0; i < RAYS && nearby.length; i++) hits.push(nearby[i % nearby.length]);
         for (const e of hits) {
             dealDamage(this.dmg * 0.6, src, e);
             game.fx.spark(e.x, e.y - 20 * (e.scale || 1), rand(0, Math.PI * 2), {
