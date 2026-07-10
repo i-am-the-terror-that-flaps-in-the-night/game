@@ -92,7 +92,8 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
 
         // ── Catapult siege engine ──
         if (isCatapult) {
-            const arm = lerp(-2.3, -0.5, sw); // throws forward on fire, resets to loaded
+            const judder = sw > 0 ? Math.sin(this.frame * 2.4) * 0.15 * sw : 0; // rapid-fire shake
+            const arm = lerp(-2.3, -0.5, sw) + judder; // throws forward on fire, resets to loaded
             bone(-18, -5, 16, -5, 5, "#5b3a1a"); // base beam
             for (const wx of [-12, 10]) {
                 ctx.fillStyle = "#3a2410"; ctx.strokeStyle = "#1f1408"; ctx.lineWidth = 2;
@@ -113,6 +114,17 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
             if (sw < 0.3) { // payload loaded
                 ctx.fillStyle = "#475569";
                 ctx.beginPath(); ctx.arc(30, -4, 3.5, 0, Math.PI * 2); ctx.fill();
+            }
+            if (sw > 0.15) { // strobing muzzle flash while the barrage fires
+                ctx.save();
+                ctx.globalCompositeOperation = "screen";
+                const flicker = Math.floor(this.frame) % 2 === 0 ? 1 : 0.4;
+                const mg = ctx.createRadialGradient(30, 0, 0, 30, 0, 10);
+                mg.addColorStop(0, toRgba("#fef3c7", 0.9 * flicker * sw));
+                mg.addColorStop(1, toRgba("#f59e0b", 0));
+                ctx.fillStyle = mg;
+                ctx.beginPath(); ctx.arc(30, 0, 10, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
             }
             ctx.restore();
             ctx.fillStyle = skin; // team pennant
