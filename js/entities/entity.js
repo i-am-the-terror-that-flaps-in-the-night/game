@@ -17,8 +17,10 @@ export class Entity {
     takeDamage(amt, tag = null) {
         if (this.hp <= 0) return;
         this.hp -= amt;
-        this.hurtT = HIT_FLINCH_FRAMES;   // flinch
-        this.flashT = HIT_FLASH_FRAMES;  // white hit-flash
+        const heavy = tag === "strong"; // counter/critical hit — punchier feedback
+        this.hurtT = heavy ? HIT_FLINCH_FRAMES * 1.4 : HIT_FLINCH_FRAMES;   // flinch
+        this.flashT = heavy ? HIT_FLASH_FRAMES * 1.6 : HIT_FLASH_FRAMES;  // white hit-flash
+        if (heavy && typeof game !== "undefined") game.shake = Math.max(game.shake, 3);
         const col =
             tag === "strong" ? "#fbbf24"
             : tag === "weak" ? "#94a3b8"

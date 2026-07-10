@@ -233,8 +233,13 @@ export class Unit extends Entity {
         this.x = clamp(this.x, 50, CONFIG.WORLD_WIDTH - 50);
     }
     attack(tgt) {
+        if (this.type === "catapult") {
+            this.catapultBarrage(tgt);
+            return;
+        }
         if (this.ranged) {
             this.atk = 1; this.atkKind = 2; // draw-back animation
+            this.recoil = -this.facing * (this.proj === "fireball" ? 2 : 3); // firing kick-back
             game.projectiles.push(
                 new Projectile(
                     this.x,
@@ -255,7 +260,14 @@ export class Unit extends Entity {
                     },
                 ),
             );
-            if (this.proj === "fireball") game.audio.playMagic();
+            if (this.proj === "fireball") {
+                game.audio.playMagic();
+                game.fx.flash(this.x, this.y - 45 * this.scale, {
+                    r: 12 * this.scale,
+                    col: this.team === TEAMS.PLAYER ? "#60a5fa" : "#c084fc",
+                    life: 8,
+                }); // cast pulse
+            }
             else game.audio.playShoot();
         } else {
             this.atk = 1; this.atkKind = 1; // melee swing
@@ -348,6 +360,52 @@ export class Unit extends Entity {
                 game.audio.playHit();
             }
         }
+    }
+    // Catapult: looks like a machine-gun gravel barrage, but the actual damage
+    // is a handful of instant raycast hits — no per-frame Projectile objects,
+    // so the "hail of shots" is cheap no matter how chaotic it looks.
+    catapultBarrage(tgt) {
+        this.atk = 1; this.atkKind = 2; // drives the rapid-fire arm judder + muzzle flash
+        this.recoil = -this.facing * 5; // firing kick-back
+        const src = {
+            dmgType: this.dmgType,
+            armorPierce: this.armorPierce,
+            vsLarge: this.vsLarge,
+            vsFlying: this.vsFlying,
+            team: this.team,
+            isUnit: true,
+        };
+        const enemies = this.team === TEAMS.PLAYER ? game.enemies : game.units;
+        const RAYS = 5; // always fires 5 raycast shots, not just however many targets are clustered
+        const nearby = enemies
+            .filter((e) => e.hp > 0 && dist(tgt.x, tgt.y, e.x, e.y) < this.aoe)
+            .sort((a, b) => dist(tgt.x, tgt.y, a.x, a.y) - dist(tgt.x, tgt.y, b.x, b.y));
+        // Fewer than 5 targets in the blast radius? Re-hit the nearest ones so
+        // every attack is still 5 real shots landing, not fewer.
+        const hits = [];
+        for (let i = 0; i < RAYS && nearby.length; i++) hits.push(nearby[i % nearby.length]);
+        for (const e of hits) {
+            dealDamage(this.dmg * 0.6, src, e);
+            game.fx.spark(e.x, e.y - 20 * (e.scale || 1), rand(0, Math.PI * 2), {
+                n: 4, len: 14, spread: 1.2, col: "#a8a29e",
+            });
+            game.fx.flash(e.x, e.y - 20 * (e.scale || 1), { r: 16, col: "#d6d3d1", life: 6 });
+        }
+        // Muzzle-flash tracer spray toward the impact zone (visual only — no
+        // collision, just short-lived streaks fading at staggered times).
+        const muzzleX = this.x + this.facing * 18 * this.scale;
+        const muzzleY = this.y - 32 * this.scale;
+        const ang = Math.atan2(tgt.y - 40 - muzzleY, tgt.x - this.x);
+        for (let i = 0; i < 7; i++) {
+            game.fx.spark(muzzleX, muzzleY, ang + rand(-0.12, 0.12), {
+                n: 2, len: rand(30, 60), spread: 0.05, col: "#78716c", life: 5 + i, w: 1.6,
+            });
+        }
+        game.particles.emit(tgt.x, CONFIG.GROUND_Y, 22, "#78716c", 6, 3, "fade");
+        game.decals.add(tgt.x, CONFIG.GROUND_Y, "scorch", this.aoe * 0.4);
+        game.shake = Math.min(14, game.shake + 5);
+        game.audio.playShoot();
+        game.audio.playExplosion();
     }
     die() {
         super.die();

@@ -101,9 +101,9 @@ export const TECH_TREE = [
     {
         id: "crystal_focus",
         name: "Crystal Resonance",
-        cost: 300,
-        desc: "Increases Crystal Income by 1/sec",
+        cost: 220,
+        desc: "Increases Crystal Income by 1.5/sec",
         type: "crystal_inc",
-        val: 1,
+        val: 1.5,
     },
 ];
