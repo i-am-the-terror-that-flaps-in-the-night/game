@@ -235,6 +235,7 @@ export class Unit extends Entity {
     attack(tgt) {
         if (this.ranged) {
             this.atk = 1; this.atkKind = 2; // draw-back animation
+            this.recoil = -this.facing * (this.proj === "fireball" ? 2 : 3); // firing kick-back
             game.projectiles.push(
                 new Projectile(
                     this.x,
@@ -255,7 +256,14 @@ export class Unit extends Entity {
                     },
                 ),
             );
-            if (this.proj === "fireball") game.audio.playMagic();
+            if (this.proj === "fireball") {
+                game.audio.playMagic();
+                game.fx.flash(this.x, this.y - 45 * this.scale, {
+                    r: 12 * this.scale,
+                    col: this.team === TEAMS.PLAYER ? "#60a5fa" : "#c084fc",
+                    life: 8,
+                }); // cast pulse
+            }
             else game.audio.playShoot();
         } else {
             this.atk = 1; this.atkKind = 1; // melee swing

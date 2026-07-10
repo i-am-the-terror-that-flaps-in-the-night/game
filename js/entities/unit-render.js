@@ -32,7 +32,8 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
         const shoulderY = -40 + bob;
         const headCY = -50 + bob;
         const headR = 8;
-        let lean = (walking ? Math.sin(gp) * 0.04 : 0) + swing * 0.11 - hurt * 0.13;
+        const idleSway = (!walking && sw <= 0) ? Math.sin(this.frame * 0.045) * 0.028 : 0;
+        let lean = (walking ? Math.sin(gp) * 0.04 : 0) + swing * 0.15 - hurt * 0.13 + idleSway;
 
         // ── Palette ──
         const team = this.team === TEAMS.PLAYER;
@@ -444,8 +445,8 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
             fhx = 9 + strike * 3; fhy = shoulderY + 8 - strike * 7;
         } else {
             const restHx = 10, restHy = shoulderY + 9;
-            const wupHx = -1, wupHy = shoulderY - 7;
-            const strHx = 18, strHy = shoulderY + 13;
+            const wupHx = -4, wupHy = shoulderY - 9;
+            const strHx = 21, strHy = shoulderY + 13;
             if (swing < 0) { const k = -swing; fhx = lerp(restHx, wupHx, k); fhy = lerp(restHy, wupHy, k); }
             else { const k = swing; fhx = lerp(restHx, strHx, k); fhy = lerp(restHy, strHy, k); }
         }
@@ -521,7 +522,8 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
             og.addColorStop(0.4, glow);
             og.addColorStop(1, toRgba(glow, 0));
             ctx.fillStyle = og;
-            const r = 9 + (this.atk > 0 ? Math.random() * 4 : Math.sin(this.frame * 0.15) * 1.5);
+            const castPulse = this.atk > 0 ? Math.sin((1 - this.atk) * Math.PI) * 5 : Math.sin(this.frame * 0.15) * 1.5;
+            const r = 9 + castPulse;
             ctx.beginPath(); ctx.arc(orbX, orbY, r, 0, Math.PI * 2); ctx.fill();
             ctx.globalCompositeOperation = "source-over";
             ctx.fillStyle = "#ffffff";
@@ -598,7 +600,7 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
         // ── Hit flash overlay (additive) ──
         if (flash > 0) {
             ctx.globalCompositeOperation = "screen";
-            ctx.globalAlpha = flash * 0.55;
+            ctx.globalAlpha = flash * 0.7;
             ctx.fillStyle = "#ffffff";
             ctx.beginPath();
             ctx.ellipse(0, (shoulderY + hipY) / 2, 7, 14, 0, 0, Math.PI * 2);
