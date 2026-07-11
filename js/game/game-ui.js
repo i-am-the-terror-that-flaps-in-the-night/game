@@ -1,4 +1,4 @@
-import { CONFIG } from '../config.js';
+import { CONFIG, TEAMS } from '../config.js';
 import { el } from '../ui/dom.js';
 import { btnId, costStr, formatTime } from '../utils.js';
 import { defOf, describeMatchups, waveHint } from '../systems/combat.js';
@@ -109,7 +109,16 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
         const s = this.sel,
             d = defOf(s);
         const mu = describeMatchups(d);
-        e.innerHTML = `<strong style="color:var(--gold);font-size:15px; letter-spacing:1px; text-transform:uppercase;">${d ? d.name : "Unknown"}</strong><br>HP: ${Math.floor(s.hp)}/${s.maxHp}<br>${s.dmg ? "Damage: " + Math.round(s.dmg) + "<br>" : ""}${s.armor ? "Armor: " + s.armor + "<br>" : ""}${mu ? `<span style="font-size:12px;">${mu}</span>` : ""}`;
+        let html = `<strong style="color:var(--gold);font-size:15px; letter-spacing:1px; text-transform:uppercase;">${d ? d.name : "Unknown"}</strong><br>HP: ${Math.floor(s.hp)}/${s.maxHp}<br>${s.dmg ? "Damage: " + Math.round(s.dmg) + "<br>" : ""}${s.armor ? "Armor: " + s.armor + "<br>" : ""}${mu ? `<span style="font-size:12px;">${mu}</span>` : ""}`;
+        if (s.active && s.team === TEAMS.PLAYER && s.type !== "castle") {
+            const refund = s.costPaid ? costStr({
+                g: Math.floor((s.costPaid.g || 0) * 0.5),
+                i: Math.floor((s.costPaid.i || 0) * 0.5),
+                c: Math.floor((s.costPaid.c || 0) * 0.5),
+            }) : "";
+            html += `<button class="tech-btn" style="margin-top:8px;width:100%;border-color:var(--danger);color:var(--danger);" onclick="game.sellSelected()">Sell (X)${refund ? " — " + refund : ""}</button>`;
+        }
+        e.innerHTML = html;
     },
 
     updateUI() {

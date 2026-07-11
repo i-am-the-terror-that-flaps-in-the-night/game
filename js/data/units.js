@@ -141,11 +141,11 @@ export const UNIT_TYPES = {
     catapult: {
         name: "Catapult",
         hp: 200,
-        dmg: 11,
+        dmg: 50,
         range: 480,
         speed: 0.85,
-        cooldown: 6,
-        cost: { g: 160, i: 28 },
+        cooldown: 90,
+        cost: { g: 140, i: 22 },
         pop: 3,
         armor: 3,
         ranged: true,
@@ -154,7 +154,7 @@ export const UNIT_TYPES = {
         dmgType: "blunt",
         armorClass: "heavy",
         large: true,
-        desc: "A relentless barrage of boulders that never lets up — crushes shield walls and heavy armor, and hits giant monsters hardest of all.",
+        desc: "A steady barrage of boulders, faster-firing than any other siege weapon — crushes shield walls and heavy armor, and hits giant monsters hardest of all.",
         visual: "catapult",
     },
     paladin: {

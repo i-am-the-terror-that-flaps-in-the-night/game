@@ -4,7 +4,7 @@ import { TECH_TREE } from '../data/tech.js';
 import { UNIT_TYPES } from '../data/units.js';
 import { Building } from '../entities/building.js';
 import { Unit } from '../entities/unit.js';
-import { btnId, rand } from '../utils.js';
+import { btnId, costStr, rand } from '../utils.js';
 
 // --- GAME: resources, recruiting, building & tech (installed by install-mixins.js) ---
 export const economyMethods = /** @type {ThisType<any>} */ ({
@@ -88,6 +88,7 @@ export const economyMethods = /** @type {ThisType<any>} */ ({
         this.payCost(cost);
         this.pop += d.pop;
         const u = new Unit(150 + rand(-20, 20), t, TEAMS.PLAYER);
+        u.costPaid = cost; // remembered for a partial refund if later sold
         u.applyUpgrades(this.upgrades);
         if (this.upgrades.forge && !UNIT_TYPES[t].ranged)
             u.dmg = Math.ceil(u.dmg * (1 + this.upgrades.forge));
@@ -129,6 +130,7 @@ export const economyMethods = /** @type {ThisType<any>} */ ({
         }
         this.payCost(cost);
         const b = new Building(bx, t, TEAMS.PLAYER);
+        b.costPaid = cost; // remembered for a partial refund if later sold
         this.buildings.push(b);
         if (d.unlock) {
             d.unlock.forEach((u) => this.unlocked.u.add(u));
@@ -138,6 +140,38 @@ export const economyMethods = /** @type {ThisType<any>} */ ({
             this.notify(`Unlocked: ${names}`);
         }
         this.audio.playBuild();
+    },
+
+    // Sell for half of what was actually paid (per-instance, tracked at
+    // purchase time — unitCost()/buildCost() escalate with how many you own,
+    // so a flat base-cost refund would be wrong for anything past the first).
+    sellSelected() {
+        const s = this.sel;
+        if (!s || !s.active || s.team !== TEAMS.PLAYER) return;
+        if (s.kind !== "unit" && s.kind !== "building") return;
+        if (s.type === "castle") {
+            this.audio.playError();
+            this.notify("The castle cannot be sold.");
+            return;
+        }
+        const paid = s.costPaid || {};
+        const refund = {
+            g: Math.floor((paid.g || 0) * 0.5),
+            i: Math.floor((paid.i || 0) * 0.5),
+            c: Math.floor((paid.c || 0) * 0.5),
+        };
+        this.gold += refund.g;
+        this.iron += refund.i;
+        this.crystal += refund.c;
+        if (s.kind === "unit") this.pop = Math.max(0, this.pop - s.pop);
+        this.particles.emit(s.x, s.y - 20, 12, "#94a3b8", 3, 3, "fade");
+        this.notify(`Sold ${s.name} for ${costStr(refund)}.`);
+        this.audio.playCoin();
+        s.active = false;
+        s.hp = 0;
+        this.sel = null;
+        this.updateSelUI();
+        this.updateUI();
     },
 
     spawnEnemy(t, x, y) {

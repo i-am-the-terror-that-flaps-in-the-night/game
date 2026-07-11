@@ -140,6 +140,7 @@ export const inputMethods = /** @type {ThisType<any>} */ ({
                 this.setSpeed(this.ts === 0 ? 1 : 0);
             if (k === "y") this.openTechTree();
             if (k === "n") this.callWave();
+            if (k === "x") this.sellSelected();
             if (e.code === "ArrowLeft" || e.code === "KeyA")
                 this.camera.pan(-40);
             if (e.code === "ArrowRight" || e.code === "KeyD")
