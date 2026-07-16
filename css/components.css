@@ -50,3 +50,44 @@
 /* War Council permanent unlocks */
 .ach-item.unlock-done { border-color: rgba(192,132,252,0.45); background: rgba(192,132,252,0.06); }
 .unlock-owned { display: inline-block; color: #c084fc; font-weight: 800; font-size: 13px; }
+
+/* War Treasury: permanent per-unit stat upgrades */
+.upg-track {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px; margin-top: 8px; flex-wrap: wrap;
+}
+.upg-label { font-size: 12px; color: var(--text-dim); font-weight: 700; white-space: nowrap; }
+.upg-bar { letter-spacing: 1px; color: var(--gold); font-size: 11px; }
+.upg-bonus { color: var(--success); font-weight: 800; }
+.upg-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.upg-btn { padding: 5px 9px; font-size: 11px; letter-spacing: 0.5px; }
+
+/* Commander's Manual */
+.manual { font-size: 15px; line-height: 1.75; color: #cbd5e1; }
+.manual section + section { margin-top: 22px; }
+.manual h3 {
+    font-family: var(--font-display); font-size: 12px; font-weight: 700;
+    color: var(--accent); text-transform: uppercase; letter-spacing: 1.5px;
+    margin: 0 0 8px; padding-bottom: 5px; border-bottom: var(--edge);
+}
+.manual p { margin: 0 0 8px; }
+.manual ul { margin: 0 0 8px; padding-left: 20px; color: var(--text-dim); }
+.manual li { margin-bottom: 4px; }
+.manual :last-child { margin-bottom: 0; }
+.manual strong { color: #e2e8f0; font-weight: 700; }
+.manual .m-void { color: var(--mana); }
+.manual .m-gold { color: var(--gold); }
+.manual .m-ok { color: var(--success); }
+.manual kbd {
+    display: inline-block; min-width: 22px; padding: 1px 6px;
+    font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+    text-align: center; line-height: 1.5; color: var(--accent-bright);
+    background: rgba(45, 226, 255, 0.08); border: var(--edge);
+    border-radius: var(--r-sm);
+}
+.manual-keys {
+    display: grid; grid-template-columns: auto 1fr; gap: 7px 14px;
+    margin: 0; align-items: baseline;
+}
+.manual-keys dt { white-space: nowrap; }
+.manual-keys dd { margin: 0; color: var(--text-dim); }

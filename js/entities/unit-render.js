@@ -3,6 +3,38 @@ import { Unit } from './unit.js';
 import { clamp, ik2, lerp, shade, toRgba } from '../utils.js';
 import { GFX } from '../systems/graphics.js';
 
+// Per-unit torso + head gradients depend only on the unit's skin colour and are
+// drawn in a FIXED local coordinate space (the ctx is translated per unit), so
+// the same gradient object can be reused across every unit and every frame.
+// Building them fresh per unit was 2 createLinearGradient/createRadialGradient
+// allocations × up to ~100 units × 60fps — the biggest allocation cost in big
+// fights (profiled). Cache them by skin colour and build once. Gradients are
+// bound to the single persistent game canvas ctx, so reuse is safe.
+const _torsoGradCache = new Map();
+const _headGradCache = new Map();
+function torsoGrad(ctx, skin) {
+    let g = _torsoGradCache.get(skin);
+    if (!g) {
+        // Fixed reference coords (shoulderY≈-40, hipY≈-18); the tiny per-frame
+        // breath bob shifts these <3px — imperceptible on a smooth vertical fade.
+        g = ctx.createLinearGradient(0, -40, 0, -18);
+        g.addColorStop(0, shade(skin, 0.18));
+        g.addColorStop(1, shade(skin, -0.28));
+        _torsoGradCache.set(skin, g);
+    }
+    return g;
+}
+function headGrad(ctx, skin, headR) {
+    let g = _headGradCache.get(skin);
+    if (!g) {
+        g = ctx.createRadialGradient(-2.5, -2.5, 1, 0, 0, headR);
+        g.addColorStop(0, shade(skin, 0.3));
+        g.addColorStop(1, shade(skin, -0.18));
+        _headGradCache.set(skin, g);
+    }
+    return g;
+}
+
 // --- UNIT RENDERING (stickman drawing, split from Unit class) ---
 Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
     draw(ctx, cam, dt) {
@@ -336,11 +368,7 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
         // ── Torso (tapered tunic, shaded) ──
         let tg;
         if (lowQ) { tg = shade(skin, -0.08); }
-        else {
-            tg = ctx.createLinearGradient(0, shoulderY, 0, hipY);
-            tg.addColorStop(0, shade(skin, 0.18));
-            tg.addColorStop(1, shade(skin, -0.28));
-        }
+        else { tg = torsoGrad(ctx, skin); }   // cached by skin colour
         ctx.fillStyle = tg;
         ctx.beginPath();
         ctx.moveTo(-3.4, shoulderY);
@@ -400,11 +428,7 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
         ctx.translate(0, headCY);
         let hg2;
         if (lowQ) { hg2 = shade(skin, 0.05); }
-        else {
-            hg2 = ctx.createRadialGradient(-2.5, -2.5, 1, 0, 0, headR);
-            hg2.addColorStop(0, shade(skin, 0.3));
-            hg2.addColorStop(1, shade(skin, -0.18));
-        }
+        else { hg2 = headGrad(ctx, skin, headR); }   // cached by skin colour
         ctx.fillStyle = hg2;
         ctx.beginPath(); ctx.arc(0, 0, headR, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = toRgba("#ffffff", 0.3);

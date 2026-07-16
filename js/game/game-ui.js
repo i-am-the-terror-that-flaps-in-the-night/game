@@ -39,7 +39,12 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
     },
 
     openWarCouncil() {
-        if (this.meta) this.meta.renderCouncil();
+        if (this.meta) {
+            this.meta.renderCouncil();
+            this.meta.renderUpgrades();
+            this.meta.renderHeroUpgrades();
+            this.meta.renderCastleUpgrades();
+        }
         el('warCouncilOverlay').classList.remove('hidden');
     },
 
@@ -76,7 +81,8 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
         const ok = window.confirm(
             "Reset all progress?\n\n" +
                 "This permanently erases campaign progress, endless records, " +
-                "renown, unit unlocks, and achievements. This cannot be undone.",
+                "renown, unit unlocks, the war treasury, permanent unit " +
+                "upgrades, and achievements. This cannot be undone.",
         );
         if (!ok) return;
         clearSaves();
@@ -142,6 +148,22 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
                 (Math.max(0, c.hp) / c.maxHp) * 100 + "%";
             el("castleHealthText").innerText =
                 Math.floor(Math.max(0, c.hp)) + " / " + c.maxHp;
+        }
+
+        // Hero Void-Charge ring: --cd goes 0 (empty) -> 1 (full/READY), drawn by
+        // the conic-gradient in css/hud.css. Panel dims while the hero is down;
+        // a `.ready` class lights it up when Singularity is castable.
+        const hp = el("heroPanel");
+        if (hp && this.hero && this.hero.abilityDef) {
+            const frac = this.hero.voidCharge / (this.hero.maxCharge || 100);
+            hp.style.setProperty("--cd", Math.max(0, Math.min(1, frac)));
+            hp.style.opacity = this.hero.active ? "1" : "0.45";
+            const ready = this.hero.canCast && this.hero.canCast();
+            hp.classList.toggle("ready", ready);
+            const st = hp.querySelector(".hero-status");
+            if (st) st.innerText = !this.hero.active
+                ? "Reviving…"
+                : ready ? "Singularity ▸ B" : `Charging ${Math.floor(frac * 100)}%`;
         }
 
         if (this.waveM) {

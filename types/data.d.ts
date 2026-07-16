@@ -49,6 +49,21 @@ interface EntityDef {
         | "horse" | "mage" | "spear" | "staff" | "sword" | "sword_shield"
         | "tower_shield";
     desc?: string;
+    // Hero-only (additive; see js/data/heroes.js). Non-hero entities omit these.
+    respawnMs?: number;
+    ability?: {
+        id: string;
+        name: string;
+        cost: number;
+        cooldown: number;
+        radius: number;
+        damage: number;
+        duration: number;
+        key: string;
+        charge?: number;
+        chargePerHit?: number;
+        chargePerSplash?: number;
+    };
 }
 
 interface ProjectileDef {

@@ -445,6 +445,20 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
             ctx.fillRect(0, 0, w + 64, h + 64);
             ctx.restore();
         }
+        // Chromatic aberration: a brief red/blue channel-split flash triggered by
+        // the Singularity detonation (game.chromaAberrationT set to 30 there).
+        if (this.chromaAberrationT > 0) {
+            const a = this.chromaAberrationT / 30;
+            ctx.save();
+            ctx.globalCompositeOperation = "screen";
+            ctx.globalAlpha = 0.25 * a;
+            ctx.fillStyle = "rgba(255,80,80,1)";
+            ctx.fillRect(4 * a, 0, w, h);
+            ctx.fillStyle = "rgba(80,180,255,1)";
+            ctx.fillRect(-4 * a, 0, w, h);
+            ctx.restore();
+            this.chromaAberrationT = Math.max(0, this.chromaAberrationT - 1);
+        }
     },
 
     draw(dt) {
@@ -462,11 +476,16 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
         // through the scale-down + CSS-upscale.
         const rs = GFX.renderScale || 1;
         if (rs !== 1) ctx.scale(rs, rs);
-        if (this.shake > 0)
-            ctx.translate(
-                rand(-this.shake, this.shake),
-                rand(-this.shake, this.shake),
-            );
+        // Capture the shake offset once so the WebGL overlay can track the 2D
+        // layer exactly (it's a separate canvas without this ctx translate).
+        this._shakeX = this.shake > 0 ? rand(-this.shake, this.shake) : 0;
+        this._shakeY = this.shake > 0 ? rand(-this.shake, this.shake) : 0;
+        if (this.shake > 0) ctx.translate(this._shakeX, this._shakeY);
+
+        // Start the GPU glow batch for this frame (particles + auras queue into
+        // it during the world pass; flushed after). No-op when WebGL is off.
+        const useGL = GFX.webgl && this.gl && this.gl.ok;
+        if (useGL) this.gl.begin();
 
         const lvl =
             this.level >= 0 && LEVELS[this.level]
@@ -494,6 +513,7 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
 
         this.particles.draw(ctx, cam);
         this.fx.draw(ctx, cam);
+        for (const s of this.singularities) s.draw(ctx, cam);
         this.weather.draw(ctx, cam);
 
         if (this.sel && this.sel.active) {
@@ -586,6 +606,10 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
         this.drawPostFX(ctx, w, h, dP);
 
         ctx.restore();
+        // Composite the GPU glow batch (particles + auras) over the 2D frame in
+        // a single draw call. Always flush (even empty) so a frame with nothing
+        // queued still clears the previous frame's glows.
+        if (this.gl && this.gl.ok) this.gl.flush();
         this.drawMinimap();
     },
 });

@@ -172,6 +172,7 @@ export class EndlessWave {
             return [
                 { t: "ogre", c: Math.min(1 + Math.floor(w / 5), 10) },
                 { t: "shaman", c: Math.min(1 + Math.floor(w / 8), 6) },
+                { t: "harpy", c: Math.min(2 + Math.floor(w / 5), 12) },
                 { t: "dragon", c: w >= 10 ? Math.floor(w / 10) : 0 },
             ];
         }
@@ -189,6 +190,7 @@ export class EndlessWave {
             case 3: // Shield Wall: arrows bounce — bring blunt or magic
                 return [
                     { t: "shieldman", c: 3 + s },
+                    { t: "halberdier", c: w > 3 ? 1 + Math.floor(s * 0.5) : 0 },
                     { t: "archer", c: 2 + Math.floor(s * 0.7) },
                 ];
             default: // Dark Ritual: healers & necromancers must die first

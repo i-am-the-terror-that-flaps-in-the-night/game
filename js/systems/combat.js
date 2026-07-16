@@ -105,9 +105,11 @@ export function describeMatchups(def) {
 // dangerous enemy type present.
 export const WAVE_HINTS = [
     ["dragon",      "Dragons fly — melee can't reach them. Archers and Crossbows hit them hard, and your Castle's flak scorches them from range."],
+    ["harpy",       "Harpies dive from above — ground melee can't reach them. Archers, Crossbows, and the Mage bring them down."],
     ["necromancer", "Necromancers raise skeletons — kill them before the dead pile up."],
     ["ogre",        "Ogres wear heavy armor — Spearmen and Crossbows pierce it; keep militia away."],
     ["shieldman",   "Shield wall — arrows bounce off. Crack it with Blunt (Catapult, Paladin) or Magic."],
+    ["halberdier",  "Shielded halberdiers bounce arrows and stab back with pierce — a Swordsman shrugs off the return hit."],
     ["shaman",      "Shamans heal from the back — snipe them or hit the pack with AoE."],
     ["archer",      "Arrow volleys ahead — shielded Swordsmen soak pierce damage."],
     ["berserker",   "Berserkers sprint for your backline — hold a solid melee screen."],

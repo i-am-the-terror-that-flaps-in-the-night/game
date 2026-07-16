@@ -1,6 +1,7 @@
 import { CONFIG } from '../config.js';
 import { lerp, particleQuality, rand, randInt, toRgba } from '../utils.js';
 import { GFX } from './graphics.js';
+import { GLRenderer } from './gl-renderer.js';
 
 // --- VISUAL SYSTEMS ---
 export class DecalSystem {
@@ -101,31 +102,45 @@ export class ParticleSystem {
         }
     }
     draw(ctx, cam) {
+        // Additive particles (float/spark) go through the GPU glow batch when
+        // WebGL is active — one draw call for all of them, no per-sprite
+        // composite-op thrash. Non-additive (fade/debris) stay on Canvas 2D.
+        const g = typeof game !== "undefined" ? game : window.game;
+        const useGL = g && g.gl && g.gl.ok && GFX.webgl;
+        const sx = useGL ? g._shakeX || 0 : 0;
+        const sy = useGL ? g._shakeY || 0 : 0;
         for (const p of this.p) {
             const px = cam.sx(p.x), py = cam.sy(p.y);
-            ctx.globalAlpha = Math.max(0, p.life / p.maxL);
-            ctx.fillStyle = p.col;
-            if (p.type === "float" || p.type === "spark")
-                ctx.globalCompositeOperation = "screen";
+            const additive = p.type === "float" || p.type === "spark";
+            const alpha = Math.max(0, p.life / p.maxL);
 
+            if (useGL && additive) {
+                // Sparks streak along velocity; approximate with a couple of
+                // overlapping glow dots so they still read as motion trails.
+                const c = GLRenderer.parseColor(p.col);
+                const rad = Math.max(1.5, p.sz * cam.z * 2.2);
+                if (p.type === "spark") {
+                    g.gl.glow(px + sx, py + sy, rad, c[0], c[1], c[2], alpha * 0.9);
+                    g.gl.glow(px - p.vx * cam.z + sx, py - p.vy * cam.z + sy,
+                        rad * 0.7, c[0], c[1], c[2], alpha * 0.5);
+                } else {
+                    g.gl.glow(px + sx, py + sy, rad, c[0], c[1], c[2], alpha * 0.8);
+                }
+                continue;
+            }
+
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = p.col;
+            if (additive) ctx.globalCompositeOperation = "screen";
             ctx.beginPath();
             if (p.type === "spark") {
                 ctx.moveTo(px, py);
-                ctx.lineTo(
-                    px - p.vx * 2 * cam.z,
-                    py - p.vy * 2 * cam.z,
-                );
+                ctx.lineTo(px - p.vx * 2 * cam.z, py - p.vy * 2 * cam.z);
                 ctx.strokeStyle = p.col;
                 ctx.lineWidth = p.sz * cam.z;
                 ctx.stroke();
             } else {
-                ctx.arc(
-                    px,
-                    py,
-                    Math.max(0.1, p.sz * cam.z),
-                    0,
-                    Math.PI * 2,
-                );
+                ctx.arc(px, py, Math.max(0.1, p.sz * cam.z), 0, Math.PI * 2);
                 ctx.fill();
             }
             ctx.globalCompositeOperation = "source-over";

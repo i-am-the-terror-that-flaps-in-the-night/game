@@ -68,6 +68,7 @@ export const LEVELS = [
                 time: 95,
                 enemies: [
                     { t: "shieldman", c: 10 },
+                    { t: "halberdier", c: 4 },
                     { t: "archer", c: 5 },
                 ],
             },
@@ -75,6 +76,7 @@ export const LEVELS = [
                 time: 140,
                 enemies: [
                     { t: "shieldman", c: 12 },
+                    { t: "halberdier", c: 6 },
                     { t: "berserker", c: 8 },
                     { t: "archer", c: 8 },
                 ],
@@ -101,6 +103,7 @@ export const LEVELS = [
                 enemies: [
                     { t: "archer", c: 12 },
                     { t: "marauder", c: 10 },
+                    { t: "harpy", c: 3 },
                 ],
             },
             {
@@ -108,6 +111,7 @@ export const LEVELS = [
                 enemies: [
                     { t: "archer", c: 18 },
                     { t: "shieldman", c: 10 },
+                    { t: "harpy", c: 5 },
                 ],
             },
             {
@@ -116,6 +120,7 @@ export const LEVELS = [
                     { t: "archer", c: 25 },
                     { t: "berserker", c: 12 },
                     { t: "marauder", c: 12 },
+                    { t: "harpy", c: 6 },
                 ],
             },
         ],
@@ -180,6 +185,7 @@ export const LEVELS = [
                 enemies: [
                     { t: "ogre", c: 4 },
                     { t: "archer", c: 10 },
+                    { t: "harpy", c: 4 },
                 ],
             },
             {
@@ -187,6 +193,7 @@ export const LEVELS = [
                 enemies: [
                     { t: "ogre", c: 5 },
                     { t: "berserker", c: 12 },
+                    { t: "halberdier", c: 5 },
                 ],
             },
             {
@@ -195,6 +202,8 @@ export const LEVELS = [
                     { t: "ogre", c: 8 },
                     { t: "shaman", c: 5 },
                     { t: "shieldman", c: 15 },
+                    { t: "halberdier", c: 8 },
+                    { t: "harpy", c: 6 },
                 ],
             },
         ],
@@ -219,6 +228,7 @@ export const LEVELS = [
                 time: 100,
                 enemies: [
                     { t: "shieldman", c: 20 },
+                    { t: "halberdier", c: 10 },
                     { t: "berserker", c: 20 },
                 ],
             },
@@ -228,6 +238,7 @@ export const LEVELS = [
                     { t: "ogre", c: 6 },
                     { t: "necromancer", c: 4 },
                     { t: "archer", c: 18 },
+                    { t: "harpy", c: 8 },
                 ],
             },
             {
@@ -236,6 +247,7 @@ export const LEVELS = [
                     { t: "necromancer", c: 6 },
                     { t: "ogre", c: 8 },
                     { t: "berserker", c: 25 },
+                    { t: "harpy", c: 10 },
                 ],
             },
         ],
@@ -252,6 +264,7 @@ export const LEVELS = [
                 time: 20,
                 enemies: [
                     { t: "dragon", c: 1 },
+                    { t: "harpy", c: 6 },
                     { t: "marauder", c: 12 },
                 ],
             },
@@ -259,6 +272,7 @@ export const LEVELS = [
                 time: 70,
                 enemies: [
                     { t: "dragon", c: 1 },
+                    { t: "harpy", c: 8 },
                     { t: "ogre", c: 6 },
                     { t: "shaman", c: 6 },
                 ],
@@ -267,14 +281,17 @@ export const LEVELS = [
                 time: 130,
                 enemies: [
                     { t: "dragon", c: 2 },
+                    { t: "harpy", c: 10 },
                     { t: "necromancer", c: 5 },
                     { t: "shieldman", c: 20 },
+                    { t: "halberdier", c: 10 },
                 ],
             },
             {
                 time: 200,
                 enemies: [
                     { t: "dragon", c: 4 },
+                    { t: "harpy", c: 12 },
                     { t: "ogre", c: 12 },
                     { t: "necromancer", c: 8 },
                     { t: "berserker", c: 30 },

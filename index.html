@@ -295,6 +295,18 @@
                 </button>
             </div>
 
+            <div id="heroPanel" class="glass-panel ui-element" style="--cd: 0" title="Voidcaller — land hits to charge, press B to unleash Singularity">
+                <div class="hero-cd-ring">
+                    <div class="hero-portrait"></div>
+                    <span class="hero-key">B</span>
+                </div>
+                <div class="hero-meta">
+                    <span class="hero-name">Voidcaller</span>
+                    <span class="hero-status">Singularity</span>
+                    <div class="hero-xp"><div class="hero-xp-fill"></div></div>
+                </div>
+            </div>
+
             <div id="bottomBar" class="glass-panel">
                 <div class="action-tabs">
                     <button class="action-tab active" id="tabUnits" onclick="game.setActionTab('units')">Units</button>
@@ -628,133 +640,91 @@
 
         <div id="helpOverlay" class="overlay hidden">
             <div class="glass-panel dialog">
-                <h2
-                    style="
-                        color: var(--gold);
-                        margin-bottom: 24px;
-                        text-align: center;
-                    "
-                >
-                    Commander's Manual
-                </h2>
-                <div style="font-size: 15px; line-height: 1.8; color: #cbd5e1">
-                    <p>
-                        <strong style="color: #fff">Objective:</strong> Defend
-                        your Castle from relentless waves of enemies. If the
-                        Castle falls, you lose.
-                    </p>
-                    <p>
-                        <strong style="color: #fff">Combat & Counters:</strong>
-                        Every unit has a damage type and an armor class — there
-                        is no luck, only matchups. Watch the wave preview and
-                        field the counter:
-                    </p>
-                    <ul
-                        style="
-                            margin-left: 20px;
-                            margin-bottom: 10px;
-                            color: var(--text-dim);
-                        "
-                    >
-                        <li><strong style="color:#e2e8f0">Slash</strong> (Militia, Swordsman, Knight) cuts down unarmored mobs, glances off heavy plate.</li>
-                        <li><strong style="color:#e2e8f0">Pierce</strong> (Spearman, Archer) punches light armor; arrows bounce off shields. Crossbow bolts ignore armor entirely.</li>
-                        <li><strong style="color:#e2e8f0">Blunt</strong> (Paladin, Catapult) crushes shields and heavy armor, wasted on rabble.</li>
-                        <li><strong style="color:#e2e8f0">Magic</strong> (Mage, Cleric) burns through armor of every kind.</li>
-                        <li>Spearmen skewer <strong style="color:#e2e8f0">large</strong> foes (Ogres). Melee can't reach <strong style="color:#e2e8f0">flying</strong> Dragons — Archers and Crossbowmen hit them for bonus damage, and your Castle's flak-fire blasts them from range.</li>
-                        <li>Gold damage numbers mean a counter hit; gray means resisted — recruit accordingly.</li>
-                    </ul>
-                    <p>
-                        <strong style="color: #fff">Economy:</strong> Build
-                        Mines to generate Gold and Iron continuously (each extra
-                        mine costs more). Defeating elites yields crystals and
-                        additional iron. Recruiting many of the same unit gets
-                        progressively more expensive — mixed armies are cheaper
-                        and cover each other's weaknesses. Barracks, Archery
-                        Range, Academy and War Forge unlock advanced troops each
-                        level.
-                    </p>
-                    <p>
-                        <strong style="color: #fff">Your Castle:</strong> Its
-                        battlements scorch anything that reaches the gate with a
-                        short-ranged magic blast that shrugs off armor — a last
-                        line of defense, not a sniper. Both its firepower and
-                        your gold income grow region by region, so later
-                        campaigns lean on the castle more than the earliest
-                        ones.
-                    </p>
-                    <p>
-                        <strong style="color: #c084fc">War Council &amp;
-                        Renown:</strong> Clearing campaign regions and surviving
-                        endless waves earns <strong style="color:#c084fc">Renown</strong>,
-                        a currency that carries between runs. Spend it in the War
-                        Council (main menu) to <strong style="color:#fff">permanently
-                        unlock</strong> advanced troops — once unlocked they are
-                        ready from the start of every level and endless run, with
-                        no building required. You still start each region with
-                        Militia and Archers; permanent unlocks widen that opening
-                        roster as you progress.
-                    </p>
-                    <p>
-                        <strong style="color: #fff">Controls & Camera:</strong>
-                    </p>
-                    <ul
-                        style="
-                            margin-left: 20px;
-                            margin-bottom: 10px;
-                            color: var(--text-dim);
-                        "
-                    >
-                        <li>
-                            <strong>Edge Scrolling:</strong> Move your mouse to
-                            the left/right edges of the screen, or use A/D or
-                            Arrow Keys. (On mobile, swipe across the screen).
-                        </li>
-                        <li>
-                            <strong>Minimap:</strong> Click on the minimap
-                            (bottom left) to instantly jump to a location.
-                        </li>
-                        <li>
-                            <strong>Auto-Train:</strong>
-                            <span style="color: var(--success)"
-                                >Right-Click</span
-                            >
-                            (or
-                            <span style="color: var(--success)"
-                                >Long-Press</span
-                            >
-                            on mobile) any unit button to toggle automatic
-                            recruitment.
-                        </li>
-                        <li>
-                            <strong>Call Wave:</strong> Cleared the field early?
-                            Hit
-                            <span style="color: var(--success)">⚔ Call Wave Now</span>
-                            (or press <strong>N</strong>) to summon the next wave
-                            immediately instead of waiting out the timer.
-                        </li>
-                    </ul>
-                    <p>
-                        <strong style="color: #fff">Commander Spells:</strong>
-                        Use your Mana to cast devastating spells. Click a spell
-                        (or press Z/X/C), then click anywhere on the
-                        battlefield.
-                    </p>
-                    <p>
-                        <strong style="color: #fff">Research:</strong> Open the
-                        Tech Tree (Y) to purchase permanent upgrades. Upgrades
-                        dramatically improve your odds in later waves.
-                    </p>
+                <button class="overlay-close" onclick="document.getElementById('helpOverlay').classList.add('hidden')">×</button>
+                <h2 class="dialog-title">📖 Commander's Manual</h2>
+                <div class="manual">
+                    <section>
+                        <h3>Objective</h3>
+                        <p>Defend your Castle from relentless waves of enemies. If the Castle falls, you lose.</p>
+                    </section>
+
+                    <section>
+                        <h3>Combat &amp; Counters</h3>
+                        <p>Every unit has a damage type and an armor class — there is no luck, only matchups. Watch the wave preview and field the counter:</p>
+                        <ul>
+                            <li><strong>Slash</strong> (Militia, Swordsman, Knight) cuts down unarmored mobs, glances off heavy plate.</li>
+                            <li><strong>Pierce</strong> (Spearman, Archer) punches light armor; arrows bounce off shields. Crossbow bolts ignore armor entirely.</li>
+                            <li><strong>Blunt</strong> (Paladin, Catapult) crushes shields and heavy armor, wasted on rabble.</li>
+                            <li><strong>Magic</strong> (Mage, Cleric) burns through armor of every kind.</li>
+                            <li>Spearmen skewer <strong>large</strong> foes (Ogres); the Catapult hits them hard too. Melee can't reach <strong>flying</strong> Dragons — Archers, Crossbowmen and Mages all strike them for bonus damage, and your Castle's flak-fire blasts them from range.</li>
+                            <li><span class="m-gold">Gold damage numbers</span> mean a counter hit; gray means resisted — recruit accordingly.</li>
+                        </ul>
+                    </section>
+
+                    <section>
+                        <h3>Your Hero: The <span class="m-void">Voidcaller</span></h3>
+                        <p>Every run, the Voidcaller marches out of your Castle free of charge — faster and far tougher than any soldier. His void-bolts deal <strong>magic</strong> damage and splash, so he shreds packed formations while leading the charge.</p>
+                        <p>Landing hits builds <span class="m-void">Void Charge</span> (more per enemy caught in the splash). At a full meter he crowns with light — press <kbd>B</kbd> to tear open a <strong>Singularity</strong> that drags in everything nearby and collapses on it. It auto-locks onto the densest enemy cluster, so you never have to aim it. There is no cooldown and no mana cost: the meter <em>is</em> the timer. If he falls, he returns to the Castle about a minute later.</p>
+                    </section>
+
+                    <section>
+                        <h3>Commander Spells</h3>
+                        <p>Spend Mana on four battlefield spells: <strong>Meteor Strike</strong> <kbd>Z</kbd>, <strong>Blizzard</strong> <kbd>X</kbd>, <strong>Holy Light</strong> <kbd>C</kbd> and <strong>Chain Lightning</strong> <kbd>V</kbd>. Click a spell (or press its key), then click the battlefield to place it; right-click to cancel. Build a Mana Obelisk to regenerate Mana faster.</p>
+                    </section>
+
+                    <section>
+                        <h3>Economy</h3>
+                        <p>Build Mines to generate Gold, Iron and Crystal continuously (each extra mine costs more). Defeating elites yields crystals and additional iron. Recruiting many of the same unit gets progressively more expensive — mixed armies are cheaper and cover each other's weaknesses. Barracks, Archery Range, Academy and War Forge unlock advanced troops each level.</p>
+                    </section>
+
+                    <section>
+                        <h3>Your Castle</h3>
+                        <p>Its battlements cut down anything that reaches the gate with a continuous armor-shredding beam — brutal, but short-ranged: a last line of defense, not a sniper. Its skyward flak-fire reaches much farther and hits Dragons hardest. Both its firepower and your gold income grow region by region, so later campaigns lean on the Castle more than the earliest ones.</p>
+                    </section>
+
+                    <section>
+                        <h3>Research</h3>
+                        <p>Open the Tech Tree <kbd>Y</kbd> to purchase upgrades that dramatically improve your odds in later waves. They stay with you as you push deeper into a campaign — but unlike War Council purchases below, they are not banked, and start fresh next time you load the game.</p>
+                    </section>
+
+                    <section>
+                        <h3><span class="m-void">War Council</span> — Progress Between Runs</h3>
+                        <p>Clearing campaign regions and surviving endless waves earns <span class="m-void">Renown</span>. Leftover <span class="m-gold">Gold</span> banks at the end of every run. Both carry between runs — spend them in the War Council (main menu):</p>
+                        <ul>
+                            <li><strong>Permanent unlocks</strong> — Renown makes advanced troops available from the start of every region and endless run, with no building required. You always open with Militia and Archers; unlocks widen that starting roster.</li>
+                            <li><strong>War Treasury</strong> — banked Gold <em>or</em> Renown buys permanent damage and health for any unit, up to five levels each. The bonuses apply to every unit you recruit, in every run.</li>
+                            <li><strong>Hero &amp; Castle</strong> — upgrade the Voidcaller's power, vitality, charge rate and rift damage, or the Castle's damage, health, rate of fire and range. These have <strong>no cap</strong>; costs simply climb with each level.</li>
+                        </ul>
+                    </section>
+
+                    <section>
+                        <h3>Controls</h3>
+                        <dl class="manual-keys">
+                            <dt><kbd>1</kbd>…<kbd>0</kbd></dt>
+                            <dd>Recruit units, in action-bar order (Militia → Paladin).</dd>
+                            <dt><kbd>Q</kbd><kbd>W</kbd><kbd>E</kbd><kbd>R</kbd><kbd>T</kbd><kbd>F</kbd><kbd>G</kbd><kbd>H</kbd></dt>
+                            <dd>Build Mine, Barracks, Tower, Wall, Academy, Obelisk, Archery Range, War Forge.</dd>
+                            <dt><kbd>B</kbd></dt>
+                            <dd>Unleash the hero's Singularity once his charge meter is full.</dd>
+                            <dt><kbd>Z</kbd><kbd>X</kbd><kbd>C</kbd><kbd>V</kbd></dt>
+                            <dd>Select a Commander Spell, then click the battlefield.</dd>
+                            <dt><kbd>Y</kbd></dt>
+                            <dd>Open the Tech Tree.</dd>
+                            <dt><kbd>N</kbd></dt>
+                            <dd>Cleared the field early? <span class="m-ok">Call the next wave</span> instead of waiting out the timer.</dd>
+                            <dt><kbd>Space</kbd><kbd>P</kbd><kbd>Esc</kbd></dt>
+                            <dd>Pause or resume. You can still scroll the field while paused.</dd>
+                            <dt><kbd>A</kbd><kbd>D</kbd> / <kbd>←</kbd><kbd>→</kbd></dt>
+                            <dd>Scroll the camera — or push the mouse to the screen edge. On mobile, swipe.</dd>
+                            <dt><span class="m-ok">Right-Click</span></dt>
+                            <dd>Toggle auto-recruit on any unit button (long-press on mobile).</dd>
+                            <dt><span class="m-ok">Minimap</span></dt>
+                            <dd>Click it (bottom left) to jump straight to a location.</dd>
+                        </dl>
+                    </section>
                 </div>
-                <div style="text-align: center; margin-top: 35px">
-                    <button
-                        class="menu-btn"
-                        style="min-width: 200px"
-                        onclick="
-                            document
-                                .getElementById('helpOverlay')
-                                .classList.add('hidden')
-                        "
-                    >
+                <div class="dialog-actions">
+                    <button class="menu-btn" onclick="document.getElementById('helpOverlay').classList.add('hidden')">
                         Understood
                     </button>
                 </div>
@@ -772,13 +742,27 @@
         </div>
 
         <div id="warCouncilOverlay" class="overlay hidden">
-            <div class="glass-panel dialog">
+            <div class="glass-panel dialog dialog--wide">
                 <button class="overlay-close" onclick="document.getElementById('warCouncilOverlay').classList.add('hidden')">×</button>
                 <h2 style="text-align:center;color:#c084fc;margin-bottom:6px;">✦ War Council</h2>
                 <p style="text-align:center;color:var(--text-dim);font-size:13px;margin-bottom:2px;">Spend Renown to permanently unlock troops. Unlocked units are ready from the start of every campaign region and endless run — no building required.</p>
                 <p style="text-align:center;color:#c084fc;font-weight:800;font-size:18px;margin-bottom:10px;" id="renownDisplay">✦ 0 Renown</p>
                 <p style="text-align:center;color:var(--text-dim);font-size:11px;margin-bottom:14px;">Earn Renown by clearing campaign regions and surviving endless waves.</p>
                 <div id="unlockGrid" class="ach-grid"></div>
+
+                <h2 style="text-align:center;color:var(--gold);margin:26px 0 6px;">🪙 War Treasury</h2>
+                <p style="text-align:center;color:var(--text-dim);font-size:13px;margin-bottom:2px;">Buy permanent stat upgrades for any unit with banked Gold <b>or</b> Renown. Bonuses apply to every unit you recruit, in every run.</p>
+                <p style="text-align:center;font-weight:800;font-size:18px;margin-bottom:2px;" id="treasuryDisplay">🪙 0 Gold · ✦ 0 Renown</p>
+                <p style="text-align:center;color:var(--text-dim);font-size:11px;margin-bottom:14px;">Gold left over at the end of every run carries into your next run — spend it here first.</p>
+                <div id="upgradeGrid" class="ach-grid"></div>
+
+                <h2 style="text-align:center;color:#c084fc;margin:26px 0 6px;">🌀 Hero: Voidcaller</h2>
+                <p style="text-align:center;color:var(--text-dim);font-size:13px;margin-bottom:14px;">Permanently upgrade your hero — no cap. He spawns with these bonuses every run.</p>
+                <div id="heroUpgradeGrid" class="ach-grid"></div>
+
+                <h2 style="text-align:center;color:var(--gold);margin:26px 0 6px;">🏰 Castle</h2>
+                <p style="text-align:center;color:var(--text-dim);font-size:13px;margin-bottom:14px;">Permanently upgrade your castle beam — no cap. Applies at the start of every run.</p>
+                <div id="castleUpgradeGrid" class="ach-grid"></div>
             </div>
         </div>
 

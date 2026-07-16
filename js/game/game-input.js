@@ -129,6 +129,18 @@ export const inputMethods = /** @type {ThisType<any>} */ ({
 
         // Keyboard
         window.addEventListener("keydown", (e) => {
+            // Camera panning + pause toggle work in BOTH playing and paused
+            // states (so you can scroll the field while paused). Record held
+            // pan keys; updateCamera() pans per-frame — smooth from frame 1, no
+            // OS key-repeat delay. Cleared on keyup.
+            const playingOrPaused = this.state === "playing" || this.state === "paused";
+            if (playingOrPaused) {
+                if (e.code === "ArrowLeft" || e.code === "KeyA") this.keysDown.left = true;
+                if (e.code === "ArrowRight" || e.code === "KeyD") this.keysDown.right = true;
+                const k0 = e.key.toLowerCase();
+                if (k0 === " " || k0 === "p" || k0 === "escape")
+                    this.setSpeed(this.ts === 0 ? 1 : 0);
+            }
             if (this.state !== "playing") return;
             const k = e.key.toLowerCase();
             const type = KEY_MAP[k];
@@ -136,15 +148,20 @@ export const inputMethods = /** @type {ThisType<any>} */ ({
                 if (UNIT_TYPES[type]) this.buyUnit(type);
                 else if (BUILDING_TYPES[type]) this.build(type);
             }
-            if (k === " " || k === "p" || k === "escape")
-                this.setSpeed(this.ts === 0 ? 1 : 0);
             if (k === "y") this.openTechTree();
             if (k === "n") this.callWave();
-            if (e.code === "ArrowLeft" || e.code === "KeyA")
-                this.camera.pan(-40);
-            if (e.code === "ArrowRight" || e.code === "KeyD")
-                this.camera.pan(40);
+            // Hero ability (Singularity). KeyB — Q/E collide with build hotkeys.
+            if (e.code === "KeyB" && this.hero && this.hero.active) {
+                const w = this.camera.toWorld(this.mouse.x, this.mouse.y);
+                this.hero.castAbility(w.x);
+            }
         });
+        window.addEventListener("keyup", (e) => {
+            if (e.code === "ArrowLeft" || e.code === "KeyA") this.keysDown.left = false;
+            if (e.code === "ArrowRight" || e.code === "KeyD") this.keysDown.right = false;
+        });
+        // Stop drifting when focus is lost (keyup can be missed while unfocused).
+        window.addEventListener("blur", () => { this.keysDown.left = false; this.keysDown.right = false; });
 
         const pqSel = document.getElementById("particleQuality");
         if (pqSel) pqSel.addEventListener("change", () => {

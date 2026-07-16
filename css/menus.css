@@ -63,6 +63,10 @@
 }
 .dialog--wide { width: min(94vw, 860px); }
 .dialog--narrow { width: min(92vw, 520px); }
+/* Scoped under .overlay to outrank the generic `.overlay h2` above. */
+.overlay .dialog-title { color: var(--gold); text-align: center; margin-bottom: 24px; }
+.dialog-actions { text-align: center; margin-top: 35px; }
+.dialog-actions .menu-btn { min-width: 200px; }
 
 /* Overlay close button */
 .overlay-close {

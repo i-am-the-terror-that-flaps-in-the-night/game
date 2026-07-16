@@ -88,6 +88,9 @@ export const economyMethods = /** @type {ThisType<any>} */ ({
         this.payCost(cost);
         this.pop += d.pop;
         const u = new Unit(150 + rand(-20, 20), t, TEAMS.PLAYER);
+        // Permanent War-Council upgrades raise the base stats first; the run's
+        // multiplicative tech (applyUpgrades) and forge then stack on top.
+        if (this.meta) this.meta.applyUnitUpgrades(u, t);
         u.applyUpgrades(this.upgrades);
         if (this.upgrades.forge && !UNIT_TYPES[t].ranged)
             u.dmg = Math.ceil(u.dmg * (1 + this.upgrades.forge));

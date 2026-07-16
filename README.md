@@ -124,6 +124,19 @@ region and endless run. The base Militia + Archer are always free — permanent
 unlocks widen the opening roster rather than replace the building system,
 which still gates any unit not yet bought.
 
+The same `sd_meta_v1` blob also persists a **War Treasury**: gold left over at
+the end of every run banks into `meta.treasury` (`victory()`/`defeat()` in
+`js/game/game.js` call `meta.bankGold`), and `reset()` seeds a small capped,
+non-draining slice of it as bonus starting gold. Treasury gold **or** Renown
+buys **permanent per-unit stat upgrades** — every player unit has a Damage and
+a Health track (`UNIT_UPGRADES` in `js/systems/meta.js`) with escalating,
+per-level flat bonuses. Upgrades apply at recruit time in `buyUnit`
+(`js/game/game-economy.js`) via `meta.applyUnitUpgrades`, which raises the
+unit's base stats *before* the run's multiplicative tech/forge/XP stack — it
+never mutates the shared `UNIT_TYPES` defs. The War Council overlay renders the
+upgrade grid (`meta.renderUpgrades`), and because all state rides on the
+existing `sd_meta_v1` key, "Reset All Saves" clears it for free.
+
 ## UI theme (holographic command-console)
 
 The interface uses a sci-fi cyan/teal "command-console" look built entirely on

@@ -3,6 +3,8 @@ import { BUILDING_TYPES } from '../data/buildings.js';
 import { Entity } from './entity.js';
 import { Projectile } from '../systems/projectile.js';
 import { nearestX } from '../systems/targeting.js';
+import { dealDamage } from '../systems/combat.js';
+import { rand, dist } from '../utils.js';
 
 export class Building extends Entity {
     constructor(x, type, team) {
@@ -31,6 +33,11 @@ export class Building extends Entity {
         this.bTimer = def.buildTime || 0;
         this.building = this.bTimer > 0;
         this.frame = 0;
+        // Castle beam visual state (machine-gun raycast). beamT counts down each
+        // frame the beam is drawn; beamX/beamY is the current aim point.
+        this.beamT = 0;
+        this.beamX = 0;
+        this.beamY = 0;
     }
     update(dt) {
         if (this.building) {
@@ -60,6 +67,7 @@ export class Building extends Entity {
             return;
         }
         this.frame += dt;
+        if (this.beamT > 0) this.beamT -= dt;
         if (this.dmg > 0 && this.range > 0) {
             if (this.cdTimer > 0) this.cdTimer -= dt;
             else {
@@ -74,28 +82,84 @@ export class Building extends Entity {
                     d <= (t.flying && this.flyRange ? this.flyRange : this.range),
                 );
                 if (c) {
-                    const opts = {};
-                    if (this.projDmgType) opts.dmgType = this.projDmgType;
-                    if (this.vsFlying) opts.vsFlying = this.vsFlying;
-                    game.projectiles.push(
-                        new Projectile(
-                            this.x,
-                            this.y - this.h * 0.8,
-                            c,
-                            this.projType,
-                            this.dmg,
-                            this.team,
-                            this.projAoe,
-                            0,
-                            false,
-                            Object.keys(opts).length ? opts : undefined,
-                        ),
-                    );
-                    game.audio.playShoot();
+                    // The castle fires a continuous machine-gun raycast beam; all
+                    // other structures keep the homing projectile.
+                    if (this.type === "castle") this.castleBeam(c, trgs);
+                    else {
+                        const opts = {};
+                        if (this.projDmgType) opts.dmgType = this.projDmgType;
+                        if (this.vsFlying) opts.vsFlying = this.vsFlying;
+                        game.projectiles.push(
+                            new Projectile(
+                                this.x,
+                                this.y - this.h * 0.8,
+                                c,
+                                this.projType,
+                                this.dmg,
+                                this.team,
+                                this.projAoe,
+                                0,
+                                false,
+                                Object.keys(opts).length ? opts : undefined,
+                            ),
+                        );
+                        game.audio.playShoot();
+                    }
                     this.cdTimer = this.cooldown;
                 }
             }
         }
+    }
+
+    // Machine-gun raycast BEAM (castle). Fires a hitscan ray from the muzzle to
+    // the target; damages the primary target plus a couple of foes the ray
+    // passes near (so it reads as a sweeping beam, not a single bolt). All the
+    // heavy VFX — muzzle fire, smoke, tracer sparks, beam line — are purely
+    // cosmetic and never touch combat.
+    castleBeam(tgt, trgs) {
+        const muzzleX = this.x;
+        const muzzleY = this.y - this.h * 0.8;
+        // Damage: primary target + up to 2 more enemies lying near the ray path.
+        const src = {
+            dmgType: this.projDmgType || "magic",
+            vsFlying: this.vsFlying || 0,
+            team: this.team,
+            isUnit: false,
+        };
+        dealDamage(this.dmg, src, tgt);
+        // Ray direction, for "near the line" hits.
+        const ax = tgt.x - muzzleX, ay = tgt.y - muzzleY;
+        const alen = Math.hypot(ax, ay) || 1;
+        const ux = ax / alen, uy = ay / alen;
+        let extra = 0;
+        for (let i = 0; i < trgs.length && extra < 2; i++) {
+            const e = trgs[i];
+            if (e === tgt || e.hp <= 0) continue;
+            // distance from enemy to the beam segment
+            const rx = e.x - muzzleX, ry = (e.y - 20) - muzzleY;
+            const proj = rx * ux + ry * uy;
+            if (proj < 0 || proj > alen) continue;
+            const perp = Math.abs(rx * uy - ry * ux);
+            if (perp < 26) { dealDamage(this.dmg * 0.6, src, e); extra++; }
+        }
+        // ---- Cosmetic beam + muzzle FX (no combat effect) ----
+        this.beamT = 4;                 // draw the beam for ~4 frames
+        this.beamX = tgt.x;
+        this.beamY = tgt.y - 20;
+        const ang = Math.atan2(this.beamY - muzzleY, this.beamX - muzzleX);
+        // Muzzle flash + fire burst.
+        game.fx.flash(muzzleX, muzzleY, { r: 20, col: "#fde68a", life: 6 });
+        game.fx.spark(muzzleX, muzzleY, ang, { n: 5, len: rand(24, 44), spread: 0.25, col: "#fbbf24", w: 2, life: 5 });
+        // Machine-gun fire embers (rising, additive) + smoke (grey, opaque).
+        game.particles.emit(muzzleX, muzzleY, 6, "#fb923c", 3, 3, "float");   // fire
+        game.particles.emit(muzzleX, muzzleY, 4, "#fbbf24", 4, 2, "spark");   // muzzle sparks
+        game.particles.emit(muzzleX, muzzleY - 6, 5, "#6b7280", 2, 4, "fade"); // smoke puff
+        game.particles.emit(muzzleX, muzzleY - 6, 3, "#374151", 1, 5, "fade"); // dark smoke
+        // Impact fire + smoke at the hit point.
+        game.particles.emit(this.beamX, this.beamY, 5, "#f97316", 4, 3, "float");
+        game.particles.emit(this.beamX, this.beamY, 4, "#9ca3af", 2, 4, "fade");
+        game.shake = Math.min(10, game.shake + 1.2);
+        game.audio.playShoot();
     }
     die() {
         super.die();
@@ -141,6 +205,38 @@ export class Building extends Entity {
         ctx.fillRect(x, y + h * 0.8, w, h * 0.2);
 
         if (this.type === "castle") {
+            // Machine-gun beam: a hot raycast line from the muzzle to the aim
+            // point while firing (beamT > 0). Cosmetic — damage already applied.
+            if (this.beamT > 0) {
+                const mx = px, my = py - this.h * 0.8 * cam.z;
+                const bx = cam.sx(this.beamX), by = cam.sy(this.beamY);
+                if (Number.isFinite(bx) && Number.isFinite(by)) {
+                    ctx.save();
+                    ctx.globalCompositeOperation = "screen";
+                    const a = Math.max(0, this.beamT / 4);
+                    // outer glow beam
+                    ctx.strokeStyle = `rgba(251,146,60,${0.5 * a})`;
+                    ctx.lineWidth = (5 + Math.random() * 2) * cam.z;
+                    ctx.lineCap = "round";
+                    ctx.beginPath();
+                    ctx.moveTo(mx, my);
+                    ctx.lineTo(bx, by);
+                    ctx.stroke();
+                    // hot white core
+                    ctx.strokeStyle = `rgba(255,244,214,${0.9 * a})`;
+                    ctx.lineWidth = 2 * cam.z;
+                    ctx.beginPath();
+                    ctx.moveTo(mx, my);
+                    ctx.lineTo(bx, by);
+                    ctx.stroke();
+                    // muzzle glow
+                    ctx.fillStyle = `rgba(255,224,130,${0.7 * a})`;
+                    ctx.beginPath();
+                    ctx.arc(mx, my, (6 + Math.random() * 3) * cam.z, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
             ctx.fillStyle = "#334155";
             ctx.fillRect(
                 x + w * 0.1,
