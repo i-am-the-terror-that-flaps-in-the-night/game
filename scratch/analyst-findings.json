@@ -1,0 +1,342 @@
+[
+  {
+    "subsystem": "Player units (militia through paladin)",
+    "findings": [
+      {
+        "target": "catapult",
+        "verdict": "insane",
+        "problem": "cd 6 = 10 shots/sec. dmg 11 x blunt-vs-heavy 1.35 = ~148 raw DPS, and vs large-heavy (ogre/dragon) it double-dips blunt 1.35 x vsLarge 1.5 = 2.025x for ~223 raw DPS -- all delivered as AoE 120 at range 480, the longest range in the game. Peer mage is 58 dmg / cd100 = ~35 single-target DPS. Catapult out-DPSes the entire roster by 4x while also having the best range and full AoE. Nothing on the enemy side outranges 480 or survives that AoE DPS, so it has no counter and makes the siege slot a machine gun instead of a slow-fire tactical piece.",
+        "field": "cooldown",
+        "from": "6",
+        "to": "36",
+        "rationale": "cd 36 = ~1.67 shots/sec -> 11 x 1.35 x 1.67 = ~24 raw DPS vs heavy AoE, in line with mage's ~35 single-target and clearly siege-paced (each boulder is an event, not a spray). Preserves its role (AoE anti-armor/anti-shield-wall siege) while restoring the counter: fast divers (berserker 3.0, harpy 2.4) and swarms close the 480 gap between volleys because it can no longer clear them 10x/sec."
+      },
+      {
+        "target": "catapult",
+        "verdict": "no-counter",
+        "problem": "Even after the cd fix, vs large+heavy targets it stacks blunt-vs-heavy 1.35 AND vsLarge 1.5 = 2.025x, so the ogre (heavy) and dragon (heavy) -- the units meant to be answered by the anti-large spearman (pierce vsLarge 1.75 = 1.75x) -- are actually countered harder by the catapult at 480 range with zero risk. This flattens the spearman's designated role.",
+        "field": "vsLarge",
+        "from": "1.5",
+        "to": "1.0",
+        "rationale": "Removing the catapult's vsLarge stacking (keep blunt-vs-heavy 1.35 only) means the spearman (1.75x, melee, must expose itself) stays the premier large-monster answer, while the catapult remains the shield-wall/heavy-line breaker. Restores the intended 'Ogre's nightmare = spearman' counter instead of 'catapult solves everything from max range.'"
+      },
+      {
+        "target": "crossbow",
+        "verdict": "spammable",
+        "problem": "At g25 gold-only (no iron/crystal) it carries armorPierce (heavy/shield treated as light, so vs shield it hits pierce-light 1.25 instead of pierce-shield 0.5 -- a 2.5x swing) PLUS pierce3 (damages 3 targets) PLUS vsFlying 2.0, at 280 range. Effective vs a shielded line: 35 x 1.25 = 43.75/hit across 3 targets = ~131 damage/volley / cd90 = ~87 DPS on packed armor, for half the mage's cost and no premium resource. armorPierce makes the shield/heavy columns of the counter table (0.5/0.7) simply not apply to it, so shieldman/halberdier (the pierce counters) stop countering it. It out-values every other ranged unit against exactly the enemies that are supposed to hard-counter pierce.",
+        "field": "cost.g",
+        "from": "50",
+        "to": "70",
+        "rationale": "Raising cost to g70 (and it should carry a small iron cost like i8 to gate spam) prices in that it invalidates two whole armor-counter columns. It stays the dedicated armor/air-piercer specialist but is no longer the default all-purpose ranged pick that makes the archer and mage redundant. Keeps the shieldman/halberdier pierce-counter meaningful by making mass crossbow an economic commitment, not a spam."
+      },
+      {
+        "target": "cleric",
+        "verdict": "useless",
+        "problem": "g60 for 90hp / armor0 / dmg6 -- the most expensive single-pop unit except the mage, yet it is pure support with no self-defense and dies to any backline diver (berserker 3.0 speed, harpy). The paladin (g140+c20, 320hp/armor6 frontline bruiser) already heals 18/healCd120 = 9 hp/s incidentally while tanking, so a player building paladins gets healing for free on a durable body. The cleric's 40/healCd90 = 26.7 hp/s is higher throughput but on a body so fragile and costly it is rarely worth the pop over just adding another bruiser or a paladin. It has no role the paladin doesn't cover more safely.",
+        "field": "cost.g",
+        "from": "60",
+        "to": "40",
+        "rationale": "At g40 the cleric becomes a genuine cheap force-multiplier you tuck behind the line -- affordable enough that its fragility (the enemy's counter: send a berserker/harpy at it) is a fair trade for 26.7 hp/s. This gives it a distinct role (cheap dedicated healing for a militia/swordsman line) separate from the paladin's expensive self-healing anchor, instead of being dominated at g60."
+      },
+      {
+        "target": "knight",
+        "verdict": "fine",
+        "problem": "Charge is implemented as a flat 1.8x speed boost when the target is >120px away (unit.js:187) with no charge damage bonus -- so 'charge' is pure mobility to reach the backline, matching its desc ('charges down archers and shamans'). Base speed 3.4 already makes it the fastest unit. It is hard-countered as intended: blunt (shieldman/ogre 1.35x into its heavy armor) and shield walls (its slash does 0.85 vs shield). No change needed; noting only to confirm the charge mechanic is mobility, not an unanswered damage spike.",
+        "field": "charge",
+        "from": "1.8x speed >120px",
+        "to": "1.8x speed >120px (unchanged)",
+        "rationale": "Role and counter are both clean: knight = fast heavy diver that reaches squishy backline, stopped cold by blunt damage and shield-class blockers. Leave as-is."
+      },
+      {
+        "target": "militia",
+        "verdict": "fine",
+        "problem": "Not dominated by the swordsman despite lower raw stats. Per-gold militia is 8 hp/g and ~1.5 raw DPS/g vs swordsman's 6 hp/g and ~0.96 DPS/g, so militia is the more cost-efficient body -- exactly its 'cheap soak' role. Its weaknesses are real and readable: armor0 + none class means archers (pierce-none 1.1) and any heavy/shield enemy (its slash does 0.65/0.85) shred it, so it cannot brute-force. The swordsman's shield class (pierce 0.5, arrows bounce) is a genuinely different role (walk into enemy archers). Both have counters; leave as-is.",
+        "field": "n/a",
+        "from": "current",
+        "to": "current (unchanged)",
+        "rationale": "Militia (cheap disposable screen, dies to armor/arrows) and swordsman (durable shielded anti-archer line-holder) occupy distinct roles with distinct enemy counters. No dominance problem -- the earlier 'is militia useless' worry does not hold up against the per-gold and counter-table math."
+      }
+    ]
+  },
+  {
+    "findings": [
+      {
+        "target": "forge (War Forge) — melee dmg buff stacking",
+        "verdict": "insane",
+        "problem": "Forge is flat cost (80g/20i) with NO per-copy cost ramp (game-economy.js buildCost only scales mines by 1.6^n) and NO cap on game.upgrades.forge. Each forge adds +0.25 melee dmg additively (unit.js:112 `dmg*(1+forge)`). 4 forges = +100% melee = 320g/80i total, cheap by wave 6-8. A knight (44 slash/heavy) at +100% = 88, paladin (50 blunt) = 100 blunt; blunt vs heavy 1.35 makes buffed paladins/catapults delete ogres. Melee has no downside to counter (no range tradeoff, no pop cost), so stacking forges makes the whole melee line brute-forceable with zero comp-reading — the opposite of tactical counters.",
+        "field": "cost (per-copy scaling) + FORGE_STEP",
+        "from": "cost {g:80,i:20} flat, unlimited stacks, FORGE_STEP 0.25",
+        "to": "add per-forge cost ramp like mines (multiply base by 1.6^n in buildCost) AND cap effective forge stacks at 2 (max +50%); keep FORGE_STEP 0.25",
+        "rationale": "Cost ramp (2nd forge 128g/32i, 3rd 205g/51i) plus a +50% hard cap turns 'spam forges to win' into a real investment decision with diminishing returns, so buffed melee stays a comp choice with a counter (kite with ranged/pierce, hit heavy armor) instead of an auto-win."
+      },
+      {
+        "target": "forge cost — repeat-build ramp missing",
+        "verdict": "spammable",
+        "problem": "Only mines get the 1.6^n cost multiplier (game-economy.js:48-53). forge, tower, wall, obelisk, archery all return flat base cost, so N copies each cost the same. Combined with forge's additive buff this is the core spam vector; towers/walls also become spammable static defense.",
+        "field": "buildCost() scaling set",
+        "from": "cost ramp applies only to type==='mine'",
+        "to": "extend the 1.6^n ramp (or a gentler 1.4^n) to forge, tower, and wall so stacked static/economy structures ramp in cost",
+        "rationale": "A per-copy ramp is the single lever that stops flat-cost building spam across the whole subsystem; keeps first-of-each cheap and readable but makes stacking a real tradeoff."
+      },
+      {
+        "target": "tower (Guard Tower)",
+        "verdict": "fine",
+        "problem": "dmg18/cd40 = 1.5 shots/sec single-target homing bolt, building rule makes it blunt x1.2 (none 1.0, heavy 1.35). ~32 dps vs light armor, decent vs heavy ogres. Range 350 is long but no aoe and slow fire keep it honest. Only issue is flat 60g cost enabling tower spam (covered by the buildCost ramp finding).",
+        "field": "cooldown",
+        "from": "40",
+        "to": "40",
+        "rationale": "Per-tower output is balanced against its 60g cost; the only real problem is spammability, which the buildCost ramp fixes. No stat change needed if cost ramps."
+      },
+      {
+        "target": "castle — ground dmg",
+        "verdict": "fine",
+        "problem": "Ground dmg8 magic at cd7 (~8.5/sec) = ~57 raw dps before armor, chip-only vs anything with armor. Beam hits primary + 2 near-ray at 0.6x. It is deliberately a last-ditch gate scorcher (short range160), not a primary defense. Reads correctly as 'merciless but short range'.",
+        "field": "dmg",
+        "from": "8",
+        "to": "8",
+        "rationale": "Low ground dmg is intentional and prevents the castle from being a must-not-lose auto-defense; the player must still field a comp. Leave as is."
+      },
+      {
+        "target": "castle — vsFlying anti-air (flyRange460, vsFlying3.0)",
+        "verdict": "fine",
+        "problem": "vs dragon (magic/heavy a8): 8 * magic-vs-heavy 1.25 * vsFlying 3.0 = 30, -8 armor = 22/shot * 8.5/sec = ~187 dps, ~12s to solo a 2200hp dragon boss from range 460. This is a strong but not trivial anti-air backstop and gives flyers/harpies a readable answer without hard-countering the dragon boss alone.",
+        "field": "vsFlying",
+        "from": "3.0",
+        "to": "3.0",
+        "rationale": "Anti-air backstop is proportionate: it punishes unanswered flyers but a boss dragon still requires player anti-air (archer/mage vsFlying2.0). Keep."
+      },
+      {
+        "target": "archery (crossbow +20% dmg/+15% range)",
+        "verdict": "fine",
+        "problem": "ARCHERY_ENHANCE applies once (flag-gated, not stackable — unit.js:113 checks type==='crossbow' with a boolean, second archery does nothing). Crossbow 35 pierce -> 42, range 280 -> 322. Pierce vs light 1.25 + armorPierce + pierce3 makes buffed crossbows strong vs armored/flying, but it is a single non-stacking buff behind a 60g unlock, and crossbows are 50g pop-costed bodies with 65-80hp that melt to berserker dives. Has a clear counter (fast melee, aoe).",
+        "field": "ARCHERY_ENHANCE.dmg",
+        "from": "1.20",
+        "to": "1.20",
+        "rationale": "One-time, non-stacking, and the unit itself is fragile — this is a healthy 'unlock + modest buff' building, not a spam vector. No change."
+      },
+      {
+        "target": "wall (Fortified Wall)",
+        "verdict": "useless",
+        "problem": "hp1000/armor6, 40g, blocks movement. But there is no cost ramp incentive to place few, and more importantly enemies path around/through the base row (buildings lay out in a left-right row on the player side, not a chokepoint), so a single wall rarely blocks a lane meaningfully. At 40g it is the cheapest building but provides no dmg, no income, no unlock, and armor6 only matters if enemies actually attack it. It is dominated by spending 40g on 4 militia bodies that also deal damage.",
+        "field": "hp / armor / role",
+        "from": "hp1000, armor6, cost {g:40}",
+        "to": "hp1600, armor8, and give it a small aggro/taunt pull so nearby enemies target it (or reduce cost to {g:25})",
+        "rationale": "A wall needs to either be a genuine damage sponge worth its slot (higher hp/armor + taunt so it actually soaks a wave) or be cheap enough to be throwaway blocking; as-is it is never worth a build slot vs bodies or a mine."
+      },
+      {
+        "target": "obelisk (Mana Obelisk)",
+        "verdict": "useless",
+        "problem": "Cost 100g + 50c for +0.05 mana/frame = +3 mana/sec (doubles base regen). But crystal is scarce (castle income c0.85/sec, mine c0.25/sec) and 50c is a heavy tax competing with academy (20c) and spells themselves. One obelisk halves meteor cooldown from ~17s to ~11s, which is marginal, and it has no cap-ramp so stacking is theoretically strong but the 50c each makes it unreachable in practice. Dominated by just building a mine (also gives 0.25c) or an academy for units.",
+        "field": "cost / income.mana",
+        "from": "cost {g:100,c:50}, income.mana 0.05",
+        "to": "cost {g:100,c:25}, income.mana 0.06",
+        "rationale": "Halving the crystal cost to 25c makes it competitive with the academy's crystal draw so mana-comp players can actually afford it, and 0.06/frame (+3.6/sec) gives a noticeable-but-not-spammy regen bump — turning a never-build into a real 'spell-comp' choice with an opportunity cost (crystal spent here isn't spent on units/spells)."
+      }
+    ],
+    "subsystem": "Buildings + Upgrades"
+  },
+  {
+    "subsystem": "ENEMIES (rabble→dragon)",
+    "findings": [
+      {
+        "target": "necromancer",
+        "verdict": "spammable",
+        "problem": "cd120 = raises skeletons every 2s indefinitely with no on-death cost worth speaking of (skeleton b2). One necro at range240 (backline caster) generates a 45hp/10dmg body every 2s; two or three necros in a wave create an unbounded skeleton tide that only hard AOE (mage aoe80 cd100, catapult aoe120, meteor/blizzard/lightning) can clear. The player's melee/single-target roster gets buried in free bodies, and at wave 10 skeletons are 112hp/25dmg each — no longer trivial fodder. The counter (AOE) exists but the SUPPLY outpaces it because raise cadence never throttles.",
+        "field": "cooldown",
+        "from": "120",
+        "to": "210",
+        "rationale": "cd120->210 (3.5s per raise) roughly halves skeleton throughput so a single mage/catapult AOE volley keeps pace with the summon rate. Necro stays a real skeleton-engine that demands AOE, but stops out-supplying the player's clear. Pair with a hard live-skeleton cap per necro if the spawn code has none — verify js/systems/waves.js / spell-manager summon logic; a cd change alone won't fix an uncapped pool."
+      },
+      {
+        "target": "skeleton",
+        "verdict": "spammable",
+        "problem": "b2 bounty on a FREE summoned unit means the player is paid almost nothing to clear the necro's output, so the necro's economy pressure is pure loss for the defender — you spend a mage volley (100-frame cooldown) worth of DPS to earn 2 gold. Combined with necro cd120 this makes skeleton spam the most cost-inefficient thing on the board to answer.",
+        "field": "bounty",
+        "from": "2",
+        "to": "5",
+        "rationale": "b2->b5 makes AOE clears of a skeleton tide actually fund the anti-skeleton comp (mage/catapult) instead of being a dead-weight tax. Still cheap enough that skeletons aren't a farm target (they cost the summoner mana/time, and rabble at b5/50hp already sets this floor). Restores the read: 'buy AOE, get paid to mulch skeletons.'"
+      },
+      {
+        "target": "dragon",
+        "verdict": "no-counter",
+        "problem": "flying + aoe90 + magic/heavy at dmg70, speed2.0. Flying means ZERO melee (militia/swordsman/spearman/knight/paladin/hero-melee, 8 of 10 roster slots) can touch it — the entire wall/screen half of the counter web is dead. The only answers are crossbow, mage (cd100), archer (pierce-vs-heavy 0.7, weak even at vsFlying2.0), and castle. Meanwhile its 2200hp base (5500hp @wave10) lets it live 30+ seconds while 70*diff magic-heavy aoe90 rakes your backline unblockably: at wave10 that's 175 dmg/hit AOE, one-shotting archers(65hp)/mages(75hp)/clerics(90hp). A melee-comp player has literally no counter; a ranged-comp player watches their own backline (the only units that CAN hurt it) get wiped by the AOE before they out-DPS 5500hp.",
+        "field": "dmg",
+        "from": "70",
+        "to": "52",
+        "rationale": "dmg70->52 keeps the dragon a terrifying boss (52*2.5=130 @wave10 still 2-shots backline) but buys ranged counters the survival window to grind 2200hp before their own DPS core is deleted. The tactical read stays 'bring dedicated anti-air (crossbow/mage) + castle focus,' rather than 'have no answer.' Surgical: leaves hp/bounty/aoe intact so it remains the capstone; only the unblockable-backline-wipe rate is dialed back."
+      },
+      {
+        "target": "dragon",
+        "verdict": "no-counter",
+        "problem": "aoe90 on a flying unit compounds the above: because it flies, the player cannot interpose a body to eat the splash the way an ogre's aoe60 (ground) can be soaked by a knight. Every dragon hit is a guaranteed multi-target backline splash with no positional mitigation, which is the core of why melee comps have no answer.",
+        "field": "aoe",
+        "from": "90",
+        "to": "60",
+        "rationale": "aoe90->60 matches the ogre's aoe60 and shrinks the splash so tight backline clumps aren't fully wiped per hit, giving the player a positional lever (spread your ranged) — a real counter-play knob — without touching single-target threat. Combined with the dmg nerf, the dragon becomes 'read it, spread out, focus with anti-air' instead of 'unanswerable.'"
+      },
+      {
+        "target": "berserker",
+        "verdict": "fine",
+        "problem": "By design the backline-diver that forces a screen; 90hp/no-armor dies to any pierce (crossbow 43/hit) so it's readable and answerable — the counter is a body in its path. Only borderline note: speed3.0 nearly matches knight3.4 and beats hero2.6, so at wave10 with 28*2.5=70 slash-vs-none 1.2 = 84/hit it one-shots backline before a defensive line can rotate. Not overtuned enough to change; the counter (frontline screen / catch) is clear.",
+        "field": "speed",
+        "from": "3.0",
+        "to": "3.0",
+        "rationale": "No change — flagged only to confirm the diver role is intact and the counter (interpose a body, it dies instantly) reads correctly. Watch it if backline-wipe complaints persist; the lever would be speed3.0->2.7 to let a repositioned line catch it, not a dmg change."
+      },
+      {
+        "target": "ogre",
+        "verdict": "fine",
+        "problem": "550hp/blunt-heavy hard-counters your heavy-armor tanks (knight/paladin) via blunt-vs-heavy 1.35, and is itself countered by spearman(vsLarge1.75), mage(magic-vs-heavy1.25), and catapult(vsLarge1.5) — a clean counter-web. bounty90 is a touch low for a unit that at wave10 is 1375hp/112dmg and demands a dedicated answer, but it doesn't break feel.",
+        "field": "bounty",
+        "from": "90",
+        "to": "110",
+        "rationale": "Optional b90->b110: better pays the player for fielding the spearman/mage/catapult counter to a scaling heavy threat, since bounty (unlike hp/dmg) does not scale with wave diff and lags the ogre's growing cost-to-kill. Purely economic; leaves the clean existing counter untouched."
+      }
+    ]
+  },
+  {
+    "subsystem": "Gold / Resource Economy",
+    "findings": [
+      {
+        "target": "mine income (iron/crystal channels)",
+        "verdict": "insane",
+        "problem": "Mine iron (1/s) and crystal (0.25/s) are applied at game.js:347-348 with NO income multiplier and NO level multiplier — only the gold channel gets iM*lvlM (line 346). But mine COST only escalates on gold (buildCost: only base.g is scaled by 1.6^n; iron/crystal cost is zero). So each mine is a permanent flat +1 iron/s + 0.25 crystal/s that never inflates. Stack 4 mines (50+80+128+205 = 463g total, trivial by wave 5) and you have +4 iron/s + +1 crystal/s on top of the castle. Knight i14 = 3.5s of income, catapult i28 = 7s, mage c12 = 12s. The iron/crystal gate that is supposed to pace advanced units (heavy melee, siege) evaporates — you can spam knights/catapults indefinitely with zero iron pressure. This is the single biggest out-produce lever in the economy.",
+        "field": "income",
+        "from": "mine.income { g:3, i:1, c:0.25 }",
+        "to": "mine.income { g:3, i:0.5, c:0.15 }  AND make iron/crystal channels obey the same escalation as gold",
+        "rationale": "Halving iron per mine (0.5/s) plus applying the 1.6^n-equivalent diminishing to the iron/crystal channels (or simplest surgical fix: leave iron 0.5/crystal 0.15 flat) keeps the FIRST mine meaningful (+0.5 iron/s roughly doubles castle iron) but stops 4 mines from producing 4 iron/s. With 0.5/s, catapult i28 = 56s of two-source income (castle 0.5 + one mine 0.5 = 1/s), restoring siege as a real investment call rather than a self-funding spam."
+      },
+      {
+        "target": "catapult cost (g160 i28) vs its cd6 machine-gun output",
+        "verdict": "spammable",
+        "problem": "Catapult is a 480-range aoe120 blunt-1.35-vs-heavy machine-gun (cd6 = 10 shots/sec) that also raycast-farms bounties across the whole field. Economically it is a perpetual-motion machine: one catapult clears waves faster than the bounty it costs, so it pays for its own successors. i28 is the only brake, and mines (see above) neutralize iron entirely. Even at i28, the catapult's kill-per-second bounty income (farming a pack of marauders b12/berserkers b18 at 10 aoe shots/sec) exceeds any unit's cost — the economy can never starve a catapult player.",
+        "field": "cost.i",
+        "from": "28",
+        "to": "45",
+        "rationale": "The cooldown is being fixed in the combat subsystem (cd6->~30 makes it siege-paced); on the ECONOMY side, raising iron to 45 makes each catapult ~90s of single-mine iron income, forcing the player to choose between siege and heavy melee (knight i14) rather than fielding both freely. Pairs with the mine iron nerf so siege stays a comp decision, not a default."
+      },
+      {
+        "target": "castle iron/crystal income (flat 0.5 / 0.85, never scaled)",
+        "verdict": "no-counter",
+        "problem": "Castle iron (0.5/s) and crystal (0.85/s) are applied WITHOUT iM or lvlM (game.js:347-348), while castle gold gets both. Combined with wave scaling (enemy hp+dmg *1.15/wave), advanced-unit demand rises but the castle's iron/crystal supply is frozen forever. Late game the player is starved of iron/crystal from the castle alone and is FORCED into mines (which then overshoot, see finding 1). There is no smooth in-between: the castle alone can't sustain even one knight cycle at high waves, but 2-3 mines flood you. The economy has no graceful crystal/iron curve.",
+        "field": "game.js:347-348 (income application)",
+        "from": "iron/crystal channels apply (b.income.i * dt)/60 with no multiplier",
+        "to": "apply lvlM (level income mult) to iron/crystal channels too: (b.income.i * lvlM * dt)/60 and (b.income.c * lvlM * dt)/60",
+        "rationale": "Letting the level income multiplier (1 + lvl*0.22) touch iron/crystal makes castle supply grow with the level's threat curve, so advanced units stay affordable at pace without over-relying on stacked mines. Keep the gold 'income' tech (iM) OUT of iron/crystal so Taxation stays a gold-only choice — this is purely about matching supply to the difficulty curve."
+      },
+      {
+        "target": "crystal_focus tech (220g -> +1.5 crystal/s)",
+        "verdict": "insane",
+        "problem": "This upgrade (tech.js:101, crystal_inc applied flat at game.js:352-353 with NO multiplier and NO diminishing) adds +1.5 crystal/s — nearly DOUBLE the castle's entire crystal output (0.85/s) plus the 4 mines combined — for a one-time 220 gold. Crystal gates the whole magic/siege tier (mage c12, paladin c20, obelisk c50, academy c20). One 220g purchase turns the tightest resource in the game into a firehose: mage every 4.4s, paladin every 5s indefinitely. It has no counterpart cost (no crystal cost, no iron) and no per-wave scaling of the drain, so it only gets stronger.",
+        "field": "val",
+        "from": "1.5",
+        "to": "0.6",
+        "rationale": "+0.6 crystal/s is a meaningful ~70% boost to castle crystal (0.85 -> 1.45/s) that eases the magic tier without trivializing it — mage c12 goes from 14s to 8.3s of castle+tech income. Keeps crystal as the scarce comp-defining resource (you still can't run mage+paladin+obelisk simultaneously without drops), preserving the read-the-wave decision of which magic units to field."
+      },
+      {
+        "target": "enemy crystal drops (shaman c2 / harpy c3 / necromancer c5 / dragon c25)",
+        "verdict": "fine",
+        "problem": "These are well-tuned as the intended crystal pipeline for advanced units: harpy c3 (a flying threat countered by archer/mage/castle-flak) rewards ~3.5 castle-seconds of crystal per kill, so killing the counter-target that demands your magic units also feeds them. Dragon c25 = ~2 mages' worth, appropriate for a boss. The ONLY issue is that they become irrelevant once crystal_focus/mines flood the base — fixing findings 1 and 4 restores drops as a genuine incentive to engage crystal-dropping enemies rather than ignoring them.",
+        "field": "drops.crystal",
+        "from": "shaman 2 / harpy 3 / necro 5 / dragon 25",
+        "to": "unchanged (keep as-is)",
+        "rationale": "Drops are the correctly-designed part of the crystal economy: kill-to-fuel loop tied to specific enemy types with clear counters. They only read as 'useless' because the passive crystal sources (finding 1 mine, finding 4 castle-nerf-then-scale, finding 5 tech) overshadow them. Rebalancing those makes drops matter again — no change to the drop values themselves."
+      },
+      {
+        "target": "bounty income vs wave scaling (flat bounty, 1.15/wave enemy hp+dmg)",
+        "verdict": "spammable",
+        "problem": "Bounties are flat (rabble b5..ogre b90) while enemy hp+dmg scale 1.15/wave (waves.js:127, game-economy.js:147-148). Early game this creates a cheap-unit self-funding spam: militia g10 farming rabble/marauder packs profits gold faster than the 18% recruit ramp can brake it, so the intended 'mixed comp' pressure from unitCost escalation is undercut by raw bounty inflow in waves 1-5. The 18% ramp only bites within a single unit type; alternating two cheap types dodges it while still self-funding. Player never has to build a real comp early because gold is never scarce.",
+        "field": "unitCost ramp (game-economy.js:37)",
+        "from": "s = 1 + 0.18 * n (per-type only)",
+        "to": "s = 1 + 0.28 * n",
+        "rationale": "Raising the same-type recruit tax to 28% makes stacking one cheap unit genuinely expensive by the 3rd-4th copy (militia g10 -> 13 -> 16 -> 18), so bounty self-funding can't sustain a mono-spam. This preserves the mixed-comp incentive the ramp was designed for without touching bounties (which correctly stay flat so late-wave scaling creates real gold pressure). Surgical: one constant, restores the 'build a comp' feel the ramp targets."
+      },
+      {
+        "target": "obelisk cost (g100 c50) as a mana-economy building",
+        "verdict": "useless",
+        "problem": "Obelisk grants income.mana 0.05/building (+3 mana/sec at 60fps equivalent... actually +0.05/frame region = it doubles base MANA_REGEN 0.05). For g100 + c50 (50 crystal = ~59 castle-seconds, the game's single most expensive crystal sink outside academy) it merely doubles passive mana regen. Compared to ley_lines tech (250g, +50 max mana AND +50% regen, no crystal), the obelisk is strictly dominated on crystal-efficiency: it burns the scarcest resource for the weakest mana return, and mana only gates spells (a side system), not the unit comp. No reason to ever build it over buying ley_lines.",
+        "field": "cost.c",
+        "from": "50",
+        "to": "20",
+        "rationale": "Dropping crystal cost to 20 (matching academy's crystal gate) makes the obelisk a viable spell-focused-comp building instead of a crystal trap. It still competes with mage/paladin for crystal, so building it is a real comp choice (spells-heavy vs units-heavy), which is exactly the tactical decision the economy should surface."
+      }
+    ]
+  },
+  {
+    "findings": [
+      {
+        "target": "SPELL SYSTEM (global) — no per-spell cooldown",
+        "verdict": "spammable",
+        "problem": "spell-manager.js cast() gates ONLY on mana; there is no per-spell cooldown anywhere. At base 3 mana/sec that already lets heal(30) fire every 10s and meteor(50) every 17s with zero skill, and with obelisks it collapses to seconds. A clutch tool must have a floor on cadence independent of income so a player who banks mana can't dump 3 meteors back-to-back into one wave.",
+        "field": "cooldownFrames (new per-spell field, gate in cast())",
+        "from": "none (mana-only gate)",
+        "to": "add cooldownFrames: meteor 600 (10s), blizzard 480 (8s), lightning 420 (7s), heal 360 (6s); block cast + grey the button while on cd",
+        "rationale": "Decouples spell cadence from income so obelisk stacking can't turn spells into machine-guns; each spell becomes a timed clutch button. Numbers set so a single spell can answer one moment per wave, not carpet-bomb the lane."
+      },
+      {
+        "target": "MANA_REGEN + obelisk income (config.js MANA_REGEN 0.05, buildings.js obelisk income.mana 0.05)",
+        "verdict": "spammable",
+        "problem": "Base MANA_REGEN 0.05/frame = 3/sec, and EACH obelisk adds income.mana 0.05/frame in the SAME units (game.js:349), i.e. +3/sec — one obelisk DOUBLES base regen, and there is no cap on obelisks. 4 obelisks + Ley Lines (+50%) = (0.05+0.20)*1.5 = 0.375/frame = 22.5 mana/sec, meteor every 2.2s. Mana stops being scarce, so cost can never gate spam.",
+        "field": "MANA_REGEN and obelisk income.mana",
+        "from": "MANA_REGEN 0.05 (3/sec); obelisk income.mana 0.05 (+3/sec each)",
+        "to": "MANA_REGEN 0.033 (2/sec); obelisk income.mana 0.017 (+1/sec each); keep unchanged if cooldowns (finding 1) are added, but if NOT adding cooldowns these cuts are mandatory",
+        "rationale": "Makes an obelisk a +50% regen investment instead of +100%, so a full stack reaches ~6-7/sec rather than 22/sec. With cooldowns as the real cadence gate, mana becomes the 'can I afford the clutch play' resource, not a spam meter."
+      },
+      {
+        "target": "ALL SPELLS — flat damage bypasses COUNTER_TABLE and armor",
+        "verdict": "no-counter",
+        "problem": "entity.js takeDamage(amt, tag): the 2nd arg is ONLY a color/feedback tag — it never touches COUNTER_TABLE, armor, or armorClass. spell-behaviors.js calls takeDamage(pwr,'strong') etc, so meteor/blizzard/lightning deal FULL flat damage to heavy/shield armor enemies. The whole point of shieldman (a6/shield), ogre (a4/heavy), dragon (a8/heavy) armor is erased vs magic: there is no on-board answer to a spell, and no enemy 'reads' as spell-resistant. This breaks tactical-counter feel for the entire magic damage type.",
+        "field": "spell damage application in spell-behaviors.js",
+        "from": "en.takeDamage(pwr,'strong') / (tick,'magic') / (pwr2,'magic') — flat, armor+table ignored",
+        "to": "route spell damage through dealDamage() with src={dmgType:'magic'} so COUNTER_TABLE.magic (none1.0/light1.15/heavy1.25/shield1.15) and target.armor subtract apply — same path units use",
+        "rationale": "Restores the magic counter row that already exists in the table: spells stay STRONG vs the heavy/shield backline (1.25) but armor now bites, so raw spell numbers can be tuned high without one-shotting everything, and enemies keep meaningful armor identity."
+      },
+      {
+        "target": "heal (Holy Light) — cost 30, heal 200, radius 200",
+        "verdict": "spammable",
+        "problem": "Cheapest spell (30) with the largest raw swing per mana: 200 flat instant HP to EVERY unit AND building in a 200-radius blob. A knight (280hp) or paladin (320hp) deathball gets ~full-bar topped every 10s at base regen, ~1.3s with obelisks. There is no enemy that out-damages a repeatable 200-AOE-heal, so melee blobs become unkillable — the 'brute-force one unit' failure mode the target feel forbids.",
+        "field": "cost / heal",
+        "from": "cost 30 / heal 200",
+        "to": "cost 45 / heal 130 (plus cooldown 360 from finding 1)",
+        "rationale": "45 mana + 6s cd makes heal a clutch save for a specific engagement, not a passive regen aura. 130 tops off a militia/archer line or claws a knight off death without fully negating enemy DPS, so damage still matters."
+      },
+      {
+        "target": "blizzard (Blizzard) — cost 40, radius 220, 12/tick x35 ticks",
+        "verdict": "insane",
+        "problem": "Highest total output of any spell for the second-cheapest cost: 12*35 = 420 flat magic over a HUGE r220 (largest area in the game), for 40 mana. That is meteor-tier total damage over ~2x the area, and it currently bypasses armor (finding 3). Worse, the advertised 'freeze' is NOT implemented (spell-behaviors.js:82 only does en.x += speed*0.9, which SHOVES enemies toward the player base) — so it is a pure damage nuke mislabeled as CC, dominating meteor and lightning on value.",
+        "field": "radius / tick damage + implement freeze",
+        "from": "radius 220 / tick 12 (420 total) / no CC, pushes enemies forward",
+        "to": "radius 170 / tick 8 (280 total over the field) AND replace the forward-shove with a real slow: set en.frozenT so speed*0.5 while in the cloud (remove en.x += speed*0.9)",
+        "rationale": "Turns blizzard into the CONTROL spell its name promises (soft counter to berserker/harpy divers and ogre pushes) with damage below meteor's single-hit burst, instead of a bigger, cheaper meteor that also accidentally helps the enemy advance."
+      },
+      {
+        "target": "meteor (Meteor Strike) — cost 50, radius 150, damage 350",
+        "verdict": "spammable",
+        "problem": "350 flat (455 with Pyromancy +30%) in r150, armor-ignoring. Fine as a burst identity, but at cost 50 with no cooldown it is the go-to spam nuke early-mid — one-shots any non-boss cluster and 2-shots an ogre (550). The issue is cadence, not the hit: it should be the rare 'delete this dangerous cluster' button, not repeatable every 17s (or every 2s stacked).",
+        "field": "cost (keep damage)",
+        "from": "cost 50 / damage 350",
+        "to": "cost 60 / damage 350 (with cooldown 600 from finding 1, and armor now applying per finding 3)",
+        "rationale": "Meteor keeps its signature big single burst as the anti-cluster clutch tool; the higher cost + 10s cd + armor-aware damage make it a read-the-wave commitment rather than the default spam answer to everything."
+      },
+      {
+        "target": "lightning (Chain Lightning) — cost 45, chains 6, damage 210, falloff 0.82",
+        "verdict": "fine",
+        "problem": "Closest to on-target: 210 first hit falling 0.82/jump across 6 targets (210/172/141/116/95/78 ~ 812 spread total), with a genuine downside (whiffs and refunds if no target, re-forks off corpses). Single-target front-load is high but the falloff and target-count cap make it a spread-damage tool, not a nuke. Main faults are shared-systemic: no cooldown, and armor bypass means it over-performs vs the heavy/shield backline it should merely be 'good' against.",
+        "field": "damage (only if finding 3 armor-routing is NOT adopted)",
+        "from": "damage 210",
+        "to": "keep 210 if armor routing (finding 3) + cooldown 420 (finding 1) land; else 210 -> 180 to compensate for the flat-damage armor bypass",
+        "rationale": "Lightning is the well-designed peer other spells should be balanced toward: capped targets, real falloff, a whiff cost. Only trim it if the armor bypass stays, otherwise the counter fixes handle it."
+      },
+      {
+        "target": "magic_damage upgrade (Pyromancy/alchemy, tech.js val 0.3)",
+        "verdict": "fine",
+        "problem": "One-time +30% to all spell damage (game-economy.js:161 adds to a magic_damage accumulator, but only one magic-tagged tech exists, so it does not runaway-stack). At +30% it is a reasonable single power spike. Worth noting only because desc says 'fireball/meteor' but it applies to blizzard and lightning too (spell-behaviors.js:67,130) — the scope is broader than advertised, but the value itself is fine.",
+        "field": "val (no change) / desc scope",
+        "from": "val 0.3 applies to ALL spells",
+        "to": "keep val 0.3; update desc from '+30% fireball/meteor damage' to '+30% all spell damage' for honesty",
+        "rationale": "Single non-stacking +30% is a healthy investment tier; no numeric change needed. Fixing the description prevents the player mis-reading which spells it buffs when building a comp."
+      }
+    ],
+    "subsystem": "Spells + Mana Economy"
+  }
+]
