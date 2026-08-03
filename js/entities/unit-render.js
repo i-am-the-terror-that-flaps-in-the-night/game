@@ -96,11 +96,24 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
             return j;
         };
 
-        // ── Ground shadow (shrinks when airborne) ──
+        // ── Ground shadow: directional, cast by the sun (all tiers) ──
+        // Offsets and stretches away from the sun. The shadow lives inside the
+        // `scale(f*s, s)` frame, so the x-offset is divided by facing `f` — that
+        // makes it point in a FIXED WORLD direction and NOT mirror when the unit
+        // turns around. Length is clamped (no 1/tan blow-up at dawn/dusk) and the
+        // shadow fades through dusk into night. `air` keeps the airborne cue.
         const air = this.flying ? 0.55 : 1;
-        ctx.fillStyle = `rgba(0,0,0,${0.42 * air})`;
+        const _g = window.game;
+        const dP = _g ? Math.sin(_g.dayT) : 0.8;     // sun elevation proxy
+        const sunAz = _g ? Math.cos(_g.dayT) : 0.3;  // sun horizontal position
+        const elev = Math.max(0.3, Math.abs(dP));    // clamp → no cotangent blow-up
+        const len = Math.min(2.6, 0.8 / elev);       // length factor, capped
+        const dayLight = Math.max(0, Math.min(1, (dP + 0.1) / 0.4)); // 0 night → 1 day
+        const tipX = (-sunAz * len * 14 * air) / (f || 1);  // /f → world-fixed direction
+        ctx.fillStyle = `rgba(0,0,0,${0.42 * air * (0.22 + 0.78 * dayLight)})`;
         ctx.beginPath();
-        ctx.ellipse(0, 0, 12.5 * air, 4.5 * air, 0, 0, Math.PI * 2);
+        // Ellipse spans feet→tip: centred halfway, long axis grows with length.
+        ctx.ellipse(tipX * 0.5, 0, 11 * air + Math.abs(tipX) * 0.55, 4.5 * air, 0, 0, Math.PI * 2);
         ctx.fill();
 
         // ── Boss aura ──

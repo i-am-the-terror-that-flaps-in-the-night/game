@@ -173,6 +173,12 @@ export class Hero extends Unit {
         const sxo = gl ? (g._shakeX || 0) : 0;
         const syo = gl ? (g._shakeY || 0) : 0;
 
+        // Normal-lit relief: register the hero body so dynamic lights shape it
+        // (WebGPU tier only; no-op otherwise). Center sits over the torso.
+        if (ok && g && g.wgpu && g.wgpu.reliefSprite) {
+            g.wgpu.reliefSprite(px + sxo, py - 38 * s + syo, 26 * s, 44 * s, [0.62, 0.5, 0.85], 0.9);
+        }
+
         // ── BEHIND the figure: ground sigil + body glow silhouette ──────────
         if (ok) {
             // Body glow: GPU sprite, or a radial gradient on Canvas 2D.

@@ -81,6 +81,49 @@ The **action bar** is generated from `UNIT_TYPES`/`BUILDING_TYPES` by
 one place; it produces the same button ids/classes/handlers the HUD code
 expects.
 
+## Rendering & VFX (hybrid Canvas 2D + GPU overlay)
+
+The world (procedural stickman/scenery art) is drawn in **immediate-mode Canvas
+2D**. On top of it sits an **additive GPU overlay** for glow, particles, dynamic
+lights and post-FX. There are two interchangeable overlay backends behind one
+shared contract (`ok`/`begin`/`glow`/`flush`/`resize`), picked automatically each
+frame with a graceful fallback chain:
+
+**WebGPU** (`js/systems/wgpu-renderer.js`) → **WebGL** (`js/systems/gl-renderer.js`)
+→ **Canvas 2D**.
+
+The WebGPU tier is a superset that adds, all in WGSL:
+- **GPU-compute particles** (`js/systems/gpu-particles.js`) — a storage-buffer
+  pool simulated entirely on the GPU (gravity / drag / wind / curl-turbulence /
+  attraction) and drawn instanced. The legacy CPU particle path
+  (`js/systems/vfx.js`) stays as the fallback; `game.particles.emit(...)` routes
+  additive bursts to whichever is live.
+- **Dynamic 2D lighting** (`js/systems/lighting.js`) — coloured point lights with
+  falloff/flicker that brighten the world (explosions, muzzle flashes, fire).
+- **Normal-lit relief** (`js/systems/gpu-relief.js`) — a synthesized body normal
+  lets dynamic lights shape the hero/boss sprites directionally.
+
+Two systems sit above the backends and work on **every** tier:
+- **Data-driven VFX registry** (`js/systems/vfx-registry.js`) — `game.vfx.spawn(
+  'explosion'|'muzzleFlash'|'impact'|'fire'|'sparks'|'smoke'|'debris', x, y, opts)`
+  composes particles + lights + camera shake + decals + fx rings. Every recipe
+  bottoms out in primitives that already fall back to Canvas 2D.
+- **Camera feel** (`js/systems/camera-fx.js`) — smooth trauma shake + typed
+  directional impulses (recoil/kick), replacing per-frame white-noise shake.
+
+**Browser requirements.** WebGPU is used where available (Chrome/Edge 113+,
+Safari 18+, Firefox 141+/Nightly); everything else transparently falls back to
+the WebGL glow overlay, and failing that to Canvas 2D. Device loss reverts to
+WebGL on the next frame. No action is needed from the player. Tiers are gated in
+`js/systems/graphics.js` (`webgpu`/`lights`/`bloom`/`distortion` per preset).
+
+**Dev tooling.** `tools/wgpu-verify.mjs` boots the game in a WebGPU-enabled
+Chrome, drives VFX-heavy events, asserts no GPU validation errors, screenshots to
+`scratch/`, measures FPS, and runs a device-loss drill. The headless smoke
+(`tools/smoke.mjs`) runs without WebGPU and asserts the fallback path stays green.
+Type definitions come from the `@webgpu/types` **devDependency** (typecheck only;
+zero runtime cost).
+
 ## Strategy systems
 
 Combat is deterministic — no crits, no dice. Every unit has a damage type

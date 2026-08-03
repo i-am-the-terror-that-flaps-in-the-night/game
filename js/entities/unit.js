@@ -404,6 +404,10 @@ export class Unit extends Entity {
         game.particles.emit(tgt.x, CONFIG.GROUND_Y, 22, "#78716c", 6, 3, "fade");
         game.decals.add(tgt.x, CONFIG.GROUND_Y, "scorch", this.aoe * 0.4);
         game.shake = Math.min(14, game.shake + 5);
+        // Muzzle light at the barrel + a recoil kick opposite the firing
+        // direction (typed directional camera impulse).
+        game.lights.add({ x: muzzleX, y: muzzleY, radius: 80 * this.scale, intensity: 1.2, color: "#fde68a", flicker: 0.5, life: 5 });
+        game.cameraFX.impulse({ x: -this.facing, y: 0, mag: 1.8, freq: 1.4, decay: 0.38 });
         game.audio.playShoot();
         game.audio.playExplosion();
     }

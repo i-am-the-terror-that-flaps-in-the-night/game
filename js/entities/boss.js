@@ -508,6 +508,13 @@ export class Boss extends Entity {
         const p = cam.toScreen(this.x, this.y);
         const z = cam.z * this.scale;
         const q = particleQuality();
+        // Normal-lit relief: register the hull so dynamic lights shape the boss
+        // (WebGPU tier only; no-op otherwise). Matches the shaken 2D layer.
+        const _bg = window.game;
+        if (_bg && _bg.wgpu && _bg.wgpu.reliefSprite) {
+            _bg.wgpu.reliefSprite(p.x + (_bg._shakeX || 0), p.y - 44 * z + (_bg._shakeY || 0),
+                140 * z, 96 * z, [0.72, 0.52, 0.32], 0.8);
+        }
         // Death throe: the hull judders harder the closer it is to blowing.
         const dprog = this.dyingT > 0 ? clamp(1 - this.dyingT / DEATH_DUR, 0, 1) : 0;
         const wob = this.dyingT > 0 ? Math.sin(this.frame * 0.9) * (2 + dprog * 7) : 0;

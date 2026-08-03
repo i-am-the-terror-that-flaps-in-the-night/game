@@ -12,7 +12,7 @@
     "strictNullChecks": false,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "types": []
+    "types": ["@webgpu/types"]
   },
   "include": ["js/**/*.js", "types/**/*.d.ts"]
 }

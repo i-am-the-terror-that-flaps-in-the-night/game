@@ -70,6 +70,19 @@ export class ParticleSystem {
     emit(x, y, c, color, sp, sz, type) {
         const q = particleQuality();
         c = Math.floor(c * q);
+        if (c <= 0) return;
+        // GPU offload: additive particles (float/spark) are simulated AND drawn
+        // entirely on the GPU when the WebGPU pool is live — the CPU never tracks
+        // them. Non-additive (fade/debris) stay on the CPU/Canvas-2D path below.
+        const g = typeof game !== "undefined" ? game : window.game;
+        if (g && g.wgpu && g.wgpu.ok && GFX.webgpu &&
+            (type === "float" || type === "spark")) {
+            g.wgpu.emitParticles({
+                x, y, count: c, rgb: GLRenderer.parseColor(color),
+                speed: sp, size: sz, kind: type,
+            });
+            return;
+        }
         for (let i = 0; i < c; i++) {
             const a = rand(0, Math.PI * 2),
                 s = rand(sp * 0.3, sp);

@@ -112,6 +112,7 @@ export class Singularity {
         this.phaseT += dt;
         this.rot += 0.05 * dt;
         this.spin += (0.18 + this.intensity * 0.4) * dt;
+        this._driveField(g);
 
         if (this.phase === "form") {
             const t = Math.min(1, this.phaseT / FORM_LEN);
@@ -158,6 +159,40 @@ export class Singularity {
             }
         } else if (this.phase === "detonate") {
             this.active = false;
+        }
+    }
+
+    /**
+     * Drive the GPU particle attractor (so embers spiral IN, not drift) and a
+     * violet cast light (so the rift illuminates nearby units) for the whole
+     * life of the rift. The attractor is global singleton state on the particle
+     * pool; game.js clears it every frame pre-update and this re-sets it, so it
+     * auto-clears the instant no rift is alive.
+     */
+    _driveField(g) {
+        if (!g || this.phase === "detonate") return;
+        const R = this.def.radius;
+        if (g.wgpu && g.wgpu.setAttractor) {
+            const strength = this.phase === "form" ? 0.15 + this.intensity * 0.35
+                : this.phase === "collapse" ? 0.5 + Math.min(1, this.phaseT / COLLAPSE_LEN) * 1.1
+                : 0.5; // pull
+            g.wgpu.setAttractor(this.x, this.y, strength, R * 1.3);
+        }
+        if (g.lights && g.lights.add) {
+            const li = this.phase === "collapse" ? 0.9 + Math.min(1, this.intensity) * 0.4
+                : this.phase === "pull" ? 0.7 : 0.25 + this.intensity * 0.3;
+            g.lights.add({ x: this.x, y: this.y, radius: R * 1.15, intensity: li,
+                color: "#c084fc", flicker: 0.2, life: 3 });
+        }
+        // Gravitational lens: bend the scene behind the rift into the core
+        // (compositor/cinematic tier). Short life, re-emitted each frame so it
+        // tracks the growing/collapsing horizon.
+        if (g.wgpu && g.wgpu.addDistortion) {
+            g.wgpu.addDistortion({
+                x: this.x, y: this.y, kind: 2,
+                maxR: R * 1.6, width: Math.max(8, this.coreR),
+                strength: 0.02 * Math.min(2.5, this.intensity), life: 2,
+            });
         }
     }
 
@@ -216,6 +251,12 @@ export class Singularity {
         }
         g.shake = Math.max(g.shake || 0, 30);
         g.chromaAberrationT = 40;
+        // Release the particle attractor (game.js also clears it, belt+braces).
+        if (g.wgpu && g.wgpu.setAttractor) g.wgpu.setAttractor(0, 0, 0);
+        // Violet detonation light — a bright collapsing flash that washes the
+        // field (GPU overlay tiers).
+        if (g.lights) g.lights.add({ x: this.x, y: this.y, radius: R * 1.4, intensity: 2.0, color: "#c084fc", flicker: 0.15, life: 26 });
+        if (g.wgpu && g.wgpu.addDistortion) g.wgpu.addDistortion({ x: this.x, y: this.y, maxR: R * 1.6, strength: 22, width: 60, life: 32, kind: 0 });
         if (g.audio) { g.audio.playExplosion(); g.audio.playMagic(); }
         // Particle nova: fast outward blast + slow rising void embers.
         if (g.particles) {
@@ -251,6 +292,9 @@ export class Singularity {
         const useShadow = !gl && GFX.shadows;
         const sxo = gl ? (g._shakeX || 0) : 0;
         const syo = gl ? (g._shakeY || 0) : 0;
+        // WebGPU shaded accretion disk (Keplerian shear + Doppler + photon ring)
+        // replaces the flat 2D arm spirals when available.
+        const wg = gl && gl.singularityDisk && GFX.webgpu ? gl : null;
 
         ctx.save();
 
@@ -317,32 +361,42 @@ export class Singularity {
         //    "seen at an angle" read rather than a flat spirograph. shadowBlur
         //    only when no GPU overlay AND cinematic tier (else the GPU bloom +
         //    the gradient strokes carry the glow).
-        if (useShadow) { ctx.shadowColor = "#e64bff"; ctx.shadowBlur = 24 * z * glow; }
-        for (let arm = 0; arm < this.arms; arm++) {
-            const base = t + (arm / this.arms) * TWO_PI;
-            // Per-arm variation seeded by index (stable, no RNG in hot path).
-            const bright = 0.55 + 0.45 * ((arm * 2 + 1) % this.arms) / this.arms;
-            const turns = 2.1 + 0.5 * ((arm * 3) % 3) / 3;
-            ctx.beginPath();
-            const steps = 30;
-            for (let sN = 0; sN <= steps; sN++) {
-                const f = sN / steps;
-                const ang = base + f * Math.PI * turns;
-                const rad = core * 1.02 + f * (R * 0.64 - core);
-                const wob = Math.sin(f * 11 + t * 2.4 + arm) * (2 + f * 2) * z;
-                const x = px + Math.cos(ang) * (rad + wob);
-                const y = py + Math.sin(ang) * (rad + wob) * 0.62;  // strong ellipse
-                if (sN === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        if (wg) {
+            // GPU shaded disk: one instanced quad, real differential rotation.
+            // over-brights during collapse (this.intensity climbs past 1).
+            wg.singularityDisk(px + sxo, py + syo, R * 0.7, core, this.spin,
+                Math.min(2.5, this.intensity), 0.62);
+        } else {
+            if (useShadow) { ctx.shadowColor = "#e64bff"; ctx.shadowBlur = 24 * z * glow; }
+            for (let arm = 0; arm < this.arms; arm++) {
+                const base = t + (arm / this.arms) * TWO_PI;
+                // Per-arm variation seeded by index (stable, no RNG in hot path).
+                const bright = 0.55 + 0.45 * ((arm * 2 + 1) % this.arms) / this.arms;
+                const turns = 2.1 + 0.5 * ((arm * 3) % 3) / 3;
+                ctx.beginPath();
+                const steps = 30;
+                for (let sN = 0; sN <= steps; sN++) {
+                    const f = sN / steps;
+                    // Differential (Keplerian-ish) shear: inner steps wind faster
+                    // than the rim, so even the Canvas fallback isn't a spirograph.
+                    const shear = this.spin * 0.22 * (Math.pow(Math.max(f, 0.08), -0.5) - 1);
+                    const ang = base + f * Math.PI * turns - shear;
+                    const rad = core * 1.02 + f * (R * 0.64 - core);
+                    const wob = Math.sin(f * 11 + t * 2.4 + arm) * (2 + f * 2) * z;
+                    const x = px + Math.cos(ang) * (rad + wob);
+                    const y = py + Math.sin(ang) * (rad + wob) * 0.62;  // strong ellipse
+                    if (sN === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                }
+                const grd = ctx.createLinearGradient(px, py - core, px, py - R);
+                grd.addColorStop(0, `rgba(255,255,255,${bright * glow})`);
+                grd.addColorStop(0.35, `rgba(240,120,255,${0.75 * bright * glow})`);
+                grd.addColorStop(1, "rgba(147,51,234,0)");
+                ctx.strokeStyle = grd;
+                ctx.lineWidth = (1.4 + bright * 1.8) * z;
+                ctx.stroke();
             }
-            const grd = ctx.createLinearGradient(px, py - core, px, py - R);
-            grd.addColorStop(0, `rgba(255,255,255,${bright * glow})`);
-            grd.addColorStop(0.35, `rgba(240,120,255,${0.75 * bright * glow})`);
-            grd.addColorStop(1, "rgba(147,51,234,0)");
-            ctx.strokeStyle = grd;
-            ctx.lineWidth = (1.4 + bright * 1.8) * z;
-            ctx.stroke();
+            if (useShadow) ctx.shadowBlur = 0;
         }
-        if (useShadow) ctx.shadowBlur = 0;
 
         // 4) Inner ignition ring — bright rim right at the event horizon.
         ctx.strokeStyle = `rgba(255,235,255,${0.9 * Math.min(1, glow)})`;

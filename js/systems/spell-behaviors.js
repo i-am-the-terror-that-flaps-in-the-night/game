@@ -23,22 +23,15 @@ export const SPELL_BEHAVIORS = {
         setTimeout(() => {
             if (game.state !== "playing") return;
             game.audio.playExplosion();
-            game.shake = 25;
-            game.decals.add(
-                w.x,
-                CONFIG.GROUND_Y,
-                "scorch",
-                sp.radius,
-            );
-            game.particles.emit(
-                w.x,
-                CONFIG.GROUND_Y,
-                100,
-                "#ef4444",
-                20,
-                10,
-                "fade",
-            );
+            // Composed explosion (fireball + sparks + debris + smoke + shockwave
+            // + dynamic light + camera punch + scorch decal). Scale tracks the
+            // spell radius so the crater/light match the blast size.
+            game.vfx.spawn("explosion", w.x, CONFIG.GROUND_Y, {
+                scale: sp.radius / 90,
+                power: 1.6,
+                shake: 25,
+                color: "#ef4444",
+            });
             const pwr =
                 sp.damage *
                 (1 + (game.upgrades.magic_damage || 0)); // Fix #9

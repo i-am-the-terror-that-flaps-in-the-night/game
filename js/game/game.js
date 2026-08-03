@@ -11,6 +11,10 @@ import { formatTime } from '../utils.js';
 import { DecalSystem, EffectSystem, ParticleSystem, WeatherSystem } from '../systems/vfx.js';
 import { GFX, refreshGraphics } from '../systems/graphics.js';
 import { GLRenderer } from '../systems/gl-renderer.js';
+import { WGPURenderer } from '../systems/wgpu-renderer.js';
+import { CameraFX } from '../systems/camera-fx.js';
+import { VFXRegistry } from '../systems/vfx-registry.js';
+import { LightSystem } from '../systems/lighting.js';
 
 // --- GAME: core state, lifecycle & main loop ---
 // (flow/economy/input/ui/render methods are mixed into Game.prototype
@@ -34,9 +38,19 @@ export class Game {
         this.weather = new WeatherSystem();
         this.spells = new SpellManager();
         // GPU overlay for the additive glow layer (particles + hero/rift auras).
-        // Falls back to Canvas 2D automatically if WebGL is unavailable.
-        this.gl = new GLRenderer();
-        this.gl.init();
+        // Two backends share the GLRenderer contract (ok/begin/glow/flush/resize):
+        //   - WebGL (this.glWebgl): synchronous, ~universal, the safe baseline.
+        //   - WebGPU (this.wgpu): an async superset that promotes itself once its
+        //     device is ready and adds richer passes in later stages.
+        // `this.gl` always points at the ACTIVE overlay; the render loop repoints
+        // it each frame so external call sites (vfx/void/hero) that read `g.gl`
+        // transparently use whichever backend is live. Falls back to Canvas 2D
+        // automatically if neither GPU backend is usable.
+        this.glWebgl = new GLRenderer();
+        this.glWebgl.init();
+        this.wgpu = new WGPURenderer(this);
+        this.wgpu.initAsync().catch(() => {}); // fire-and-forget; game runs on WebGL meanwhile
+        this.gl = this.glWebgl;                // WebGPU promotes itself in draw()
 
         this.state = "menu";
         this.level = 0;
@@ -79,7 +93,10 @@ export class Game {
 
         this.stats = { kills: 0, gold: 0, loss: 0, start: 0 };
         this.sel = null;
-        this.shake = 0;
+        this.shake = 0;               // ambient shake amplitude (px); ~40 sites set it
+        this.cameraFX = new CameraFX(); // smooths shake + adds typed directional kicks
+        this.vfx = new VFXRegistry(this); // data-driven composable effects (game.vfx.spawn)
+        this.lights = new LightSystem();  // dynamic point lights (GPU overlay tiers)
         this.chromaAberrationT = 0;
         this.frames = 0;
         this.lastT = performance.now();
@@ -160,7 +177,8 @@ export class Game {
         // resize() runs once in the constructor before this.camera exists (the
         // Camera seeds viewW itself); guard for that first call.
         if (this.camera) this.camera.viewW = window.innerWidth;
-        if (this.gl) this.gl.resize(this.vw, this.vh);
+        if (this.glWebgl) this.glWebgl.resize(this.vw, this.vh);
+        if (this.wgpu) this.wgpu.resize(this.vw, this.vh);
         this._buildBackdropCache();
     }
 
@@ -338,6 +356,10 @@ export class Game {
         for (let i = 0; i < uN; i++) this.units[i].update(dt);
         for (let i = 0; i < eN; i++) this.enemies[i].update(dt);
         for (let i = 0; i < pN; i++) this.projectiles[i].update(dt);
+        // Clear the global GPU particle attractor each frame BEFORE the rifts
+        // update; a live Singularity re-sets it during its own update, so it
+        // auto-clears the moment no rift is alive (no cross-run leak).
+        if (this.wgpu && this.wgpu.setAttractor) this.wgpu.setAttractor(0, 0, 0);
         for (let i = 0; i < sN; i++) this.singularities[i].update(dt);
 
         this.units = this.units.filter(
@@ -375,6 +397,8 @@ export class Game {
             this.shake *= Math.pow(0.9, dt);
             if (this.shake < 0.5) this.shake = 0;
         }
+        this.cameraFX.update(dt);
+        this.lights.update(dt);
         if (this.bossFlash > 0) {
             this.bossFlash *= Math.pow(0.85, dt);
             if (this.bossFlash < 0.02) this.bossFlash = 0;

@@ -3,6 +3,7 @@ import { CONFIG, NECRO_MINION_TYPE, PROJ_CULL_MARGIN, PROJ_HIT_RADIUS, TEAMS } f
 import { PROJECTILE_TYPES } from '../data/projectiles.js';
 import { dist, rand, shade } from '../utils.js';
 import { GFX } from './graphics.js';
+import { GLRenderer } from './gl-renderer.js';
 
 // --- PROJECTILES & MAGIC ---
 export class Projectile {
@@ -83,9 +84,16 @@ export class Projectile {
             if (this.y > CONFIG.GROUND_Y) this.hitFloor();
         }
 
-        this.trail.push({ x: this.x, y: this.y });
-        if (this.trail.length > (this.glow ? 10 : 5))
-            this.trail.shift();
+        // Distance-sampled history (not per-frame): appends only after moving a
+        // minimum distance, so trail length is independent of frame rate / game
+        // speed and a slow/stationary shot can't pile zero-length points on one
+        // spot (which would give the GPU ribbon NaN normals).
+        const last = this.trail.length ? this.trail[this.trail.length - 1] : null;
+        if (!last || Math.hypot(this.x - last.x, this.y - last.y) >= 6) {
+            this.trail.push({ x: this.x, y: this.y });
+            const maxPts = this.glow ? 16 : 5;
+            if (this.trail.length > maxPts) this.trail.shift();
+        }
 
         if (
             !this.arc &&
@@ -148,6 +156,7 @@ export class Projectile {
             2,
             "spark",
         );
+        game.lights.add({ x: this.x, y: this.y, radius: 55, intensity: 0.75, color: this.col, life: 6 });
         if (this.pierce > 0) {
             this.active = true;
             this.pierce--;
@@ -193,6 +202,13 @@ export class Projectile {
             this.aoe * 0.8,
         );
         game.shake = Math.min(15, game.shake + this.aoe * 0.15);
+        // Explosion casts a coloured dynamic light so the blast lifts the
+        // surrounding world (WebGPU/WebGL tiers; no-op on Canvas-2D).
+        game.lights.add({
+            x: this.x, y: this.y,
+            radius: this.aoe * 1.6, intensity: 1.4, color: this.col,
+            flicker: 0.2, life: 16,
+        });
         if (this.aoe > 50) game.audio.playExplosion();
     }
     draw(ctx, cam) {
@@ -229,20 +245,39 @@ export class Projectile {
         ctx.globalCompositeOperation = "source-over";
 
         if (this.trail.length > 1) {
-            ctx.strokeStyle = this.col;
-            ctx.lineWidth = this.sz * 0.6 * cam.z;
-            ctx.globalAlpha = 0.6;
-            if (this.glow) ctx.globalCompositeOperation = "screen";
-            ctx.beginPath();
-            for (let i = 0; i < this.trail.length; i++) {
-                const tx = cam.sx(this.trail[i].x);
-                const ty = cam.sy(this.trail[i].y);
-                if (i === 0) ctx.moveTo(tx, ty);
-                else ctx.lineTo(tx, ty);
+            // GLOWING projectiles get a tapered additive GPU ribbon when WebGPU
+            // is live; the flat 2D polyline is then skipped. Solid projectiles
+            // (arrows) always stay on Canvas 2D — the overlay draws above units,
+            // which would look wrong for a non-glowing bolt.
+            const gme = typeof game !== "undefined" ? game : window.game;
+            const wg = this.glow && gme && gme.wgpu && gme.wgpu.ok && GFX.webgpu
+                && gme.wgpu.trailRibbon ? gme.wgpu : null;
+            if (wg) {
+                const sxo = gme._shakeX || 0, syo = gme._shakeY || 0;
+                const pts = [];
+                for (let i = 0; i < this.trail.length; i++) {
+                    pts.push({ x: cam.sx(this.trail[i].x) + sxo, y: cam.sy(this.trail[i].y) + syo });
+                }
+                // Head follows the live position so the ribbon tip meets the bolt.
+                pts.push({ x: cam.sx(this.x) + sxo, y: cam.sy(this.y) + syo });
+                const c = GLRenderer.parseColor(this.col);
+                wg.trailRibbon(pts, Math.max(1.5, this.sz * 1.1 * cam.z), c);
+            } else {
+                ctx.strokeStyle = this.col;
+                ctx.lineWidth = this.sz * 0.6 * cam.z;
+                ctx.globalAlpha = 0.6;
+                if (this.glow) ctx.globalCompositeOperation = "screen";
+                ctx.beginPath();
+                for (let i = 0; i < this.trail.length; i++) {
+                    const tx = cam.sx(this.trail[i].x);
+                    const ty = cam.sy(this.trail[i].y);
+                    if (i === 0) ctx.moveTo(tx, ty);
+                    else ctx.lineTo(tx, ty);
+                }
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+                ctx.globalCompositeOperation = "source-over";
             }
-            ctx.stroke();
-            ctx.globalAlpha = 1;
-            ctx.globalCompositeOperation = "source-over";
         }
     }
 }

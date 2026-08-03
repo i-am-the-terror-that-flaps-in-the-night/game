@@ -168,6 +168,28 @@ try {
     });
     ok(kinds.castle === 'building' && kinds.enemy === 'unit', 'entities carry kind flag (building/unit)');
 
+    // ── 3b. GPU/VFX overlay: instantiation + fallback + high-level APIs ───
+    // WebGPU is absent (or unconfigured) in this headless run, so the overlay
+    // must fall back to the WebGL renderer and every new high-level system must
+    // work without throwing or emitting console.error.
+    console.log('\n[gpu/vfx]');
+    const gpu = await page.evaluate(() => {
+        const g = window.game;
+        // Active overlay must be the WebGL renderer unless WebGPU actually inited.
+        const fallbackHeld = g.gl === g.glWebgl || (g.wgpu && g.wgpu.ok);
+        let spawnOk = false, lightOk = false, shakeOk = false;
+        try { g.vfx.spawn('explosion', 600, 300, { scale: 1 }); spawnOk = true; } catch { /* */ }
+        const before = g.lights.lights.length;
+        try { g.lights.add({ x: 600, y: 300, radius: 120, intensity: 1, color: '#ffaa66' }); lightOk = g.lights.lights.length > before; } catch { /* */ }
+        try { g.cameraFX.impulse({ x: -1, y: 0, mag: 4 }); shakeOk = true; } catch { /* */ }
+        return { hasWgpu: !!g.wgpu, fallbackHeld, spawnOk, lightOk, shakeOk };
+    });
+    ok(gpu.hasWgpu, 'WGPURenderer instantiated');
+    ok(gpu.fallbackHeld, 'active overlay falls back to WebGL when WebGPU absent');
+    ok(gpu.spawnOk, 'game.vfx.spawn runs on the fallback path (no throw)');
+    ok(gpu.lightOk, 'game.lights.add registers a dynamic light');
+    ok(gpu.shakeOk, 'game.cameraFX.impulse accepts a typed camera kick');
+
     // ── 4. Lifecycle: endless + defeat ───────────────────────────────────
     console.log('\n[lifecycle]');
     await page.evaluate(() => game.returnToMenu());

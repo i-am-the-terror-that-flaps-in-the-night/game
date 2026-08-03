@@ -1,7 +1,8 @@
 import { CONFIG } from '../config.js';
 import { LEVELS } from '../data/levels.js';
-import { clamp, mixCol, mixRgb, rand, rgba, shade, toRgb, toRgba } from '../utils.js';
+import { clamp, mixCol, mixRgb, rgba, shade, toRgb, toRgba } from '../utils.js';
 import { GFX } from '../systems/graphics.js';
+import { GLRenderer } from '../systems/gl-renderer.js';
 
 // --- GAME: backdrop, foreground, post-FX & frame draw (installed by install-mixins.js) ---
 export const renderMethods = /** @type {ThisType<any>} */ ({
@@ -476,14 +477,22 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
         // through the scale-down + CSS-upscale.
         const rs = GFX.renderScale || 1;
         if (rs !== 1) ctx.scale(rs, rs);
-        // Capture the shake offset once so the WebGL overlay can track the 2D
-        // layer exactly (it's a separate canvas without this ctx translate).
-        this._shakeX = this.shake > 0 ? rand(-this.shake, this.shake) : 0;
-        this._shakeY = this.shake > 0 ? rand(-this.shake, this.shake) : 0;
-        if (this.shake > 0) ctx.translate(this._shakeX, this._shakeY);
+        // Smooth, frame-coherent camera shake (ambient trauma + typed impulses)
+        // from CameraFX — replaces the old per-frame white-noise rand. Captured
+        // once so the GPU overlay can track the 2D layer exactly (it's a separate
+        // canvas without this ctx translate).
+        const camOff = this.cameraFX.offset(this.shake);
+        this._shakeX = camOff.x;
+        this._shakeY = camOff.y;
+        if (camOff.x || camOff.y) ctx.translate(camOff.x, camOff.y);
 
+        // Pick the active additive-glow overlay for this frame: WebGPU once its
+        // device is ready, else the WebGL renderer. Repointing `this.gl` here is
+        // what lets vfx/void/hero (which read g.gl) use whichever backend is live
+        // with no per-site branching.
+        this.gl = (this.wgpu && this.wgpu.ok) ? this.wgpu : this.glWebgl;
         // Start the GPU glow batch for this frame (particles + auras queue into
-        // it during the world pass; flushed after). No-op when WebGL is off.
+        // it during the world pass; flushed after). No-op when the overlay is off.
         const useGL = GFX.webgl && this.gl && this.gl.ok;
         if (useGL) this.gl.begin();
 
@@ -512,6 +521,46 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
         ents.forEach((o) => o.draw(ctx, cam, dt));
 
         this.particles.draw(ctx, cam);
+        // Dynamic lights queue into the active glow overlay (WebGPU/WebGL) using
+        // the same captured shake offset as particles. No-op on Canvas-2D / when
+        // GFX.lights is off. Queued during the world pass, composited at flush.
+        this.lights.draw(this.gl, cam, this._shakeX, this._shakeY, this.frames);
+        // Normal-lit relief for the crowd: queue units/enemies near a live light
+        // so explosions shape the whole army, not just the hero/boss (which
+        // self-queue in their own draw()). Culled to lit sprites + capped, so a
+        // scene with no lights costs nothing. WebGPU tier only (reliefSprite is
+        // a no-op on WebGL/Canvas).
+        if (this.gl && this.gl.reliefSprite && GFX.lights && this.lights.lights.length) {
+            const La = this.lights.lights;
+            const litNear = (wx, wy) => {
+                for (let k = 0; k < La.length; k++) {
+                    const l = La[k], dx = wx - l.x, dy = wy - l.y;
+                    if (dx * dx + dy * dy < l.radius * l.radius) return true;
+                }
+                return false;
+            };
+            let budget = 44; // leave headroom under MAX_SPRITES(48) for hero/boss
+            const queue = (arr, fallbackCol, strength) => {
+                for (let i = 0; i < arr.length && budget > 0; i++) {
+                    const u = arr[i];
+                    if (!u.active || u === this.hero || u.boss) continue;
+                    const sscale = u.scale || 1;
+                    if (!litNear(u.x, u.y - 20 * sscale)) continue;
+                    const rgb = u._reliefRGB || (u._reliefRGB = GLRenderer.parseColor(u.col || fallbackCol));
+                    const sc = sscale * cam.z;
+                    // Tight body half-width (not full sprite bounds) + low strength
+                    // so thin humanoids don't paint a glowing disc around themselves.
+                    this.gl.reliefSprite(
+                        cam.sx(u.x) + this._shakeX,
+                        cam.sy(u.y - 20 * sscale) + this._shakeY,
+                        8 * sc, 24 * sc, rgb, strength,
+                    );
+                    budget--;
+                }
+            };
+            queue(this.units, "#94a3b8", 0.42);
+            queue(this.enemies, "#b45454", 0.42);
+        }
         this.fx.draw(ctx, cam);
         for (const s of this.singularities) s.draw(ctx, cam);
         this.weather.draw(ctx, cam);
@@ -609,7 +658,12 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
         // Composite the GPU glow batch (particles + auras) over the 2D frame in
         // a single draw call. Always flush (even empty) so a frame with nothing
         // queued still clears the previous frame's glows.
-        if (this.gl && this.gl.ok) this.gl.flush();
+        if (this.gl && this.gl.ok) {
+            // Hand the WebGPU overlay this frame's camera + timestep so its GPU
+            // particle sim can advance (no-op on the WebGL overlay).
+            if (this.gl.setFrame) this.gl.setFrame(dt, cam, this._shakeX, this._shakeY, this.frames);
+            this.gl.flush();
+        }
         this.drawMinimap();
     },
 });
