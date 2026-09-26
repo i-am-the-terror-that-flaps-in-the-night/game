@@ -52,7 +52,19 @@ export const inputMethods = /** @type {ThisType<any>} */ ({
                     tt.innerHTML = `<div class="tt-name">${def.name}</div><div class="tt-desc">${def.desc || ""}</div>HP: ${Math.floor(hov.hp)}/${hov.maxHp}<br>${def.dmg ? "DMG: " + def.dmg + "<br>" : ""}${def.armor ? "Armor: " + def.armor + "<br>" : ""}${mu ? `<span style="font-size:11px;">${mu}</span>` : ""}`;
                 }
             } else {
-                tt.classList.add("hidden");
+                // Nothing picked: describe the ground under the cursor (hills,
+                // slow patches, live hazards) when hovering near the surface.
+                const gy = this.terrain.groundAt(w.x);
+                const hz = w.y > gy - 90 && w.y < gy + 40 ? this.hazards.at(w.x) : null;
+                const info = w.y > gy - 90 && w.y < gy + 40 ? this.terrain.describe(w.x) : "";
+                const hd = hz && this.hazards.def();
+                const txt = [info, hd ? `<b style="color:#fca5a5;">⚠ ${hd.name}</b> — ${hd.tip}` : ""].filter(Boolean).join("<br>");
+                if (txt) {
+                    tt.classList.remove("hidden");
+                    tt.style.left = Math.min(e.clientX + 20, window.innerWidth - 320) + "px";
+                    tt.style.top = e.clientY + 20 + "px";
+                    tt.innerHTML = `<div class="tt-name">Terrain</div><span style="font-size:12px;">${txt}</span>`;
+                } else tt.classList.add("hidden");
             }
         });
 

@@ -1,7 +1,7 @@
-import { CONFIG } from '../config.js';
 import { lerp, particleQuality, rand, randInt, toRgba } from '../utils.js';
 import { GFX } from './graphics.js';
 import { GLRenderer } from './gl-renderer.js';
+import { groundAt } from './terrain.js';
 
 // --- VISUAL SYSTEMS ---
 export class DecalSystem {
@@ -110,7 +110,7 @@ export class ParticleSystem {
             p.life -= dt;
             if (p.type === "fade" || p.type === "float")
                 p.sz *= Math.pow(0.94, dt);
-            if (p.life <= 0 || p.y > CONFIG.GROUND_Y + 10)
+            if (p.life <= 0 || p.y > groundAt(p.x) + 10)
                 this.p.splice(i, 1);
         }
     }
@@ -298,7 +298,7 @@ export class WeatherSystem {
             let p = this.particles[i];
             p.x += p.vx * dt;
             p.y += p.s * dt;
-            if (p.y > CONFIG.GROUND_Y) this.particles.splice(i, 1);
+            if (p.y > groundAt(p.x)) this.particles.splice(i, 1);
         }
     }
     draw(ctx, cam) {

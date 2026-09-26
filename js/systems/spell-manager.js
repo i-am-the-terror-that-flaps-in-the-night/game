@@ -1,7 +1,8 @@
-import { CONFIG, RESOURCES } from '../config.js';
+import { RESOURCES } from '../config.js';
 import { SPELLS } from '../data/spells.js';
 import { SPELL_BEHAVIORS } from './spell-behaviors.js';
 import { cap } from '../utils.js';
+import { groundAt } from './terrain.js';
 
 export class SpellManager {
     constructor() {
@@ -117,7 +118,7 @@ export class SpellManager {
         const sp = SPELLS[this.active];
         this.mana -= sp.cost;
         const w = game.camera.toWorld(e.clientX, e.clientY);
-        const wy = Math.min(w.y, CONFIG.GROUND_Y);
+        const wy = Math.min(w.y, groundAt(w.x));
 
         game.audio.playMagic();
 

@@ -2,6 +2,16 @@ import { TEAMS } from '../config.js';
 import { LEVELS } from '../data/levels.js';
 import { Building } from '../entities/building.js';
 import { EndlessWave, WaveManager } from '../systems/waves.js';
+import { Terrain } from '../systems/terrain.js';
+
+// Endless hazard rolls — each pairs a hazard with the weather that sells it.
+// (Rockslide needs hills, which every random layout has.)
+const ENDLESS_HAZARDS = [
+    { weather: "rain", hazard: { type: "lightning", every: [22, 36] } },
+    { weather: "none", hazard: { type: "rockslide", every: [24, 38] } },
+    { weather: "snow", hazard: { type: "whiteout", every: [26, 40] } },
+    { weather: "none", hazard: { type: "fireVent", every: [20, 32] } },
+];
 
 // --- GAME: campaign / endless / level flow (installed onto Game.prototype by
 // install-mixins.js) ---
@@ -24,21 +34,28 @@ export const flowMethods = /** @type {ThisType<any>} */ ({
         this.audio.startMusic();
         this.mode = "endless";
         this.level = -1;
+        // Each Endless run rolls its own battlefield and a matching hazard.
+        this.terrain.load(Terrain.randomLayout());
+        const roll = ENDLESS_HAZARDS[Math.floor(Math.random() * ENDLESS_HAZARDS.length)];
         this.reset(300);
         const m = new Building(420, "mine", TEAMS.PLAYER);
         m.building = false;
         m.bTimer = 0;
         this.buildings.push(m);
         this.waveM = new EndlessWave(this);
+        this.weather.set(roll.weather);
+        this.hazards.set(roll.hazard);
         this.play();
         this.notify("Survive as long as you can!");
     },
 
     loadLvl(i) {
         this.level = i;
+        this.terrain.load(LEVELS[i].terrain); // before reset: castle/hero sit on it
         this.reset(LEVELS[i].startGold);
         this.waveM = new WaveManager(this, i);
         this.weather.set(LEVELS[i].weather);
+        this.hazards.set(LEVELS[i].hazard);
         this.play();
         this.notify("Region: " + LEVELS[i].name);
     },
@@ -46,6 +63,7 @@ export const flowMethods = /** @type {ThisType<any>} */ ({
     returnToMenu() {
         this.state = "menu";
         this.clearBoss();
+        this.hazards.clear();
         this.audio.stopMusic();
         this.spells.cancel();
         document

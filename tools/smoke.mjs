@@ -190,6 +190,52 @@ try {
     ok(gpu.lightOk, 'game.lights.add registers a dynamic light');
     ok(gpu.shakeOk, 'game.cameraFX.impulse accepts a typed camera kick');
 
+    // ── 3b. Terrain / elevation / hazards ────────────────────────────────
+    console.log('\n[terrain]');
+    const ter = await page.evaluate(async () => {
+        const g = window.game;
+        const { resolveDamage } = await import('/js/systems/combat.js');
+        const T = g.terrain;
+        const r = {};
+        T.load(null);
+        r.flat = T.groundAt(1000) === T.groundAt(3000) && T.heightAt(1000) === 0;
+        T.load({ hills: [{ x: 1500, w: 600, h: 60 }], patches: [{ x0: 900, x1: 1100, kind: 'mud' }] });
+        const u = g.units.find((x) => x !== g.hero) || g.units[0];
+        const ox = u.x;
+        u.x = 1500; u.update(1);
+        r.onHill = u.y < T.groundAt(0) - 50;
+        u.x = 1000;
+        r.mud = Math.abs(T.speedMult(u, 1) - 0.6) < 1e-6;
+        u.x = ox; u.update(1);
+        const tgt = { kind: 'unit', armorClass: 'none', armor: 0, y: 500 };
+        const base = resolveDamage(100, { dmgType: 'magic' }, tgt).amt;
+        r.down = Math.abs(resolveDamage(100, { dmgType: 'magic', fromY: 440 }, tgt).amt / base - 1.15) < 1e-6;
+        r.up = Math.abs(resolveDamage(100, { dmgType: 'magic', fromY: 560 }, tgt).amt / base - 0.9) < 1e-6;
+        const bld = { kind: 'building', armor: 0, y: 500 };
+        r.bldg = resolveDamage(100, { dmgType: 'magic', fromY: 400 }, bld).amt === resolveDamage(100, { dmgType: 'magic' }, bld).amt;
+        // Hazard: telegraph, then strike hits only what's inside the radius.
+        g.hazards.set({ type: 'lightning', every: [999, 999] });
+        g.spawnEnemy('ogre', 2000); g.spawnEnemy('ogre', 2600);
+        const near = g.enemies[g.enemies.length - 2], far = g.enemies[g.enemies.length - 1];
+        const h = g.hazards.trigger(2000);
+        r.tele = !!h && !h.struck;
+        const hn = near.hp, hf = far.hp;
+        for (let i = 0; i < 100; i++) g.hazards.update(1);
+        r.struck = h.struck && near.hp < hn && far.hp === hf;
+        g.hazards.trigger(2100);
+        g.returnToMenu();
+        r.cleared = g.hazards.list.length === 0;
+        return r;
+    });
+    ok(ter.flat, 'flat terrain: groundAt is constant (original game)');
+    ok(ter.onHill, 'unit on a hill stands above sea level');
+    ok(ter.mud, 'mud patch slows walking to x0.6');
+    ok(ter.down && ter.up, 'high ground: x1.15 downhill, x0.9 uphill');
+    ok(ter.bldg, 'high ground never applies to buildings');
+    ok(ter.tele, 'hazard telegraphs before striking');
+    ok(ter.struck, 'hazard strike hits inside its radius only');
+    ok(ter.cleared, 'returnToMenu clears hazards');
+
     // ── 4. Lifecycle: endless + defeat ───────────────────────────────────
     console.log('\n[lifecycle]');
     await page.evaluate(() => game.returnToMenu());
@@ -199,6 +245,7 @@ try {
     await page.evaluate(() => game.startEndless());
     await poll(`game.state === 'playing' && game.mode === 'endless'`);
     ok(true, 'endless mode starts');
+    ok(await page.evaluate(() => !game.terrain.isFlat() && !!game.hazards.def()), 'endless rolls terrain + a hazard');
 
     await page.evaluate(() => game.buildings.forEach(b => { if (b.type === 'castle') b.takeDamage(1e9); }));
     await poll(`game.state === 'defeat'`, 4000);

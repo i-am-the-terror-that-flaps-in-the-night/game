@@ -5,11 +5,12 @@ import { ENEMY_TYPES } from '../data/enemies.js';
 import { UNIT_TYPES } from '../data/units.js';
 import { Entity } from './entity.js';
 import { Projectile } from '../systems/projectile.js';
-import { clamp, dist, rand, randInt } from '../utils.js';
+import { HIGH_GROUND, TERRAIN_PATCHES, groundAt, terrain } from '../systems/terrain.js';
+import { clamp, dist, particleQuality, rand, randInt } from '../utils.js';
 
 export class Unit extends Entity {
     constructor(x, type, team) {
-        super(x, CONFIG.GROUND_Y, team);
+        super(x, groundAt(x), team);
         this.kind = "unit"; // combat.js target discrimination (vs instanceof)
         this.type = type;
         const def =
@@ -164,7 +165,13 @@ export class Unit extends Entity {
 
         if (tgt) {
             this.facing = tgt.x > this.x ? 1 : -1;
-            if (cD <= this.range) {
+            // High ground: ranged troops above their target reach farther.
+            let range = this.range;
+            if (this.ranged) {
+                const dh = tgt.y - this.y;
+                if (dh > 0) range *= 1 + Math.min(HIGH_GROUND.rangeMax, dh * HIGH_GROUND.rangeK);
+            }
+            if (cD <= range) {
                 this.state = "attack";
                 if (this.cdTimer <= 0) {
                     this.attack(tgt);
@@ -172,7 +179,7 @@ export class Unit extends Entity {
                 }
             } else {
                 this.state = "walk";
-                let spd = this.speed;
+                let spd = this.speed * terrain.speedMult(this, this.facing);
                 if (this.charge && cD > 120) spd *= 1.8;
                 this.x += this.facing * spd * dt;
                 if (
@@ -197,14 +204,14 @@ export class Unit extends Entity {
                     ? (game.formation === 'defensive' ? 320 : game.formation === 'aggressive' ? 700 : 450)
                     : 450;
                 if (this.x > holdX) {
-                    this.facing = -1; this.x -= 1.5 * dt; this.state = "walk";
+                    this.facing = -1; this.x -= 1.5 * terrain.speedMult(this, -1) * dt; this.state = "walk";
                 } else if (typeof game !== 'undefined' && game.formation === 'aggressive' && this.x < holdX - 80) {
-                    this.facing = 1; this.x += 1.0 * dt; this.state = "walk";
+                    this.facing = 1; this.x += 1.0 * terrain.speedMult(this, 1) * dt; this.state = "walk";
                 }
             } else {
                 this.state = "walk";
                 this.facing = -1;
-                this.x -= this.speed * dt;
+                this.x -= this.speed * terrain.speedMult(this, -1) * dt;
             }
         }
 
@@ -231,6 +238,15 @@ export class Unit extends Entity {
         }
 
         this.x = clamp(this.x, 50, CONFIG.WORLD_WIDTH - 50);
+        this.y = groundAt(this.x); // follow the terrain (hills, and resizes)
+        this._wadeFx();
+    }
+    // Wading through slow ground kicks up a little of it (quality-gated).
+    _wadeFx() {
+        if (this.flying || this.state !== "walk" || particleQuality() < 1) return;
+        if (Math.floor(this.frame) % 9 !== 0) return;
+        const p = terrain.patchAt(this.x);
+        if (p) game.particles.emit(this.x, this.y - 2, 2, TERRAIN_PATCHES[p.kind].fx, 1.4, 3, "fade");
     }
     attack(tgt) {
         if (this.type === "catapult") {
@@ -257,6 +273,7 @@ export class Unit extends Entity {
                         vsLarge: this.vsLarge,
                         vsFlying: this.vsFlying,
                         isUnit: true,
+                        fromY: this.y,
                     },
                 ),
             );
@@ -279,6 +296,7 @@ export class Unit extends Entity {
                 siege: this.siege,
                 team: this.team,
                 isUnit: true,
+                fromY: this.y,
             };
             const res = dealDamage(this.dmg, src, tgt);
             const crt = res.tag === "strong"; // counter hits get the heavy FX
@@ -302,7 +320,7 @@ export class Unit extends Entity {
                 game.fx.ring(this.x, sy, { r0: 8, r1: this.aoe * 0.95, col: "#fb923c", w: 4, life: 20 });
                 game.fx.ring(this.x, sy, { r0: 4, r1: this.aoe * 0.6, col: "#fed7aa", w: 2, life: 14 });
                 game.fx.flash(this.x, sy, { r: this.aoe * 0.7, col: "#fdba74", life: 12 });
-                game.decals.add(this.x, CONFIG.GROUND_Y, "scorch", this.aoe * 0.5);
+                game.decals.add(this.x, groundAt(this.x), "scorch", this.aoe * 0.5);
                 game.shake = Math.min(14, game.shake + 6);
                 game.audio.playExplosion();
             } else {
@@ -353,7 +371,7 @@ export class Unit extends Entity {
                 );
                 game.decals.add(
                     tgt.x,
-                    CONFIG.GROUND_Y,
+                    groundAt(tgt.x),
                     "blood",
                     rand(12, 25),
                 );
@@ -401,8 +419,8 @@ export class Unit extends Entity {
                 n: 2, len: rand(30, 60), spread: 0.05, col: "#78716c", life: 5 + i, w: 1.6,
             });
         }
-        game.particles.emit(tgt.x, CONFIG.GROUND_Y, 22, "#78716c", 6, 3, "fade");
-        game.decals.add(tgt.x, CONFIG.GROUND_Y, "scorch", this.aoe * 0.4);
+        game.particles.emit(tgt.x, groundAt(tgt.x), 22, "#78716c", 6, 3, "fade");
+        game.decals.add(tgt.x, groundAt(tgt.x), "scorch", this.aoe * 0.4);
         game.shake = Math.min(14, game.shake + 5);
         // Muzzle light at the barrel + a recoil kick opposite the firing
         // direction (typed directional camera impulse).
@@ -414,7 +432,7 @@ export class Unit extends Entity {
     die() {
         super.die();
         // Death impact: ground ring + scatter burst
-        game.fx.ring(this.x, CONFIG.GROUND_Y, {
+        game.fx.ring(this.x, groundAt(this.x), {
             r0: 6, r1: 42 * this.scale,
             col: this.team === TEAMS.PLAYER ? "#64748b" : "#7f1d1d",
             w: 3, life: 18,
@@ -437,7 +455,7 @@ export class Unit extends Entity {
         );
         game.decals.add(
             this.x,
-            CONFIG.GROUND_Y,
+            groundAt(this.x),
             "blood",
             35 * this.scale,
         );

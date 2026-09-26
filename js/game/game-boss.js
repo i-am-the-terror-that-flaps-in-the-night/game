@@ -2,6 +2,7 @@ import { CONFIG } from '../config.js';
 import { Boss } from '../entities/boss.js';
 import { el } from '../ui/dom.js';
 import { clamp, rand } from '../utils.js';
+import { groundAt } from '../systems/terrain.js';
 
 // --- GAME: boss encounter orchestration (installed onto Game.prototype) ------
 // Owns the *encounter lifecycle* — the warning telegraph, spawning Rustmaw into
@@ -51,7 +52,7 @@ export const bossMethods = /** @type {ThisType<any>} */ ({
             // Escalating foreshadow at the arrival point: rumbling tremors,
             // dust shaken loose from the rails, and pulses of void-light that
             // grow as the Engine bears down.
-            const gx = this._bossArriveX, gy = CONFIG.GROUND_Y;
+            const gx = this._bossArriveX, gy = groundAt(gx);
             const t = 1 - clamp(this.bossWarnT / this._bossWarnDur, 0, 1);
             if (this.frames % 6 === 0) {
                 this.shake = Math.max(this.shake, 4 + t * 8);
@@ -90,7 +91,7 @@ export const bossMethods = /** @type {ThisType<any>} */ ({
         this.bossFlash = 0.7; // screen-wide entrance flash (decayed in update)
         // Ground-tearing arrival: a big flash, stacked shockwaves, a steam
         // geyser, erupting shrapnel and scorched rails where it breaks through.
-        const gx = b.x, gy = CONFIG.GROUND_Y;
+        const gx = b.x, gy = b.y;
         this.fx.flash(gx, gy - 50, { r: 150, col: '#fde68a', life: 22 });
         for (let i = 0; i < 3; i++)
             this.fx.ring(gx, gy - 20, { r0: 8 + i * 18, r1: 150 + i * 60, col: i % 2 ? '#7c3aed' : '#f59e0b', w: 4, life: 24 + i * 6 });
@@ -115,9 +116,9 @@ export const bossMethods = /** @type {ThisType<any>} */ ({
         this.bossFlash = Math.max(this.bossFlash || 0, 0.85); // death whiteout
         const b = this.bossEntity;
         if (b) {
-            this.fx.flash(b.x, CONFIG.GROUND_Y - 40, { r: 160, col: '#fde68a', life: 24 });
-            this.fx.ring(b.x, CONFIG.GROUND_Y - 30, { r0: 8, r1: 200, col: '#f59e0b', w: 5, life: 30 });
-            this.fx.ring(b.x, CONFIG.GROUND_Y - 30, { r0: 4, r1: 150, col: '#7c3aed', w: 3, life: 24 });
+            this.fx.flash(b.x, b.y - 40, { r: 160, col: '#fde68a', life: 24 });
+            this.fx.ring(b.x, b.y - 30, { r0: 8, r1: 200, col: '#f59e0b', w: 5, life: 30 });
+            this.fx.ring(b.x, b.y - 30, { r0: 4, r1: 150, col: '#7c3aed', w: 3, life: 24 });
         }
         const waveBonus = this.mode === 'endless' && this.waveM ? (this.waveM.wave || 0) * 20 : 0;
         const bounty = 400 + waveBonus;

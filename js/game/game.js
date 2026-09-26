@@ -15,6 +15,8 @@ import { WGPURenderer } from '../systems/wgpu-renderer.js';
 import { CameraFX } from '../systems/camera-fx.js';
 import { VFXRegistry } from '../systems/vfx-registry.js';
 import { LightSystem } from '../systems/lighting.js';
+import { terrain } from '../systems/terrain.js';
+import { HazardSystem } from '../systems/hazards.js';
 
 // --- GAME: core state, lifecycle & main loop ---
 // (flow/economy/input/ui/render methods are mixed into Game.prototype
@@ -37,6 +39,8 @@ export class Game {
         this.decals = new DecalSystem();
         this.weather = new WeatherSystem();
         this.spells = new SpellManager();
+        this.terrain = terrain;                 // hills + slow ground (module singleton)
+        this.hazards = new HazardSystem(this);  // per-region environmental hazards
         // GPU overlay for the additive glow layer (particles + hero/rift auras).
         // Two backends share the GLRenderer contract (ok/begin/glow/flush/resize):
         //   - WebGL (this.glWebgl): synchronous, ~universal, the safe baseline.
@@ -184,6 +188,7 @@ export class Game {
 
     reset(g) {
         this.clearBoss(); // tear down any prior boss encounter + engine audio
+        this.hazards.clear();
         if (this.difficultyMult < 1.0) g = Math.floor(g * 1.25);
         if (this.difficultyMult > 1.0) g = Math.floor(g * (this.difficultyMult > 1.2 ? 0.75 : 0.88));
         this.gold = g;
@@ -361,6 +366,8 @@ export class Game {
         // auto-clears the moment no rift is alive (no cross-run leak).
         if (this.wgpu && this.wgpu.setAttractor) this.wgpu.setAttractor(0, 0, 0);
         for (let i = 0; i < sN; i++) this.singularities[i].update(dt);
+        this.terrain.update(dt);
+        this.hazards.update(dt);
 
         this.units = this.units.filter(
             (u) => u.active || u.dmgTexts.length > 0,
@@ -429,6 +436,7 @@ export class Game {
 
     victory() {
         this.clearBoss();
+        this.hazards.clear();
         this.setSpeed(0);
         this.state = "victory";
         // Last Stand achievement
@@ -466,6 +474,7 @@ export class Game {
     defeat() {
         if (this.state === "defeat") return; // Fix #16: Prevent defeat loop
         this.clearBoss();
+        this.hazards.clear();
         this.setSpeed(0);
         this.state = "defeat";
         this.audio.playError();

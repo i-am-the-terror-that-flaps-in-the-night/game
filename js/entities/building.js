@@ -4,11 +4,12 @@ import { Entity } from './entity.js';
 import { Projectile } from '../systems/projectile.js';
 import { nearestX } from '../systems/targeting.js';
 import { dealDamage } from '../systems/combat.js';
+import { groundAt } from '../systems/terrain.js';
 import { rand, dist } from '../utils.js';
 
 export class Building extends Entity {
     constructor(x, type, team) {
-        super(x, CONFIG.GROUND_Y, team);
+        super(x, groundAt(x), team);
         this.kind = "building"; // combat.js target discrimination (vs instanceof)
         this.type = type;
         const def = BUILDING_TYPES[type];
@@ -40,6 +41,7 @@ export class Building extends Entity {
         this.beamY = 0;
     }
     update(dt) {
+        this.y = groundAt(this.x); // stay seated on the ground across resizes
         if (this.building) {
             this.bTimer -= dt;
             if (this.bTimer <= 0) {

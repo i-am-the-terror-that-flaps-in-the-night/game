@@ -3,6 +3,7 @@ import { LEVELS } from '../data/levels.js';
 import { clamp, mixCol, mixRgb, rgba, shade, toRgb, toRgba } from '../utils.js';
 import { GFX } from '../systems/graphics.js';
 import { GLRenderer } from '../systems/gl-renderer.js';
+import { TERRAIN_PATCHES, terrain } from '../systems/terrain.js';
 
 // --- GAME: backdrop, foreground, post-FX & frame draw (installed by install-mixins.js) ---
 export const renderMethods = /** @type {ThisType<any>} */ ({
@@ -344,10 +345,13 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
         }
 
         // Lit rim where grass catches the sky + shadow line beneath
-        ctx.fillStyle = toRgba(mixRgb(gnd, { r: 255, g: 255, b: 240 }, 0.5), 0.45 + sun * 0.3);
-        ctx.fillRect(0, gy - 2, w, 2.5);
-        ctx.fillStyle = "rgba(0,0,0,0.28)";
-        ctx.fillRect(0, gy + 2, w, 2);
+        const rimCol = toRgba(mixRgb(gnd, { r: 255, g: 255, b: 240 }, 0.5), 0.45 + sun * 0.3);
+        if (terrain.isFlat()) {
+            ctx.fillStyle = rimCol;
+            ctx.fillRect(0, gy - 2, w, 2.5);
+            ctx.fillStyle = "rgba(0,0,0,0.28)";
+            ctx.fillRect(0, gy + 2, w, 2);
+        } else this._drawHills(ctx, w, gy, cam, gnd, gTop, rimCol, sun);
 
         // Battle-worn dirt path
         const ph = h - gy;
@@ -385,7 +389,7 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
             const sxp = x - scrollG;
             const wx = sxp + cam.x;
             const sway = Math.sin(this.frames * 0.03 + wx * 0.05) * 2;
-            const baseY = gy - 1;
+            const baseY = gy - 1 - terrain.heightAt(wx) * cam.z;
             const hgt = 7 + Math.abs(Math.sin(wx * 0.7)) * 6;
             ctx.beginPath();
             ctx.moveTo(sxp, baseY); ctx.lineTo(sxp - 3 + sway, baseY - hgt);
@@ -394,6 +398,114 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
             ctx.stroke();
         }
         ctx.restore();
+
+        this._drawPatches(ctx, w, gy, cam);
+    },
+
+    // Rolling hills: one filled silhouette traced from the terrain height
+    // samples across the visible span (no per-frame allocation), a lit crest
+    // rim that follows the surface, and a darker strata line beneath it so the
+    // rise reads as solid earth rather than a painted bump.
+    _drawHills(ctx, w, gy, cam, gnd, gTop, rimCol, sun) {
+        const z = cam.z, STEP = 8;
+        const surf = (sx) => gy - terrain.heightAt(cam.x + sx / z) * z;
+        const trace = (off) => {
+            ctx.moveTo(-STEP, surf(-STEP) + off);
+            for (let sx = 0; sx <= w + STEP; sx += STEP) ctx.lineTo(sx, surf(sx) + off);
+        };
+        // Earth body: lighter at the crest, settling into the ground colour.
+        const top = gy - 70 * z;
+        const key = gTop + "|" + gnd + "|" + gy;
+        if (this._hillKey !== key) {
+            const g = ctx.createLinearGradient(0, top, 0, gy + 4);
+            g.addColorStop(0, mixCol(gTop, "#fff7e0", 0.16));
+            g.addColorStop(1, gnd);
+            this._hillKey = key;
+            this._hillGrad = g;
+        }
+        ctx.fillStyle = GFX.flatScenery ? gnd : this._hillGrad;
+        ctx.beginPath();
+        trace(0);
+        ctx.lineTo(w + STEP, gy + 4);
+        ctx.lineTo(-STEP, gy + 4);
+        ctx.closePath();
+        ctx.fill();
+        ctx.lineJoin = "round";
+        // Strata shadow under the lip, then the sunlit rim on top.
+        ctx.strokeStyle = "rgba(0,0,0,0.28)";
+        ctx.lineWidth = 2;
+        ctx.beginPath(); trace(4); ctx.stroke();
+        if (!GFX.flatScenery) {
+            ctx.strokeStyle = toRgba(shade(gnd, -0.4), 0.35);
+            ctx.lineWidth = 1.5;
+            ctx.beginPath(); trace(16); ctx.stroke();
+        }
+        ctx.strokeStyle = rimCol;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath(); trace(-1); ctx.stroke();
+        ctx.lineJoin = "miter";
+    },
+
+    // Slow-ground patches painted onto the surface: glossy mud with bubbles,
+    // wind-carved snowdrifts, and reedy marsh water.
+    _drawPatches(ctx, w, gy, cam) {
+        const z = cam.z;
+        for (const p of terrain.patches) {
+            const x0 = cam.sx(p.x0), x1 = cam.sx(p.x1);
+            if (x1 < -20 || x0 > w + 20) continue;
+            const def = TERRAIN_PATCHES[p.kind];
+            const surf = (wx) => gy - terrain.heightAt(wx) * z;
+            const depth = (p.kind === "snow" ? 9 : 12) * z;
+            ctx.save();
+            ctx.fillStyle = def.top;
+            ctx.globalAlpha = p.kind === "marsh" ? 0.82 : 0.92;
+            ctx.beginPath();
+            // Tapered ends so the patch blends into the grass.
+            ctx.moveTo(x0 - 10 * z, surf(p.x0) + 1);
+            for (let wx = p.x0; wx <= p.x1; wx += 10) {
+                const bump = p.kind === "snow" ? Math.abs(Math.sin(wx * 0.045)) * 5 * z : 0;
+                ctx.lineTo(cam.sx(wx), surf(wx) - 2 * z - bump);
+            }
+            ctx.lineTo(x1 + 10 * z, surf(p.x1) + 1);
+            for (let wx = p.x1; wx >= p.x0; wx -= 20) ctx.lineTo(cam.sx(wx), surf(wx) + depth);
+            ctx.closePath();
+            ctx.fill();
+            // Surface sheen.
+            ctx.globalAlpha = 0.5;
+            ctx.strokeStyle = def.sheen;
+            ctx.lineWidth = 1.2 * z;
+            ctx.beginPath();
+            for (let wx = p.x0 + 8; wx <= p.x1 - 8; wx += 10) {
+                const y = surf(wx) - (p.kind === "snow" ? 3 : 1) * z;
+                if (wx === p.x0 + 8) ctx.moveTo(cam.sx(wx), y); else ctx.lineTo(cam.sx(wx), y);
+            }
+            ctx.stroke();
+            ctx.globalAlpha = 0.75;
+            if (p.kind === "mud") {
+                // Slow bubbles that swell and pop.
+                for (let i = 0; i < 5; i++) {
+                    const wx = p.x0 + ((i * 53 + 17) % Math.max(1, p.x1 - p.x0));
+                    const t = ((this.frames * 0.02 + i * 0.37) % 1);
+                    ctx.strokeStyle = def.sheen;
+                    ctx.beginPath();
+                    ctx.arc(cam.sx(wx), surf(wx) + 3 * z, (1 + t * 3) * z, Math.PI, 0);
+                    ctx.stroke();
+                }
+            } else if (p.kind === "marsh") {
+                // Reeds swaying out of the water.
+                ctx.strokeStyle = "#3f6212";
+                ctx.lineWidth = 1.4 * z;
+                for (let wx = p.x0 + 12; wx < p.x1 - 6; wx += 22) {
+                    const sway = Math.sin(this.frames * 0.03 + wx) * 2 * z;
+                    const by = surf(wx);
+                    ctx.beginPath();
+                    ctx.moveTo(cam.sx(wx), by);
+                    ctx.quadraticCurveTo(cam.sx(wx) + sway, by - 10 * z, cam.sx(wx) + sway * 1.6, by - (16 + (wx % 7)) * z);
+                    ctx.stroke();
+                }
+            }
+            ctx.restore();
+        }
     },
 
     drawForeground(ctx, w, h, cam, lvl, dP) {
@@ -506,6 +618,7 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
 
         ctx.save();
         this.decals.draw(ctx, cam);
+        this.hazards.drawUnder(ctx, cam); // ground telegraphs sit beneath the armies
 
         // Reuse one scratch array instead of allocating four .map() arrays + a
         // combined spread + a {t,o} wrapper per entity (whose `t` tag was never
@@ -519,6 +632,7 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
         for (const p of this.projectiles) ents.push(p);
         ents.sort((a, b) => a.y - b.y);
         ents.forEach((o) => o.draw(ctx, cam, dt));
+        this.hazards.drawOver(ctx, cam);
 
         this.particles.draw(ctx, cam);
         // Dynamic lights queue into the active glow overlay (WebGPU/WebGL) using

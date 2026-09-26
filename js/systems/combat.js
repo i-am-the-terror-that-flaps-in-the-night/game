@@ -2,6 +2,7 @@ import { TEAMS } from '../config.js';
 import { BUILDING_TYPES } from '../data/buildings.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { UNIT_TYPES } from '../data/units.js';
+import { HIGH_GROUND } from './terrain.js';
 // Targets are identified by a `kind` flag ("unit" | "building") set in the
 // entity constructors, rather than `instanceof`, so this module needs no import
 // of the entity classes — breaking the unit<->combat and building->projectile->
@@ -44,7 +45,8 @@ export const FORMATION_MODS = {
     aggressive: { deal: 1.15, take: 1.1  },
 };
 
-// Resolve an attack. src: { dmgType, armorPierce, vsLarge, siege, team, isUnit }.
+// Resolve an attack. src: { dmgType, armorPierce, vsLarge, siege, team, isUnit,
+// fromY? } — fromY (attacker's ground y) enables the high-ground modifier.
 // `formation` is the attacker/defender formation id (player-unit modifier only);
 // pass a falsy value for no modifier. Kept as a parameter so this function is
 // pure (no global read) and unit-testable. Returns { amt, tag } where tag drives
@@ -63,6 +65,12 @@ export function resolveDamage(base, src, target, formation) {
         // Anti-air: arrows/bolts and the castle's battlements bite far harder
         // into airborne foes (Dragons) than melee ever could.
         if (src.vsFlying && target.flying) mult *= src.vsFlying;
+        // High ground: src.fromY is the attacker's ground line (smaller = higher).
+        if (src.fromY != null) {
+            const dh = target.y - src.fromY;
+            if (dh >= HIGH_GROUND.minDh) mult *= HIGH_GROUND.bonus;
+            else if (dh <= -HIGH_GROUND.minDh) mult *= HIGH_GROUND.penalty;
+        }
 
         const f = FORMATION_MODS[formation];
         if (f) {
