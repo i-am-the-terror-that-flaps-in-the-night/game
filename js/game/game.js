@@ -17,6 +17,7 @@ import { VFXRegistry } from '../systems/vfx-registry.js';
 import { LightSystem } from '../systems/lighting.js';
 import { terrain } from '../systems/terrain.js';
 import { HazardSystem } from '../systems/hazards.js';
+import { ObjectiveSystem } from '../systems/objectives.js';
 
 // --- GAME: core state, lifecycle & main loop ---
 // (flow/economy/input/ui/render methods are mixed into Game.prototype
@@ -41,6 +42,7 @@ export class Game {
         this.spells = new SpellManager();
         this.terrain = terrain;                 // hills + slow ground (module singleton)
         this.hazards = new HazardSystem(this);  // per-region environmental hazards
+        this.objectives = new ObjectiveSystem(this); // capturable hilltop shrines
         // GPU overlay for the additive glow layer (particles + hero/rift auras).
         // Two backends share the GLRenderer contract (ok/begin/glow/flush/resize):
         //   - WebGL (this.glWebgl): synchronous, ~universal, the safe baseline.
@@ -239,6 +241,9 @@ export class Game {
         // Layer on banked permanent castle upgrades (Might/Bastion/Rapid/Reach).
         if (this.meta) this.meta.applyCastleUpgrades(castle);
         this.buildings.push(castle);
+        this.spawnTerrainStructures(Building); // level barricades
+        this.objectives.reset();               // level shrines
+        this.holdX = null;                     // recomputed from terrain anchors
         // Spawn the hero near the castle at run start (campaign + endless), then
         // layer on his banked permanent upgrades (Power/Vitality/Attunement/Rift).
         this.hero = new Hero(340, "voidcaller");
@@ -352,6 +357,7 @@ export class Game {
         // calls) would re-read the grown array and process those new entities a
         // frame early. No entity update splices these arrays (removal is the
         // filter pass below), so indices 0..N-1 stay stable through the loop.
+        this.updateTactics(); // army fronts + formation hold point (terrain-aware)
         const bN = this.buildings.length,
             uN = this.units.length,
             eN = this.enemies.length,
@@ -368,6 +374,7 @@ export class Game {
         for (let i = 0; i < sN; i++) this.singularities[i].update(dt);
         this.terrain.update(dt);
         this.hazards.update(dt);
+        this.objectives.update(dt);
 
         this.units = this.units.filter(
             (u) => u.active || u.dmgTexts.length > 0,

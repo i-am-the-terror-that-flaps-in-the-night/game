@@ -1,4 +1,4 @@
-import { CONFIG } from '../config.js';
+import { CONFIG, TEAMS } from '../config.js';
 import { el } from '../ui/dom.js';
 import { btnId, costStr, formatTime, toRgba } from '../utils.js';
 import { TERRAIN_PATCHES } from '../systems/terrain.js';
@@ -116,7 +116,10 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
         const s = this.sel,
             d = defOf(s);
         const mu = describeMatchups(d);
-        e.innerHTML = `<strong style="color:var(--gold);font-size:15px; letter-spacing:1px; text-transform:uppercase;">${d ? d.name : "Unknown"}</strong><br>HP: ${Math.floor(s.hp)}/${s.maxHp}<br>${s.dmg ? "Damage: " + Math.round(s.dmg) + "<br>" : ""}${s.armor ? "Armor: " + s.armor + "<br>" : ""}${mu ? `<span style="font-size:12px;">${mu}</span>` : ""}`;
+        const rep = s.blocks && s.hp < s.maxHp
+            ? `<br><button class="btn" style="margin-top:6px;padding:4px 10px;" onclick="game.repairSelected()">🔨 Repair +50% (40g)</button>`
+            : "";
+        e.innerHTML = `<strong style="color:var(--gold);font-size:15px; letter-spacing:1px; text-transform:uppercase;">${d ? d.name : "Unknown"}</strong><br>HP: ${Math.floor(s.hp)}/${Math.round(s.maxHp)}<br>${s.dmg ? "Damage: " + Math.round(s.dmg) + "<br>" : ""}${s.armor ? "Armor: " + s.armor + "<br>" : ""}${mu ? `<span style="font-size:12px;">${mu}</span>` : ""}${rep}`;
     },
 
     updateUI() {
@@ -308,8 +311,8 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
             cx.fillStyle = "rgba(148,163,184,0.28)";
             cx.beginPath();
             cx.moveTo(0, mh);
-            for (let x = 0; x <= mw; x += 3)
-                cx.lineTo(x, mh - 1 - this.terrain.heightAt(x / sX) * 0.28);
+            for (let x = 0; x <= mw; x += 2)
+                cx.lineTo(x, mh - 1 - this.terrain.topAt(x / sX) * 0.16);
             cx.lineTo(mw, mh);
             cx.closePath();
             cx.fill();
@@ -317,6 +320,28 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
         for (const p of this.terrain.patches) {
             cx.fillStyle = toRgba(TERRAIN_PATCHES[p.kind].sheen, 0.45);
             cx.fillRect(p.x0 * sX, mh - 3, (p.x1 - p.x0) * sX, 3);
+        }
+        for (const f of this.terrain.forests) {
+            cx.fillStyle = "rgba(34,197,94,0.35)";
+            cx.fillRect(f.x0 * sX, mh - 7, (f.x1 - f.x0) * sX, 3);
+        }
+        for (const r of this.terrain.rivers) {
+            cx.fillStyle = r.bridge ? "#a16207" : "#3b82f6";
+            cx.fillRect(r.x0 * sX, mh - 5, Math.max(2, (r.x1 - r.x0) * sX), 5);
+        }
+        for (const t of this.terrain.tunnels) {
+            cx.fillStyle = "rgba(15,12,10,0.9)";
+            cx.fillRect(t.x0 * sX, mh - 6, (t.x1 - t.x0) * sX, 4);
+        }
+        for (const s of this.objectives.list) {
+            cx.fillStyle = s.owner === TEAMS.PLAYER ? "#60a5fa" : s.owner === TEAMS.ENEMY ? "#ef4444" : "#cbd5e1";
+            cx.fillRect(s.x * sX - 1, mh - 30, 2, 12);
+            cx.fillRect(s.x * sX + 1, mh - 30, 5, 4);
+        }
+        // Formation hold marker.
+        if (this.holdX != null) {
+            cx.fillStyle = "#34d399";
+            cx.beginPath(); cx.moveTo(this.holdX * sX, mh - 22); cx.lineTo(this.holdX * sX - 3, mh - 28); cx.lineTo(this.holdX * sX + 3, mh - 28); cx.closePath(); cx.fill();
         }
         // Hazards: pulsing warning dot where one is building / raging.
         for (const h of this.hazards.list) {

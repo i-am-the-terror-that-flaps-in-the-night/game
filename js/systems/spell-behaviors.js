@@ -1,7 +1,7 @@
 import { CONFIG } from '../config.js';
 import { SPELLS } from '../data/spells.js';
 import { dist, rand } from '../utils.js';
-import { groundAt } from './terrain.js';
+import { groundAt, terrain } from './terrain.js';
 
 // --- SPELL EFFECTS ---
 // One entry per spell id. SpellManager.cast() runs the shared preamble (spend
@@ -37,6 +37,7 @@ export const SPELL_BEHAVIORS = {
                 sp.damage *
                 (1 + (game.upgrades.magic_damage || 0)); // Fix #9
             game.enemies.forEach((en) => {
+                if (terrain.inTunnel(en.x)) return; // sheltered underground
                 if (
                     dist(w.x, groundAt(w.x), en.x, en.y) <
                     sp.radius
@@ -67,7 +68,7 @@ export const SPELL_BEHAVIORS = {
                     "float",
                 );
                 game.enemies.forEach((en) => {
-                    if (dist(w.x, wy, en.x, en.y) < sp.radius) {
+                    if (!terrain.inTunnel(en.x) && dist(w.x, wy, en.x, en.y) < sp.radius) {
                         en.takeDamage(12, "magic");
                         en.x = Math.min(
                             CONFIG.WORLD_WIDTH - 50,
@@ -108,7 +109,7 @@ export const SPELL_BEHAVIORS = {
         // Arc endpoint sits at each foe's body — higher for airborne targets
         // so the bolt visibly leaps up to Dragons.
         const arcY = (en) => en.y - (en.flying ? 68 : 28);
-        let near = game.enemies.filter(e => e.hp > 0 && dist(w.x, wy, e.x, e.y) < 600);
+        let near = game.enemies.filter(e => e.hp > 0 && !terrain.inTunnel(e.x) && dist(w.x, wy, e.x, e.y) < 600);
         near.sort((a,b) => dist(w.x,wy,a.x,a.y) - dist(w.x,wy,b.x,b.y));
         near = near.slice(0, sp2.chains);
         const pwr2 = sp2.damage * (1 + (game.upgrades.magic_damage || 0));

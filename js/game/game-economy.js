@@ -1,4 +1,4 @@
-import { CONFIG, TEAMS } from '../config.js';
+import { TEAMS } from '../config.js';
 import { BUILDING_TYPES } from '../data/buildings.js';
 import { TECH_TREE } from '../data/tech.js';
 import { UNIT_TYPES } from '../data/units.js';
@@ -117,7 +117,7 @@ export const economyMethods = /** @type {ThisType<any>} */ ({
         // running out of room after a handful of structures.
         const newW = d.width || 100;
         const gap = 22; // breathing room between adjacent footprints
-        const maxX = CONFIG.WORLD_WIDTH * 0.5; // buildable out to midfield
+        const maxX = 2250; // the build frontier (the map past it is contested terrain)
         let bx = 340;
         while (
             this.buildings.some(

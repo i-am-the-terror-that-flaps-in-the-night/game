@@ -35,7 +35,7 @@ export const flowMethods = /** @type {ThisType<any>} */ ({
         this.mode = "endless";
         this.level = -1;
         // Each Endless run rolls its own battlefield and a matching hazard.
-        this.terrain.load(Terrain.randomLayout());
+        this.terrain.load(Terrain.randomSpec());
         const roll = ENDLESS_HAZARDS[Math.floor(Math.random() * ENDLESS_HAZARDS.length)];
         this.reset(300);
         const m = new Building(420, "mine", TEAMS.PLAYER);

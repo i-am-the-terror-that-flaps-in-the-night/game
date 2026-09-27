@@ -236,6 +236,68 @@ try {
     ok(ter.struck, 'hazard strike hits inside its radius only');
     ok(ter.cleared, 'returnToMenu clears hazards');
 
+    // Terrain 2.0: full-map set pieces + tactical AI.
+    const t2 = await page.evaluate(async () => {
+        const g = window.game;
+        const { dealDamage } = await import('/js/systems/combat.js');
+        const { FOREST_COVER, FORD_SLOW } = await import('/js/systems/terrain.js');
+        const T = g.terrain, r = {};
+        g.loadLvl(4);
+        let covered = true;
+        for (let x = 1300; x < 8700; x += 400) if (T.topAt(x) < 5) covered = false;
+        r.fullMap = covered && T.heightAt(300) === 0 && T.heightAt(600) === 0;
+        // Tunnel cover: ranged outside can't hit inside; melee inside can.
+        const t = T.tunnels[0];
+        g.spawnEnemy('marauder', t.x0 + 120);
+        const foe = g.enemies[g.enemies.length - 1];
+        const arch = g.units.find((u) => u.ranged && !u.isHero) || (g.buyUnit('archer'), g.units[g.units.length - 1]);
+        arch.x = t.x0 - 160;
+        const mil = (g.buyUnit('militia'), g.units[g.units.length - 1]);
+        mil.x = t.x0 + 60;
+        r.tunnel = !!t && !arch._canHit(foe) && mil._canHit(foe);
+        // Forest cover for ranged fire.
+        const fo = T.forests.find((f) => !f.onRidge);
+        const dummy = (x) => ({ kind: 'unit', armorClass: 'none', armor: 0, x, y: 0, hp: 1e6, takeDamage(a) { this.hp -= a; } });
+        const inF = dummy((fo.x0 + fo.x1) / 2), outF = dummy(400);
+        dealDamage(100, { dmgType: 'pierce', ranged: true }, inF);
+        dealDamage(100, { dmgType: 'pierce', ranged: true }, outF);
+        r.forest = Math.abs((1e6 - inF.hp) / (1e6 - outF.hp) - FOREST_COVER) < 1e-6;
+        // Ford slows, bridge doesn't.
+        const ford = T.rivers.find((v) => !v.bridge);
+        r.ford = !!ford && T.speedMult({ x: (ford.x0 + ford.x1) / 2 }, 1) <= FORD_SLOW * 1.05;
+        g.loadLvl(2);
+        const br = T.rivers.find((v) => v.bridge);
+        r.bridge = !!br && Math.abs(T.speedMult({ x: (br.x0 + br.x1) / 2 }, 1) - 1) < 0.12;
+        // Shrine capture pays out (Bandit Camp has a gold shrine + barricades).
+        g.loadLvl(1);
+        const s = g.objectives.list[0];
+        g.units.slice(0, 3).forEach((u) => { u.x = s.x; });
+        const gold0 = g.gold;
+        for (let i = 0; i < 400; i++) g.objectives.update(1);
+        r.shrine = s.owner === 1 && g.gold > gold0;
+        // Barricade blocks enemy movement and repairs for gold.
+        const b = g.buildings.find((x) => x.type === 'barricade');
+        g.spawnEnemy('rabble', b.x + 60);
+        const rb = g.enemies[g.enemies.length - 1];
+        for (let i = 0; i < 200; i++) rb.update(1);
+        r.blocks = rb.x >= b.x + b.w / 2 + 5;
+        b.hp = b.maxHp * 0.3; g.sel = b; g.gold = 100;
+        g.repairSelected();
+        r.repair = b.hp > b.maxHp * 0.7 && g.gold === 60;
+        // Formation hold sits on a tactical anchor.
+        g.setFormation('standard'); g.updateTactics();
+        r.hold = T.anchors.some((a) => a.x === g.holdX);
+        g.returnToMenu();
+        return r;
+    });
+    ok(t2.fullMap, 'every level is shaped terrain end to end (castle plateau flat)');
+    ok(t2.tunnel, 'tunnel cover: ranged can\'t shoot in, melee inside can');
+    ok(t2.forest, 'forest cover reduces ranged damage');
+    ok(t2.ford && t2.bridge, 'fords slow troops; bridges don\'t');
+    ok(t2.shrine, 'holding a shrine captures it and pays out');
+    ok(t2.blocks && t2.repair, 'barricades block enemies and repair for gold');
+    ok(t2.hold, 'formation holds on a terrain anchor');
+
     // ── 4. Lifecycle: endless + defeat ───────────────────────────────────
     console.log('\n[lifecycle]');
     await page.evaluate(() => game.returnToMenu());
