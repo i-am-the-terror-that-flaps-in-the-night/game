@@ -329,6 +329,27 @@ try {
         g.returnToMenu();
         return soldUnit && castle.active && heroSafe;
     });
+    const pw = await page.evaluate(() => {
+        const g = window.game, r = {};
+        g.loadLvl(3);
+        g.updatePower(1);
+        const c = g.buildings.find((b) => b.type === 'castle');
+        const d0 = c.dmg, h0 = g.hero.dmg, p0 = g.powerLevel();
+        const r0 = g.hero.respawnDelayMs();
+        g.waveM.cw = 4;             // four waves survived
+        g.updatePower(3600);        // plus a minute
+        r.rises = g.powerLevel() > p0 + 0.6;
+        r.castle = c.dmg > d0 * 1.5 && c.maxHp > 2000;
+        r.hero = g.hero.dmg > h0 * 1.5;
+        const r1 = g.hero.respawnDelayMs();
+        g.hero.deaths = 3;
+        const r2 = g.hero.respawnDelayMs();
+        r.revive = r1 < r0 && r2 < r1 && r2 >= 4000;
+        g.returnToMenu();
+        return r;
+    });
+    ok(pw.rises && pw.castle && pw.hero, 'power level scales castle + Voidcaller with waves and time');
+    ok(pw.revive, 'Voidcaller revives faster with waves survived and deaths (min 4s)');
     ok(sell, 'selling refunds half the price paid; castle and hero can\'t be sold');
     ok(orb.tunnelHill, 'tunnels bore through a hill (rock cover over the passage)');
     ok(orb.hit && orb.ignoresFar, 'orbital cannon strikes enemies near the castle only');

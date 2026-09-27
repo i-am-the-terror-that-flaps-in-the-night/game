@@ -323,9 +323,21 @@ export class Hero extends Unit {
         }
     }
 
+    // Revival shortens the longer you hold out and the more often the
+    // Voidcaller falls: ×0.88 per wave survived, ×0.8 per prior death, never
+    // below 4 s.
+    respawnDelayMs() {
+        const g = typeof game !== "undefined" ? game : null;
+        const waves = g && g.waveCount ? g.waveCount() : 0;
+        return Math.max(4000, this.respawnMs * Math.pow(0.88, waves) * Math.pow(0.8, this.deaths || 0));
+    }
+
     die() {
         super.die();
-        this.respawnFrames = msToFrames(this.respawnMs);
+        this.respawnFrames = msToFrames(this.respawnDelayMs());
+        this.deaths = (this.deaths || 0) + 1;
         this.active = false;
+        if (typeof game !== "undefined")
+            game.notify(`The Voidcaller has fallen. Returning in ${Math.ceil(this.respawnFrames / 60)}s.`);
     }
 }
