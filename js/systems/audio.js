@@ -92,14 +92,40 @@ export class AudioEngine {
         this.playTone(90, 0.7, "sawtooth", 0.18);
         this.playTone(160, 0.35, "square", 0.08, 0.05);
     }
-    // ── Castle orbital cannon ───────────────────────────────────────────
-    // Rising lock-on whine while the target is painted.
-    orbitalCharge() {
-        this.playTone(440, 0.25, "sine", 0.06);
-        this.playTone(660, 0.25, "sine", 0.06, 0.25);
-        this.playTone(990, 0.3, "sine", 0.07, 0.5);
+    // ── Castle orbital laser ────────────────────────────────────────────
+    // Sustained searing drone while the beam burns: a low detuned pair with a
+    // fast shimmer LFO, plus a high sizzle. Torn down by stopLaserHum().
+    startLaserHum() {
+        if (!this.initDone || this.laserHum) return;
+        const t = this.ctx.currentTime;
+        const out = this.ctx.createGain();
+        out.gain.setValueAtTime(0.0001, t);
+        out.gain.exponentialRampToValueAtTime(0.09, t + 0.25);
+        out.connect(this.sfx);
+        const o1 = this.ctx.createOscillator(); o1.type = "sawtooth"; o1.frequency.value = 74;
+        const o2 = this.ctx.createOscillator(); o2.type = "sawtooth"; o2.frequency.value = 77.5;
+        const o3 = this.ctx.createOscillator(); o3.type = "square"; o3.frequency.value = 1480;
+        const hiss = this.ctx.createGain(); hiss.gain.value = 0.08;
+        o1.connect(out); o2.connect(out); o3.connect(hiss); hiss.connect(out);
+        const lfo = this.ctx.createOscillator(); lfo.type = "sine"; lfo.frequency.value = 11;
+        const lfoGain = this.ctx.createGain(); lfoGain.gain.value = 0.03;
+        lfo.connect(lfoGain); lfoGain.connect(out.gain);
+        o1.start(t); o2.start(t); o3.start(t); lfo.start(t);
+        this.laserHum = { out, nodes: [o1, o2, o3, lfo] };
     }
-    // Searing crack and a deep concussive boom.
+    stopLaserHum() {
+        const h = this.laserHum;
+        if (!h) return;
+        this.laserHum = null;
+        try {
+            const t = this.ctx.currentTime;
+            h.out.gain.cancelScheduledValues(t);
+            h.out.gain.setValueAtTime(0.08, t);
+            h.out.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+            h.nodes.forEach((n) => n.stop(t + 0.35));
+        } catch (_) { /* nodes may already be stopped */ }
+    }
+    // Searing crack and a deep concussive boom (beam ignition).
     orbitalFire() {
         this.playTone(1800, 0.08, "square", 0.1);
         this.playTone(55, 1.3, "sawtooth", 0.26, 0.02);

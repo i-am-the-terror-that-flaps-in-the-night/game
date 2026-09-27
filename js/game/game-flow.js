@@ -64,6 +64,7 @@ export const flowMethods = /** @type {ThisType<any>} */ ({
         this.state = "menu";
         this.clearBoss();
         this.hazards.clear();
+        this.orbital.reset();
         this.audio.stopMusic();
         this.spells.cancel();
         document

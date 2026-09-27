@@ -448,6 +448,7 @@ export class Game {
     victory() {
         this.clearBoss();
         this.hazards.clear();
+        this.orbital.reset();
         this.setSpeed(0);
         this.state = "victory";
         // Last Stand achievement
@@ -486,6 +487,7 @@ export class Game {
         if (this.state === "defeat") return; // Fix #16: Prevent defeat loop
         this.clearBoss();
         this.hazards.clear();
+        this.orbital.reset();
         this.setSpeed(0);
         this.state = "defeat";
         this.audio.playError();
