@@ -298,6 +298,26 @@ try {
     ok(t2.blocks && t2.repair, 'barricades block enemies and repair for gold');
     ok(t2.hold, 'formation holds on a terrain anchor');
 
+    const orb = await page.evaluate(() => {
+        const g = window.game, r = {};
+        g.loadLvl(4);
+        const t = g.terrain.tunnels[0], mid = (t.x0 + t.x1) / 2;
+        r.tunnelHill = g.terrain.topAt(mid) - g.terrain.heightAt(mid) > g.terrain.tunnelArch() + 30;
+        g.loadLvl(2);
+        g.spawnEnemy('ogre', 900);
+        const near = g.enemies[g.enemies.length - 1];
+        g.spawnEnemy('ogre', 3000);
+        const far = g.enemies[g.enemies.length - 1];
+        const hp = far.hp;
+        for (let i = 0; i < 260; i++) g.orbital.update(1);
+        r.hit = near.hp <= 0 || near.hp < near.maxHp * 0.3;
+        r.ignoresFar = far.hp === hp;
+        g.returnToMenu();
+        return r;
+    });
+    ok(orb.tunnelHill, 'tunnels bore through a hill (rock cover over the passage)');
+    ok(orb.hit && orb.ignoresFar, 'orbital cannon strikes enemies near the castle only');
+
     // ── 4. Lifecycle: endless + defeat ───────────────────────────────────
     console.log('\n[lifecycle]');
     await page.evaluate(() => game.returnToMenu());

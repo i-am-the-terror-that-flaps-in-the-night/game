@@ -92,6 +92,20 @@ export class AudioEngine {
         this.playTone(90, 0.7, "sawtooth", 0.18);
         this.playTone(160, 0.35, "square", 0.08, 0.05);
     }
+    // ── Castle orbital cannon ───────────────────────────────────────────
+    // Rising lock-on whine while the target is painted.
+    orbitalCharge() {
+        this.playTone(440, 0.25, "sine", 0.06);
+        this.playTone(660, 0.25, "sine", 0.06, 0.25);
+        this.playTone(990, 0.3, "sine", 0.07, 0.5);
+    }
+    // Searing crack and a deep concussive boom.
+    orbitalFire() {
+        this.playTone(1800, 0.08, "square", 0.1);
+        this.playTone(55, 1.3, "sawtooth", 0.26, 0.02);
+        this.playTone(38, 1.6, "square", 0.18, 0.08);
+        this.playTone(220, 0.5, "sawtooth", 0.1, 0.05);
+    }
     // ── Boss "Rustmaw" cues ─────────────────────────────────────────────
     // Ominous inbound-warning swell.
     bossWarning() {

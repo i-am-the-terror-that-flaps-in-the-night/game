@@ -389,7 +389,7 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
             const sxp = x - scrollG;
             const wx = sxp + cam.x;
             const sway = Math.sin(this.frames * 0.03 + wx * 0.05) * 2;
-            const baseY = gy - 1 - terrain.heightAt(wx) * cam.z;
+            const baseY = gy - 1 - terrain.topAt(wx) * cam.z;
             const hgt = 7 + Math.abs(Math.sin(wx * 0.7)) * 6;
             ctx.beginPath();
             ctx.moveTo(sxp, baseY); ctx.lineTo(sxp - 3 + sway, baseY - hgt);
@@ -471,25 +471,87 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
         }
     },
 
-    // Tunnel interiors: a dark cave behind the troops (the ridge face and its
-    // arched mouth are drawn IN FRONT of them by drawTerrainFront).
+    // Tunnel bores, drawn BEHIND the troops (the hill itself is ordinary
+    // terrain traced from topAt, so the passage is cut through real ground):
+    // a stone-lined bore with a rail track, timber support sets and lanterns.
     _drawCaves(ctx, w, gy, cam) {
         const z = cam.z, A = terrain.tunnelArch();
+        const fl = (wx) => gy - terrain.heightAt(wx) * z;
         for (const t of terrain.tunnels) {
             const x0 = cam.sx(t.x0), x1 = cam.sx(t.x1);
             if (x1 < -60 || x0 > w + 60) continue;
-            ctx.fillStyle = "#0c0a09";
+            ctx.save();
             ctx.beginPath();
             this._archPath(ctx, t, gy, cam, A);
-            ctx.fill();
+            ctx.clip();
+            // Bore interior: cold rock fading to black at the floor.
+            const top = fl((t.x0 + t.x1) / 2) - A * z;
+            const g = ctx.createLinearGradient(0, top, 0, top + A * z);
+            g.addColorStop(0, "#292524");
+            g.addColorStop(1, "#0c0a09");
+            ctx.fillStyle = g;
+            ctx.fillRect(x0 - 4, top - 60 * z, x1 - x0 + 8, (A + 140) * z);
+            // Masonry lining: staggered courses of dressed stone.
+            ctx.strokeStyle = "rgba(0,0,0,0.45)";
+            ctx.lineWidth = 1.5 * z;
+            for (let row = 0; row < 6; row++) {
+                const off = row * 17 + 8;
+                ctx.beginPath();
+                for (let wx = t.x0; wx <= t.x1; wx += 16) {
+                    const y = fl(wx) - (A - off) * z;
+                    if (wx === t.x0) ctx.moveTo(cam.sx(wx), y); else ctx.lineTo(cam.sx(wx), y);
+                }
+                ctx.stroke();
+                for (let wx = t.x0 + (row % 2 ? 14 : 0); wx < t.x1; wx += 28) {
+                    const y = fl(wx) - (A - off) * z;
+                    ctx.beginPath(); ctx.moveTo(cam.sx(wx), y); ctx.lineTo(cam.sx(wx), y + 17 * z); ctx.stroke();
+                }
+            }
+            ctx.fillStyle = "rgba(255,255,255,0.035)";
+            for (let wx = t.x0 + 6; wx < t.x1; wx += 28)
+                ctx.fillRect(cam.sx(wx), fl(wx) - (A - 10) * z, 20 * z, 4 * z);
+            // Rail track: sleepers + two rails along the floor.
+            ctx.fillStyle = "#3f2a1a";
+            for (let wx = t.x0 + 4; wx < t.x1; wx += 18) ctx.fillRect(cam.sx(wx), fl(wx) - 4 * z, 10 * z, 4 * z);
+            ctx.strokeStyle = "#78716c";
+            ctx.lineWidth = 1.6 * z;
+            for (const dy of [5, 2]) {
+                ctx.beginPath();
+                for (let wx = t.x0; wx <= t.x1; wx += 16) {
+                    const y = fl(wx) - dy * z;
+                    if (wx === t.x0) ctx.moveTo(cam.sx(wx), y); else ctx.lineTo(cam.sx(wx), y);
+                }
+                ctx.stroke();
+            }
+            // Timber support sets: posts, a cap beam and knee braces.
+            ctx.strokeStyle = "#5b3a1e";
+            for (let wx = t.x0 + 60; wx < t.x1 - 30; wx += 110) {
+                const sx = cam.sx(wx), f0 = fl(wx), roof = f0 - A * z;
+                ctx.lineWidth = 7 * z;
+                ctx.beginPath(); ctx.moveTo(sx, f0); ctx.lineTo(sx, roof + 4 * z); ctx.stroke();
+                ctx.lineWidth = 6 * z;
+                ctx.beginPath(); ctx.moveTo(sx - 30 * z, roof + 5 * z); ctx.lineTo(sx + 30 * z, roof + 5 * z); ctx.stroke();
+                ctx.lineWidth = 3 * z;
+                ctx.beginPath();
+                ctx.moveTo(sx - 22 * z, roof + 6 * z); ctx.lineTo(sx, roof + 26 * z); ctx.lineTo(sx + 22 * z, roof + 6 * z);
+                ctx.stroke();
+            }
+            ctx.restore();
         }
     },
 
-    // Arch opening: floor → roof (A above the floor) with rounded mouths.
+    // Lantern positions (world x) hung from every other support set.
+    _lanterns(t) {
+        const out = [];
+        for (let wx = t.x0 + 115; wx < t.x1 - 60; wx += 220) out.push(wx);
+        return out;
+    },
+
+    // Bore outline: floor → roof (A above the floor) with rounded portals.
     _archPath(ctx, t, gy, cam, A) {
         const z = cam.z;
         const fl = (wx) => gy - terrain.heightAt(wx) * z;
-        const m = 34; // mouth rounding
+        const m = 34; // portal rounding
         ctx.moveTo(cam.sx(t.x0), fl(t.x0));
         ctx.quadraticCurveTo(cam.sx(t.x0), fl(t.x0) - A * z, cam.sx(t.x0 + m), fl(t.x0 + m) - A * z);
         for (let wx = t.x0 + m; wx <= t.x1 - m; wx += 16) ctx.lineTo(cam.sx(wx), fl(wx) - A * z);
@@ -532,9 +594,8 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
         }
     },
 
-    // In front of the armies: the rock ridge over each tunnel (arch cut out,
-    // interior washed dark so troops inside read as sheltered), timber mouth
-    // frames with torches, and a leaf-shade wash over forests.
+    // In front of the armies: tunnel gloom with lantern pools, stone portal
+    // headwalls with torches, and a leaf-shade wash over forests.
     drawTerrainFront(ctx, w, cam) {
         if (terrain.isFlat()) return;
         const z = cam.z, A = terrain.tunnelArch();
@@ -542,52 +603,73 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
         const lvl = LEVELS[this.level] || { ground: "#143d26" };
         const rock = shade(lvl.ground, -0.45), rockHi = mixCol(shade(lvl.ground, -0.2), "#78716c", 0.5);
         for (const t of terrain.tunnels) {
-            const a = t.x0 - 90, b = t.x1 + 90;
-            if (cam.sx(b) < -60 || cam.sx(a) > w + 60) continue;
+            if (cam.sx(t.x1 + 60) < -60 || cam.sx(t.x0 - 60) > w + 60) continue;
+            const fl = (wx) => gy - terrain.heightAt(wx) * z;
             ctx.save();
-            ctx.beginPath();
-            ctx.moveTo(cam.sx(a), gy - terrain.heightAt(a) * z);
-            for (let wx = a; wx <= b; wx += 8) ctx.lineTo(cam.sx(wx), gy - terrain.topAt(wx) * z);
-            for (let wx = b; wx >= a; wx -= 8) ctx.lineTo(cam.sx(wx), gy - terrain.heightAt(wx) * z + 2 * z);
-            ctx.closePath();
-            this._archPath(ctx, t, gy, cam, A);
-            const grd = ctx.createLinearGradient(0, gy - (terrain.topAt((a + b) / 2) + 10) * z, 0, gy);
-            grd.addColorStop(0, rockHi);
-            grd.addColorStop(1, rock);
-            ctx.fillStyle = grd;
-            ctx.fill("evenodd");
-            // Strata.
-            ctx.save();
-            ctx.clip("evenodd");
-            ctx.strokeStyle = "rgba(0,0,0,0.22)";
-            ctx.lineWidth = 2 * z;
-            for (let k = 1; k <= 4; k++) {
-                ctx.beginPath();
-                for (let wx = a; wx <= b; wx += 16) {
-                    const y = gy - (terrain.heightAt(wx) + A + 14 + k * 26 + Math.sin(wx * 0.02 + k) * 5) * z;
-                    if (wx === a) ctx.moveTo(cam.sx(wx), y); else ctx.lineTo(cam.sx(wx), y);
-                }
-                ctx.stroke();
-            }
-            ctx.restore();
-            // Interior shade over whoever is inside.
-            ctx.fillStyle = "rgba(8,6,10,0.42)";
+            // Underground gloom over whoever is inside...
+            ctx.fillStyle = "rgba(6,5,9,0.38)";
             ctx.beginPath();
             this._archPath(ctx, t, gy, cam, A);
             ctx.fill();
-            // Timber mouth frames + torches.
-            for (const mx of [t.x0 + 6, t.x1 - 6]) {
-                const sx = cam.sx(mx), fy = gy - terrain.heightAt(mx) * z;
-                ctx.strokeStyle = "#57381d";
-                ctx.lineWidth = 6 * z;
+            // ...cut by warm lantern pools that light troops passing under them.
+            ctx.globalCompositeOperation = "screen";
+            for (const lx of this._lanterns(t)) {
+                const sx = cam.sx(lx), roof = fl(lx) - A * z;
+                if (sx < -120 || sx > w + 120) continue;
+                const fk = 0.85 + 0.15 * Math.sin(this.frames * 0.23 + lx);
+                const pool = ctx.createRadialGradient(sx, roof + 34 * z, 4, sx, roof + 50 * z, 120 * z);
+                pool.addColorStop(0, `rgba(253,186,116,${0.42 * fk})`);
+                pool.addColorStop(1, "rgba(0,0,0,0)");
+                ctx.fillStyle = pool;
+                ctx.fillRect(sx - 120 * z, roof - 10 * z, 240 * z, (A + 20) * z);
+            }
+            ctx.globalCompositeOperation = "source-over";
+            for (const lx of this._lanterns(t)) {
+                const sx = cam.sx(lx), roof = fl(lx) - A * z;
+                if (sx < -40 || sx > w + 40) continue;
+                ctx.strokeStyle = "#292524";
+                ctx.lineWidth = 1.2 * z;
+                ctx.beginPath(); ctx.moveTo(sx, roof + 8 * z); ctx.lineTo(sx, roof + 26 * z); ctx.stroke();
+                ctx.fillStyle = "#1c1917";
+                ctx.fillRect(sx - 5 * z, roof + 26 * z, 10 * z, 13 * z);
+                ctx.fillStyle = `rgba(254,215,170,${0.8 + 0.2 * Math.sin(this.frames * 0.3 + lx)})`;
+                ctx.fillRect(sx - 3 * z, roof + 28 * z, 6 * z, 9 * z);
+                if (this.frames % 4 === 0) this.lights.add({ x: lx, y: terrain.groundAt(lx) - A + 34, radius: 130, intensity: 0.7, color: "#fdba74", flicker: 0.2, life: 6 });
+            }
+            // Portal headwalls: dressed-stone jambs, a voussoir ring over the
+            // mouth and a keystone, framing the troops as they pass under.
+            for (const [mx, dir] of [[t.x0, 1], [t.x1, -1]]) {
+                const sx = cam.sx(mx), f0 = fl(mx);
+                const rise = (A + 26) * z;
+                ctx.fillStyle = "#57534e";
+                ctx.fillRect(sx - (dir > 0 ? 14 : 0) * z, f0 - rise, 14 * z, rise);
+                ctx.strokeStyle = "rgba(0,0,0,0.45)";
+                ctx.lineWidth = 1.2 * z;
+                for (let k = 1; k < 7; k++) {
+                    const y = f0 - k * (rise / 7);
+                    ctx.beginPath(); ctx.moveTo(sx - (dir > 0 ? 14 : 0) * z, y); ctx.lineTo(sx + (dir > 0 ? 0 : 14) * z, y); ctx.stroke();
+                }
+                // Voussoir ring following the rounded portal.
+                ctx.strokeStyle = "#78716c";
+                ctx.lineWidth = 9 * z;
                 ctx.beginPath();
-                ctx.moveTo(sx, fy); ctx.lineTo(sx, fy - (A - 6) * z);
+                ctx.moveTo(sx, f0 - 8 * z);
+                ctx.quadraticCurveTo(sx, f0 - A * z, sx + dir * 34 * z, fl(mx + dir * 34) - A * z);
+                ctx.lineTo(sx + dir * 58 * z, fl(mx + dir * 58) - A * z);
                 ctx.stroke();
-                const fl = 0.7 + 0.3 * Math.sin(this.frames * 0.3 + mx);
-                const tx = sx + (mx < (t.x0 + t.x1) / 2 ? -10 : 10) * z, ty = fy - (A - 26) * z;
-                ctx.fillStyle = `rgba(251,146,60,${fl})`;
-                ctx.beginPath(); ctx.arc(tx, ty, 4 * z, 0, Math.PI * 2); ctx.fill();
-                if (this.frames % 4 === 0) this.lights.add({ x: mx, y: terrain.groundAt(mx) - A + 26, radius: 90, intensity: 0.6, color: "#fb923c", flicker: 0.3, life: 6 });
+                ctx.strokeStyle = "rgba(0,0,0,0.5)";
+                ctx.lineWidth = 1 * z;
+                for (let k = 0; k < 6; k++) {
+                    const u = k / 6, cxp = sx + dir * 34 * z * u, cyp = f0 - 8 * z - (A - 8) * z * Math.sqrt(u + 0.05);
+                    ctx.beginPath(); ctx.moveTo(cxp - 4 * z, cyp - 4 * z); ctx.lineTo(cxp + 4 * z, cyp + 4 * z); ctx.stroke();
+                }
+                ctx.fillStyle = "#a8a29e";
+                ctx.fillRect(sx + dir * 30 * z - 5 * z, fl(mx + dir * 30) - (A + 7) * z, 10 * z, 12 * z);
+                // Portal torch.
+                const tf = 0.7 + 0.3 * Math.sin(this.frames * 0.31 + mx);
+                ctx.fillStyle = `rgba(251,146,60,${tf})`;
+                ctx.beginPath(); ctx.arc(sx - dir * 20 * z, f0 - (A - 30) * z, 4 * z, 0, Math.PI * 2); ctx.fill();
+                if (this.frames % 4 === 0) this.lights.add({ x: mx - dir * 20, y: terrain.groundAt(mx) - A + 30, radius: 90, intensity: 0.6, color: "#fb923c", flicker: 0.3, life: 6 });
             }
             ctx.restore();
         }
@@ -609,7 +691,8 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
     // rise reads as solid earth rather than a painted bump.
     _drawHills(ctx, w, gy, cam, gnd, gTop, rimCol, sun) {
         const z = cam.z, STEP = 8;
-        const surf = (sx) => gy - terrain.heightAt(cam.x + sx / z) * z;
+        // Trace the VISIBLE top, so hills over tunnels are part of the land.
+        const surf = (sx) => gy - terrain.topAt(cam.x + sx / z) * z;
         const trace = (off) => {
             ctx.moveTo(-STEP, surf(-STEP) + off);
             for (let sx = 0; sx <= w + STEP; sx += STEP) ctx.lineTo(sx, surf(sx) + off);
@@ -834,7 +917,8 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
         for (const p of this.projectiles) ents.push(p);
         ents.sort((a, b) => a.y - b.y);
         ents.forEach((o) => o.draw(ctx, cam, dt));
-        this.drawTerrainFront(ctx, w, cam); // ridges over tunnels, forest canopy
+        this.drawTerrainFront(ctx, w, cam); // tunnel gloom + portals, forest canopy
+        this.orbital.draw(ctx, cam);         // castle uplink, targeting laser, strikes
         this.hazards.drawOver(ctx, cam);
 
         this.particles.draw(ctx, cam);

@@ -18,6 +18,7 @@ import { LightSystem } from '../systems/lighting.js';
 import { terrain } from '../systems/terrain.js';
 import { HazardSystem } from '../systems/hazards.js';
 import { ObjectiveSystem } from '../systems/objectives.js';
+import { OrbitalCannon } from '../systems/orbital.js';
 
 // --- GAME: core state, lifecycle & main loop ---
 // (flow/economy/input/ui/render methods are mixed into Game.prototype
@@ -43,6 +44,7 @@ export class Game {
         this.terrain = terrain;                 // hills + slow ground (module singleton)
         this.hazards = new HazardSystem(this);  // per-region environmental hazards
         this.objectives = new ObjectiveSystem(this); // capturable hilltop shrines
+        this.orbital = new OrbitalCannon(this);      // castle's proximity strike cannon
         // GPU overlay for the additive glow layer (particles + hero/rift auras).
         // Two backends share the GLRenderer contract (ok/begin/glow/flush/resize):
         //   - WebGL (this.glWebgl): synchronous, ~universal, the safe baseline.
@@ -243,6 +245,7 @@ export class Game {
         this.buildings.push(castle);
         this.spawnTerrainStructures(Building); // level barricades
         this.objectives.reset();               // level shrines
+        this.orbital.reset();
         this.holdX = null;                     // recomputed from terrain anchors
         // Spawn the hero near the castle at run start (campaign + endless), then
         // layer on his banked permanent upgrades (Power/Vitality/Attunement/Rift).
@@ -375,6 +378,7 @@ export class Game {
         this.terrain.update(dt);
         this.hazards.update(dt);
         this.objectives.update(dt);
+        this.orbital.update(dt);
 
         this.units = this.units.filter(
             (u) => u.active || u.dmgTexts.length > 0,
