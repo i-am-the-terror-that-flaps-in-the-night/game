@@ -246,6 +246,7 @@ export class Game {
         this.spawnTerrainStructures(Building); // level barricades
         this.objectives.reset();               // level shrines
         this.orbital.reset();
+        this.resetPower();
         this.holdX = null;                     // recomputed from terrain anchors
         // Spawn the hero near the castle at run start (campaign + endless), then
         // layer on his banked permanent upgrades (Power/Vitality/Attunement/Rift).
@@ -379,6 +380,7 @@ export class Game {
         this.hazards.update(dt);
         this.objectives.update(dt);
         this.orbital.update(dt);
+        this.updatePower(dt); // castle / beam / Voidcaller grow with waves + time
 
         this.units = this.units.filter(
             (u) => u.active || u.dmgTexts.length > 0,

@@ -15,6 +15,7 @@ import { uiMethods } from './game-ui.js';
 import { renderMethods } from './game-render.js';
 import { bossMethods } from './game-boss.js';
 import { tacticsMethods } from './game-tactics.js';
+import { powerMethods } from './game-power.js';
 
 Object.assign(
     Game.prototype,
@@ -25,4 +26,5 @@ Object.assign(
     renderMethods,
     bossMethods,
     tacticsMethods,
+    powerMethods,
 );
