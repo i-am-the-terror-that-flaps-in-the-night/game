@@ -12,7 +12,6 @@ import { TEAMS } from '../config.js';
 export const POWER = {
     perWave: 0.15,   // +15% per wave survived
     perMinute: 0.06, // +6% per minute in the run
-    cap: 8,          // hard ceiling
     hpShare: 0.6,    // HP grows at 60% of the damage rate
     notifyStep: 0.5, // announce every +0.5x
 };
@@ -27,7 +26,7 @@ export const powerMethods = /** @type {ThisType<any>} */ ({
 
     powerLevel() {
         const mins = (this.runFrames || 0) / 3600;
-        return Math.min(POWER.cap, 1 + this.waveCount() * POWER.perWave + mins * POWER.perMinute);
+        return 1 + this.waveCount() * POWER.perWave + mins * POWER.perMinute; // uncapped
     },
 
     resetPower() {
