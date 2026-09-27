@@ -119,7 +119,11 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
         const rep = s.blocks && s.hp < s.maxHp
             ? `<br><button class="btn" style="margin-top:6px;padding:4px 10px;" onclick="game.repairSelected()">🔨 Repair +50% (40g)</button>`
             : "";
-        e.innerHTML = `<strong style="color:var(--gold);font-size:15px; letter-spacing:1px; text-transform:uppercase;">${d ? d.name : "Unknown"}</strong><br>HP: ${Math.floor(s.hp)}/${Math.round(s.maxHp)}<br>${s.dmg ? "Damage: " + Math.round(s.dmg) + "<br>" : ""}${s.armor ? "Armor: " + s.armor + "<br>" : ""}${mu ? `<span style="font-size:12px;">${mu}</span>` : ""}${rep}`;
+        const refund = this.sellRefund(s);
+        const sell = refund
+            ? `<button class="tech-btn" style="margin-top:8px;width:100%;border-color:var(--danger);color:var(--danger);" onclick="game.sellSelected()">Sell (Del) — ${costStr(refund)}</button>`
+            : "";
+        e.innerHTML = `<strong style="color:var(--gold);font-size:15px; letter-spacing:1px; text-transform:uppercase;">${d ? d.name : "Unknown"}</strong><br>HP: ${Math.floor(s.hp)}/${Math.round(s.maxHp)}<br>${s.dmg ? "Damage: " + Math.round(s.dmg) + "<br>" : ""}${s.armor ? "Armor: " + s.armor + "<br>" : ""}${mu ? `<span style="font-size:12px;">${mu}</span>` : ""}${rep}${sell}`;
     },
 
     updateUI() {

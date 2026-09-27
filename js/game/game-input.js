@@ -162,6 +162,8 @@ export const inputMethods = /** @type {ThisType<any>} */ ({
             }
             if (k === "y") this.openTechTree();
             if (k === "n") this.callWave();
+            // Sell the selection (X is taken by the Blizzard spell).
+            if (e.key === "Delete") this.sellSelected();
             // Hero ability (Singularity). KeyB — Q/E collide with build hotkeys.
             if (e.code === "KeyB" && this.hero && this.hero.active) {
                 const w = this.camera.toWorld(this.mouse.x, this.mouse.y);

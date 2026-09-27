@@ -315,6 +315,21 @@ try {
         g.returnToMenu();
         return r;
     });
+    const sell = await page.evaluate(() => {
+        const g = window.game;
+        g.loadLvl(0); g.gold = 1000;
+        g.buyUnit('militia');
+        const u = g.units[g.units.length - 1];
+        const pop0 = g.pop, gold0 = g.gold;
+        g.sel = u; g.sellSelected();
+        const soldUnit = !u.active && g.pop === pop0 - u.pop && g.gold === gold0 + Math.floor(u.costPaid.g * 0.5);
+        const castle = g.buildings.find((b) => b.type === 'castle');
+        g.sel = castle; g.sellSelected();
+        const heroSafe = g.sellRefund(g.hero) === null;
+        g.returnToMenu();
+        return soldUnit && castle.active && heroSafe;
+    });
+    ok(sell, 'selling refunds half the price paid; castle and hero can\'t be sold');
     ok(orb.tunnelHill, 'tunnels bore through a hill (rock cover over the passage)');
     ok(orb.hit && orb.ignoresFar, 'orbital cannon strikes enemies near the castle only');
 
