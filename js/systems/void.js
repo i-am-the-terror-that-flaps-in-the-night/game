@@ -36,10 +36,12 @@ export class Singularity {
      * @param {number} radius blast radius to score density over
      * @returns {number|null}
      */
-    static pickTarget(fallbackX, radius) {
+    static pickTarget(fallbackX, radius, near) {
         const g = window.game;
         if (!g || !g.enemies || !g.enemies.length) return null;
-        const alive = g.enemies.filter((e) => e.active && Number.isFinite(e.x));
+        // `near` ({x, r}) limits candidates to a window (the auto-cast reach).
+        const alive = g.enemies.filter((e) => e.active && Number.isFinite(e.x)
+            && (!near || Math.abs(e.x - near.x) <= near.r));
         if (!alive.length) return null;
         // Score each enemy's x as a candidate center; pick the one whose window
         // [-radius,+radius] contains the most enemies (ties -> the weighted
