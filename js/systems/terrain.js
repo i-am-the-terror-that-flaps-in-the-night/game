@@ -201,18 +201,23 @@ export class Terrain {
         const lim = MAX_SLOPE * STEP;
         for (let i = 1; i < n; i++) S[i] = clamp(S[i], S[i - 1] - lim, S[i - 1] + lim);
         for (let i = n - 2; i >= 0; i--) S[i] = clamp(S[i], S[i + 1] - lim, S[i + 1] + lim);
-        // Visible top = walking surface, raised by any ridge over a tunnel.
+        // Visible top = walking surface, raised into a hill over each tunnel:
+        // a rock face climbs to the portal (bore + ~38 px of cover), then the
+        // hill crowns toward t.h with a weathered crest. Troops walk the bore.
         this.top.set(S);
+        const cover = TUNNEL_ARCH + 38;
+        const smooth = (u) => u * u * (3 - 2 * u);
         for (const t of this.tunnels) {
-            const i0 = Math.floor((t.x0 - 90) / STEP), i1 = Math.ceil((t.x1 + 90) / STEP);
-            for (let i = Math.max(0, i0); i <= Math.min(n - 1, i1); i++) {
+            const half = (t.x1 - t.x0) / 2;
+            const i0 = Math.max(0, Math.floor((t.x0 - 90) / STEP)), i1 = Math.min(n - 1, Math.ceil((t.x1 + 90) / STEP));
+            for (let i = i0; i <= i1; i++) {
                 const x = i * STEP;
-                // Flat-topped massif with rounded shoulders and a craggy crown.
-                const e = Math.min(x - (t.x0 - 90), (t.x1 + 90) - x) / 160;
-                const shoulder = e >= 1 ? 1 : 0.5 * (1 - Math.cos(clamp(e, 0, 1) * Math.PI));
-                const crag = 10 * Math.sin(x * 0.043) + 6 * Math.sin(x * 0.11);
-                const floor = S[i];
-                this.top[i] = Math.max(S[i], floor + (t.h + crag) * shoulder);
+                const e = Math.min(x - t.x0, t.x1 - x); // depth inside the hill
+                const prof = e < 0
+                    ? cover * smooth(clamp((e + 90) / 90, 0, 1))
+                    : cover + (t.h - cover) * smooth(clamp(e / (half * 0.8), 0, 1));
+                const crag = e > 0 ? (8 * Math.sin(x * 0.031) + 5 * Math.sin(x * 0.087)) * clamp(e / 120, 0, 1) : 0;
+                this.top[i] = Math.max(S[i], S[i] + prof + crag);
             }
         }
         this.flatMap = !S.some((v) => v > 0.5);
