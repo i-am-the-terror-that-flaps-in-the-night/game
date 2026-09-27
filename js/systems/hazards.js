@@ -24,7 +24,7 @@ function victims(g, x, r, air = false) {
     const out = [];
     for (const list of [g.units, g.enemies])
         for (const e of list)
-            if (e.active && e.hp > 0 && !e.isBoss && (air || !e.flying) && Math.abs(e.x - x) < r) out.push(e);
+            if (e.active && e.hp > 0 && !e.isBoss && (air || !e.flying) && !terrain.inTunnel(e.x) && Math.abs(e.x - x) < r) out.push(e);
     return out;
 }
 
@@ -239,6 +239,7 @@ export class HazardSystem {
         let any = false;
         for (const e of g.enemies) if (e.active && !e.isBoss) { ef = any ? Math.min(ef, e.x) : e.x; any = true; }
         if (ef < pf) ef = pf + 200;
+        ef = Math.min(ef, pf + 1600); // long map: strike where the fighting is
         let x = lerp(pf, ef, rand(0.2, 0.8));
         if (this.spec.type === "rockslide" && terrain.hills.length)
             x = terrain.hills.reduce((b, h) => (Math.abs(h.x - x) < Math.abs(b.x - x) ? h : b)).x;

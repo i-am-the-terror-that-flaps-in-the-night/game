@@ -147,20 +147,30 @@ export class Unit extends Entity {
 
         if (this.cdTimer > 0) this.cdTimer -= dt;
 
-        const enemies =
-            this.team === TEAMS.PLAYER ? game.enemies : game.units;
-        const bldgs =
-            this.team === TEAMS.PLAYER ? [] : game.buildings;
+        const isPlayer = this.team === TEAMS.PLAYER;
+        const enemies = isPlayer ? game.enemies : game.units;
+        const bldgs = isPlayer ? [] : game.buildings;
+        // Engagement reach: player troops in Defensive/Standard stay leashed to
+        // their hold point; enemies only react to foes inside their aggro
+        // radius — otherwise both sides move between tactical positions.
+        const reach = this._reach();
+        const inReach = (e) => (isPlayer ? e.x <= reach : Math.abs(e.x - this.x) <= reach);
 
-        // Fix #4: ground units ignore airborne foes. Fall back to the nearest
-        // building only when no enemy is targetable (player units pass bldgs=[]).
-        let res = nearestX(this.x, enemies, (e) => e.hp > 0 && !(e.flying && !this.ranged));
+        // Fix #4: ground units ignore airborne foes; tunnels block shots.
+        let res = nearestX(this.x, enemies, (e) => e.hp > 0 && this._canHit(e) && inReach(e));
         let tgt = res.tgt,
             cD = res.d;
         if (!tgt) {
-            res = nearestX(this.x, bldgs, (b) => b.hp > 0);
+            res = nearestX(this.x, bldgs, (b) => b.hp > 0 && inReach(b));
             tgt = res.tgt;
             cD = res.d;
+        }
+        // Enemies can't walk through walls/barricades: a blocker between them
+        // and their target (or their march) becomes the target.
+        const blk = !isPlayer && !this.flying ? game.blockerWest(this.x) : null;
+        if (blk && this.x - blk.x < 420 + this.range && (!tgt || tgt.x < blk.x)) {
+            tgt = blk;
+            cD = Math.max(0, this.x - blk.x - blk.w / 2);
         }
 
         if (tgt) {
@@ -170,6 +180,7 @@ export class Unit extends Entity {
             if (this.ranged) {
                 const dh = tgt.y - this.y;
                 if (dh > 0) range *= 1 + Math.min(HIGH_GROUND.rangeMax, dh * HIGH_GROUND.rangeK);
+                range *= game.objectives.rangeMult(this);
             }
             if (cD <= range) {
                 this.state = "attack";
@@ -197,23 +208,13 @@ export class Unit extends Entity {
                         "fade",
                     );
             }
+            this.stageT = 0;
+        } else if (isPlayer) {
+            this._holdPosition(dt);
         } else {
-            if (this.team === TEAMS.PLAYER) {
-                this.state = "idle";
-                const holdX = typeof game !== 'undefined'
-                    ? (game.formation === 'defensive' ? 320 : game.formation === 'aggressive' ? 700 : 450)
-                    : 450;
-                if (this.x > holdX) {
-                    this.facing = -1; this.x -= 1.5 * terrain.speedMult(this, -1) * dt; this.state = "walk";
-                } else if (typeof game !== 'undefined' && game.formation === 'aggressive' && this.x < holdX - 80) {
-                    this.facing = 1; this.x += 1.0 * terrain.speedMult(this, 1) * dt; this.state = "walk";
-                }
-            } else {
-                this.state = "walk";
-                this.facing = -1;
-                this.x -= this.speed * terrain.speedMult(this, -1) * dt;
-            }
+            this._march(dt);
         }
+        if (blk) this.x = Math.max(this.x, blk.x + blk.w / 2 + 6);
 
         if (this.type === "necromancer") {
             this.summonTimer -= dt;
@@ -240,6 +241,73 @@ export class Unit extends Entity {
         this.x = clamp(this.x, 50, CONFIG.WORLD_WIDTH - 50);
         this.y = groundAt(this.x); // follow the terrain (hills, and resizes)
         this._wadeFx();
+    }
+    // Can this unit strike e at all? Ground melee can't reach flyers; ranged
+    // shots and flyers can't cross a tunnel wall (melee at the mouth can).
+    _canHit(e) {
+        if (e.flying && !this.ranged) return false;
+        if ((this.ranged || this.flying) && terrain.blocksShot(this.x, e.x)) return false;
+        return true;
+    }
+    // Player: furthest x worth chasing to. Enemy: aggro radius.
+    _reach() {
+        if (this.team !== TEAMS.PLAYER) return 420 + this.range;
+        if (game.formation === "aggressive") return Infinity;
+        return (game.holdX || 450) + 450 + this.range;
+    }
+    // Stable per-unit formation slot (spreads troops around an anchor).
+    _slotX(anchorX) {
+        if (this.slot == null) this.slot = (game._slotSeq = (game._slotSeq || 0) + 1);
+        if (this.isHero) return anchorX - 10;
+        const k = this.slot % 5;
+        return this.ranged ? anchorX - 30 - k * 22 : anchorX + 20 + k * 18;
+    }
+    // Idle player troops walk to their slot at the formation's hold anchor.
+    _holdPosition(dt) {
+        const dx = this._slotX(game.holdX || 450) - this.x;
+        if (Math.abs(dx) < 10) { this.state = "idle"; this.facing = 1; return; }
+        this.facing = dx > 0 ? 1 : -1;
+        this.state = "walk";
+        this.x += this.facing * Math.min(Math.abs(dx), this.speed * 0.9 * terrain.speedMult(this, this.facing) * dt);
+    }
+    // Enemy advance without a target: far from the player army they
+    // force-march; near it they move anchor to anchor (crests, shrines, tunnel
+    // mouths, bridgeheads), staging at each until the pack gathers.
+    _march(dt) {
+        this.facing = -1;
+        this.state = "walk";
+        const far = this.x - (game._frontP || 400) > 1400;
+        if (far || this.flying) {
+            this.x -= this.speed * (far ? 2.6 : 1) * terrain.speedMult(this, -1) * dt;
+            return;
+        }
+        if (this.passedX == null) this.passedX = this.x;
+        if (!this.wp) {
+            const A = terrain.anchors;
+            for (let i = A.length - 1; i >= 0; i--)
+                if (A[i].x < this.passedX - 40 && A[i].kind !== "barricade") { this.wp = A[i]; break; }
+        }
+        const stand = this.wp ? this.wp.x + ((this.slot || (this.slot = Math.floor(Math.random() * 97))) % 5) * 14 : -Infinity;
+        if (this.x > stand + 8) {
+            this.x -= this.speed * terrain.speedMult(this, -1) * dt;
+            return;
+        }
+        // Staging on the anchor.
+        this.state = "idle";
+        this.stageT = (this.stageT || 0) + dt;
+        if ((this.frame | 0) % 15 === 0) {
+            let n = 0;
+            for (const e of game.enemies) if (e.active && Math.abs(e.x - this.x) < 160) n++;
+            this._pack = n;
+        }
+        const shrine = this.wp.kind === "shrine";
+        const held = !shrine || game.objectives.owner(this.wp.x) === TEAMS.ENEMY;
+        const limit = shrine ? 600 : this.ranged && this.wp.kind === "crest" ? 360 : 240;
+        if ((held && (this._pack || 0) >= 5) || this.stageT > limit) {
+            this.passedX = this.wp.x;
+            this.wp = null;
+            this.stageT = 0;
+        }
     }
     // Wading through slow ground kicks up a little of it (quality-gated).
     _wadeFx() {
@@ -392,6 +460,8 @@ export class Unit extends Entity {
             vsFlying: this.vsFlying,
             team: this.team,
             isUnit: true,
+            ranged: true,
+            fromY: this.y,
         };
         const enemies = this.team === TEAMS.PLAYER ? game.enemies : game.units;
         const RAYS = 5; // always fires 5 raycast shots, not just however many targets are clustered

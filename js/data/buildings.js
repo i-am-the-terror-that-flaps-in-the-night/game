@@ -58,6 +58,19 @@ export const BUILDING_TYPES = {
         desc: "Blocks enemy movement. High health/armor.",
         armor: 6,
         buildTime: 90,
+        blocks: true,
+    },
+    // Terrain set piece, not buildable: spiked palisades across mountain
+    // passes. Enemies must smash through; select one to repair it for gold.
+    barricade: {
+        name: "Barricade",
+        hp: 900,
+        width: 44,
+        height: 72,
+        desc: "A palisade across the pass. Enemies must break it to get through. Select it to repair.",
+        armor: 4,
+        buildTime: 0,
+        blocks: true,
     },
     academy: {
         name: "Academy",

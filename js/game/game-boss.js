@@ -26,7 +26,9 @@ export const bossMethods = /** @type {ThisType<any>} */ ({
         this.bossEntity = null;
         this.bossRewarded = false;
         this._bossHp = opts.hp || this._bossScaledHp();
-        this._bossArriveX = CONFIG.WORLD_WIDTH - 320;
+        // The map is long: the Engine derails a fixed distance ahead of your
+        // front line rather than at the far edge.
+        this._bossArriveX = clamp(this.frontX() + 1700, 1800, CONFIG.WORLD_WIDTH - 320);
         this._bossWarnDur = this.bossWarnT || 1;
         this.audio.bossWarning();
         this.shake = Math.max(this.shake, 12);
@@ -78,8 +80,9 @@ export const bossMethods = /** @type {ThisType<any>} */ ({
     _bossArrive() {
         this.bossState = 'active';
         this._showBossWarning(false);
-        const x = CONFIG.WORLD_WIDTH - 320;
+        const x = this._bossArriveX;
         const b = new Boss(x, this._bossHp);
+        b.patrolMax = Math.min(CONFIG.WORLD_WIDTH - 260, x + 500);
         const diffM = (this.diff || 1) * (this.difficultyMult || 1);
         b.cinderDmg = Math.max(1, Math.round(b.cinderDmg * diffM));
         b.chargeDmg = Math.max(1, Math.round(b.chargeDmg * diffM));

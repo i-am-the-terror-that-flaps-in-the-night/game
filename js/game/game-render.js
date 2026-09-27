@@ -400,6 +400,207 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
         ctx.restore();
 
         this._drawPatches(ctx, w, gy, cam);
+        if (!terrain.isFlat()) {
+            this._drawRivers(ctx, w, gy, cam);
+            this._drawCaves(ctx, w, gy, cam);
+            this._drawForests(ctx, w, gy, cam, lvl.ground);
+        }
+    },
+
+    // Seeded 0..1 hash so scenery is stable frame to frame.
+    _hash(n) { const s = Math.sin(n * 12.9898) * 43758.5453; return s - Math.floor(s); },
+
+    // Rivers: a ford shows water pooled in its dip; a bridge spans a channel.
+    _drawRivers(ctx, w, gy, cam) {
+        const z = cam.z, f = this.frames;
+        const surf = (wx) => gy - terrain.heightAt(wx) * z;
+        for (const r of terrain.rivers) {
+            const x0 = cam.sx(r.x0), x1 = cam.sx(r.x1);
+            if (x1 < -60 || x0 > w + 60) continue;
+            ctx.save();
+            if (r.bridge) {
+                const d0 = surf(r.x0 - 24), d1 = surf(r.x1 + 24);
+                // Channel + water under the deck.
+                ctx.fillStyle = "#1e293b";
+                ctx.beginPath();
+                ctx.moveTo(x0 - 10 * z, d0 + 6 * z);
+                ctx.quadraticCurveTo((x0 + x1) / 2, (d0 + d1) / 2 + 70 * z, x1 + 10 * z, d1 + 6 * z);
+                ctx.closePath(); ctx.fill();
+                ctx.fillStyle = "rgba(37,99,235,0.75)";
+                ctx.beginPath();
+                ctx.moveTo(x0, d0 + 26 * z);
+                ctx.quadraticCurveTo((x0 + x1) / 2, (d0 + d1) / 2 + 60 * z, x1, d1 + 26 * z);
+                ctx.closePath(); ctx.fill();
+                // Piers, deck and rails.
+                ctx.fillStyle = "#44403c";
+                for (const t of [0.33, 0.66]) {
+                    const px = x0 + (x1 - x0) * t, py = d0 + (d1 - d0) * t;
+                    ctx.fillRect(px - 5 * z, py, 10 * z, 46 * z);
+                }
+                ctx.strokeStyle = "#78350f";
+                ctx.lineWidth = 7 * z;
+                ctx.beginPath(); ctx.moveTo(x0 - 24 * z, d0 + 3 * z); ctx.lineTo(x1 + 24 * z, d1 + 3 * z); ctx.stroke();
+                ctx.strokeStyle = "#a16207";
+                ctx.lineWidth = 2 * z;
+                ctx.beginPath(); ctx.moveTo(x0 - 24 * z, d0 - 16 * z); ctx.lineTo(x1 + 24 * z, d1 - 16 * z); ctx.stroke();
+                for (let i = 0; i <= 8; i++) {
+                    const t = i / 8, px = x0 - 24 * z + (x1 - x0 + 48 * z) * t, py = d0 + (d1 - d0) * t;
+                    ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, py - 16 * z); ctx.stroke();
+                }
+            } else {
+                const bank = Math.min(terrain.heightAt(r.x0), terrain.heightAt(r.x1));
+                const wy = gy - (bank - 6) * z;
+                ctx.fillStyle = "rgba(37,99,235,0.72)";
+                ctx.beginPath();
+                ctx.moveTo(x0, wy);
+                for (let wx = r.x0; wx <= r.x1; wx += 8) ctx.lineTo(cam.sx(wx), Math.max(wy, surf(wx) + 2 * z));
+                ctx.lineTo(x1, wy);
+                ctx.closePath(); ctx.fill();
+                ctx.strokeStyle = "rgba(147,197,253,0.8)";
+                ctx.lineWidth = 2 * z;
+                ctx.beginPath(); ctx.moveTo(x0 + 6 * z, wy); ctx.lineTo(x1 - 6 * z, wy); ctx.stroke();
+                // Current ripples.
+                ctx.strokeStyle = "rgba(191,219,254,0.6)";
+                ctx.lineWidth = 1.2 * z;
+                for (let i = 0; i < 4; i++) {
+                    const rx = x0 + (((f * 0.6 + i * 47) % Math.max(1, x1 - x0)));
+                    ctx.beginPath(); ctx.moveTo(rx, wy + 3 * z); ctx.lineTo(rx + 14 * z, wy + 3 * z); ctx.stroke();
+                }
+            }
+            ctx.restore();
+        }
+    },
+
+    // Tunnel interiors: a dark cave behind the troops (the ridge face and its
+    // arched mouth are drawn IN FRONT of them by drawTerrainFront).
+    _drawCaves(ctx, w, gy, cam) {
+        const z = cam.z, A = terrain.tunnelArch();
+        for (const t of terrain.tunnels) {
+            const x0 = cam.sx(t.x0), x1 = cam.sx(t.x1);
+            if (x1 < -60 || x0 > w + 60) continue;
+            ctx.fillStyle = "#0c0a09";
+            ctx.beginPath();
+            this._archPath(ctx, t, gy, cam, A);
+            ctx.fill();
+        }
+    },
+
+    // Arch opening: floor → roof (A above the floor) with rounded mouths.
+    _archPath(ctx, t, gy, cam, A) {
+        const z = cam.z;
+        const fl = (wx) => gy - terrain.heightAt(wx) * z;
+        const m = 34; // mouth rounding
+        ctx.moveTo(cam.sx(t.x0), fl(t.x0));
+        ctx.quadraticCurveTo(cam.sx(t.x0), fl(t.x0) - A * z, cam.sx(t.x0 + m), fl(t.x0 + m) - A * z);
+        for (let wx = t.x0 + m; wx <= t.x1 - m; wx += 16) ctx.lineTo(cam.sx(wx), fl(wx) - A * z);
+        ctx.lineTo(cam.sx(t.x1 - m), fl(t.x1 - m) - A * z);
+        ctx.quadraticCurveTo(cam.sx(t.x1), fl(t.x1) - A * z, cam.sx(t.x1), fl(t.x1));
+        for (let wx = t.x1; wx >= t.x0; wx -= 16) ctx.lineTo(cam.sx(wx), fl(wx));
+        ctx.closePath();
+    },
+
+    // Pine forests along the visible top (so forests crown tunnel ridges too).
+    _drawForests(ctx, w, gy, cam, gnd) {
+        const z = cam.z;
+        const dark = shade(gnd, -0.55), mid = shade(gnd, -0.35);
+        for (const fo of terrain.forests) {
+            if (cam.sx(fo.x1) < -60 || cam.sx(fo.x0) > w + 60) continue;
+            for (let layer = 0; layer < 2; layer++) {
+                const sp = layer ? 30 : 44;
+                for (let wx = fo.x0 + (layer ? 12 : 0); wx <= fo.x1; wx += sp) {
+                    const sx = cam.sx(wx);
+                    if (sx < -40 || sx > w + 40) continue;
+                    const hsh = this._hash(wx * 0.37 + layer);
+                    const th = (layer ? 62 : 80) + hsh * 48;
+                    const tw = th * 0.34;
+                    const by = gy - terrain.topAt(wx) * z + 2 * z;
+                    const sway = Math.sin(this.frames * 0.015 + wx) * 1.5 * z;
+                    ctx.fillStyle = "#3f2a1a";
+                    ctx.fillRect(sx - 2 * z, by - 12 * z, 4 * z, 12 * z);
+                    ctx.fillStyle = layer ? mid : dark;
+                    for (let k = 0; k < 3; k++) {
+                        const ty = by - 10 * z - k * th * 0.26 * z;
+                        const kw = tw * (1 - k * 0.26) * z;
+                        ctx.beginPath();
+                        ctx.moveTo(sx - kw, ty);
+                        ctx.lineTo(sx + sway, ty - th * 0.42 * z);
+                        ctx.lineTo(sx + kw, ty);
+                        ctx.closePath(); ctx.fill();
+                    }
+                }
+            }
+        }
+    },
+
+    // In front of the armies: the rock ridge over each tunnel (arch cut out,
+    // interior washed dark so troops inside read as sheltered), timber mouth
+    // frames with torches, and a leaf-shade wash over forests.
+    drawTerrainFront(ctx, w, cam) {
+        if (terrain.isFlat()) return;
+        const z = cam.z, A = terrain.tunnelArch();
+        const gy = cam.toScreen(0, CONFIG.GROUND_Y).y;
+        const lvl = LEVELS[this.level] || { ground: "#143d26" };
+        const rock = shade(lvl.ground, -0.45), rockHi = mixCol(shade(lvl.ground, -0.2), "#78716c", 0.5);
+        for (const t of terrain.tunnels) {
+            const a = t.x0 - 90, b = t.x1 + 90;
+            if (cam.sx(b) < -60 || cam.sx(a) > w + 60) continue;
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(cam.sx(a), gy - terrain.heightAt(a) * z);
+            for (let wx = a; wx <= b; wx += 8) ctx.lineTo(cam.sx(wx), gy - terrain.topAt(wx) * z);
+            for (let wx = b; wx >= a; wx -= 8) ctx.lineTo(cam.sx(wx), gy - terrain.heightAt(wx) * z + 2 * z);
+            ctx.closePath();
+            this._archPath(ctx, t, gy, cam, A);
+            const grd = ctx.createLinearGradient(0, gy - (terrain.topAt((a + b) / 2) + 10) * z, 0, gy);
+            grd.addColorStop(0, rockHi);
+            grd.addColorStop(1, rock);
+            ctx.fillStyle = grd;
+            ctx.fill("evenodd");
+            // Strata.
+            ctx.save();
+            ctx.clip("evenodd");
+            ctx.strokeStyle = "rgba(0,0,0,0.22)";
+            ctx.lineWidth = 2 * z;
+            for (let k = 1; k <= 4; k++) {
+                ctx.beginPath();
+                for (let wx = a; wx <= b; wx += 16) {
+                    const y = gy - (terrain.heightAt(wx) + A + 14 + k * 26 + Math.sin(wx * 0.02 + k) * 5) * z;
+                    if (wx === a) ctx.moveTo(cam.sx(wx), y); else ctx.lineTo(cam.sx(wx), y);
+                }
+                ctx.stroke();
+            }
+            ctx.restore();
+            // Interior shade over whoever is inside.
+            ctx.fillStyle = "rgba(8,6,10,0.42)";
+            ctx.beginPath();
+            this._archPath(ctx, t, gy, cam, A);
+            ctx.fill();
+            // Timber mouth frames + torches.
+            for (const mx of [t.x0 + 6, t.x1 - 6]) {
+                const sx = cam.sx(mx), fy = gy - terrain.heightAt(mx) * z;
+                ctx.strokeStyle = "#57381d";
+                ctx.lineWidth = 6 * z;
+                ctx.beginPath();
+                ctx.moveTo(sx, fy); ctx.lineTo(sx, fy - (A - 6) * z);
+                ctx.stroke();
+                const fl = 0.7 + 0.3 * Math.sin(this.frames * 0.3 + mx);
+                const tx = sx + (mx < (t.x0 + t.x1) / 2 ? -10 : 10) * z, ty = fy - (A - 26) * z;
+                ctx.fillStyle = `rgba(251,146,60,${fl})`;
+                ctx.beginPath(); ctx.arc(tx, ty, 4 * z, 0, Math.PI * 2); ctx.fill();
+                if (this.frames % 4 === 0) this.lights.add({ x: mx, y: terrain.groundAt(mx) - A + 26, radius: 90, intensity: 0.6, color: "#fb923c", flicker: 0.3, life: 6 });
+            }
+            ctx.restore();
+        }
+        // Leaf shade over forest floors (not over tunnel ridges).
+        for (const fo of terrain.forests) {
+            if (fo.onRidge || cam.sx(fo.x1) < -20 || cam.sx(fo.x0) > w + 20) continue;
+            ctx.fillStyle = "rgba(4,20,8,0.16)";
+            ctx.beginPath();
+            ctx.moveTo(cam.sx(fo.x0), gy - terrain.heightAt(fo.x0) * z);
+            for (let wx = fo.x0; wx <= fo.x1; wx += 16) ctx.lineTo(cam.sx(wx), gy - (terrain.heightAt(wx) + 90) * z);
+            for (let wx = fo.x1; wx >= fo.x0; wx -= 16) ctx.lineTo(cam.sx(wx), gy - terrain.heightAt(wx) * z);
+            ctx.closePath(); ctx.fill();
+        }
     },
 
     // Rolling hills: one filled silhouette traced from the terrain height
@@ -414,7 +615,7 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
             for (let sx = 0; sx <= w + STEP; sx += STEP) ctx.lineTo(sx, surf(sx) + off);
         };
         // Earth body: lighter at the crest, settling into the ground colour.
-        const top = gy - 70 * z;
+        const top = gy - 150 * z;
         const key = gTop + "|" + gnd + "|" + gy;
         if (this._hillKey !== key) {
             const g = ctx.createLinearGradient(0, top, 0, gy + 4);
@@ -618,6 +819,7 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
 
         ctx.save();
         this.decals.draw(ctx, cam);
+        this.objectives.draw(ctx, cam);   // hilltop shrines
         this.hazards.drawUnder(ctx, cam); // ground telegraphs sit beneath the armies
 
         // Reuse one scratch array instead of allocating four .map() arrays + a
@@ -632,6 +834,7 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
         for (const p of this.projectiles) ents.push(p);
         ents.sort((a, b) => a.y - b.y);
         ents.forEach((o) => o.draw(ctx, cam, dt));
+        this.drawTerrainFront(ctx, w, cam); // ridges over tunnels, forest canopy
         this.hazards.drawOver(ctx, cam);
 
         this.particles.draw(ctx, cam);

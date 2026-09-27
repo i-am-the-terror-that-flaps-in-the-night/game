@@ -4,7 +4,7 @@ import { Entity } from './entity.js';
 import { Projectile } from '../systems/projectile.js';
 import { nearestX } from '../systems/targeting.js';
 import { dealDamage } from '../systems/combat.js';
-import { groundAt } from '../systems/terrain.js';
+import { groundAt, terrain } from '../systems/terrain.js';
 import { rand, dist } from '../utils.js';
 
 export class Building extends Entity {
@@ -39,9 +39,16 @@ export class Building extends Entity {
         this.beamT = 0;
         this.beamX = 0;
         this.beamY = 0;
+        this.blocks = !!def.blocks; // enemies can't walk through (walls, barricades)
+        this.seat();
+    }
+    // Sit on the highest ground under the footprint (a plinth fills beneath).
+    seat() {
+        const hw = (this.w || 0) / 2;
+        this.y = Math.min(groundAt(this.x - hw), groundAt(this.x), groundAt(this.x + hw));
     }
     update(dt) {
-        this.y = groundAt(this.x); // stay seated on the ground across resizes
+        this.seat(); // stay seated on the ground across resizes
         if (this.building) {
             this.bTimer -= dt;
             if (this.bTimer <= 0) {
@@ -81,6 +88,7 @@ export class Building extends Entity {
                 // targets use the normal, shorter range. Nearest eligible foe.
                 const { tgt: c } = nearestX(this.x, trgs, (t, d) =>
                     t.hp > 0 &&
+                    !terrain.inTunnel(t.x) && // tunnel roofs shelter from tower fire
                     d <= (t.flying && this.flyRange ? this.flyRange : this.range),
                 );
                 if (c) {
@@ -127,6 +135,7 @@ export class Building extends Entity {
             vsFlying: this.vsFlying || 0,
             team: this.team,
             isUnit: false,
+            ranged: true,
         };
         dealDamage(this.dmg, src, tgt);
         // Ray direction, for "near the line" hits.
@@ -179,6 +188,52 @@ export class Building extends Entity {
         game.audio.playExplosion();
         if (this.type === "castle") game.defeat();
     }
+    // Spiked log palisade; splinters and sags as it takes damage.
+    drawBarricade(ctx, px, py, z) {
+        const dmg = 1 - this.hp / this.maxHp;
+        const n = 5, lw = (this.w / n) * z;
+        for (let i = 0; i < n; i++) {
+            const lx = px - (this.w / 2) * z + i * lw;
+            const hh = (this.h - ((i * 13) % 11) - dmg * ((i * 29) % 30)) * z;
+            ctx.fillStyle = i % 2 ? "#6b4423" : "#7c5230";
+            ctx.fillRect(lx + 1 * z, py - hh, lw - 2 * z, hh);
+            ctx.beginPath();
+            ctx.moveTo(lx + 1 * z, py - hh);
+            ctx.lineTo(lx + lw / 2, py - hh - 12 * z);
+            ctx.lineTo(lx + lw - 1 * z, py - hh);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = "rgba(0,0,0,0.25)";
+            ctx.fillRect(lx + lw - 3 * z, py - hh, 2 * z, hh);
+        }
+        // Lashing ropes and forward spikes.
+        ctx.strokeStyle = "#a8a29e";
+        ctx.lineWidth = 2 * z;
+        for (const t of [0.3, 0.72]) {
+            ctx.beginPath();
+            ctx.moveTo(px - (this.w / 2) * z, py - this.h * t * z);
+            ctx.lineTo(px + (this.w / 2) * z, py - this.h * t * z);
+            ctx.stroke();
+        }
+        ctx.strokeStyle = "#57381d";
+        ctx.lineWidth = 3 * z;
+        for (let i = 0; i < 3; i++) {
+            const sy = py - (14 + i * 18) * z;
+            ctx.beginPath();
+            ctx.moveTo(px + (this.w / 2) * z, sy);
+            ctx.lineTo(px + (this.w / 2 + 22) * z, sy - 10 * z);
+            ctx.stroke();
+        }
+        if (dmg > 0.5) {
+            ctx.strokeStyle = "rgba(0,0,0,0.5)";
+            ctx.lineWidth = 1.5 * z;
+            ctx.beginPath();
+            ctx.moveTo(px - 8 * z, py - this.h * 0.8 * z);
+            ctx.lineTo(px + 2 * z, py - this.h * 0.5 * z);
+            ctx.lineTo(px - 4 * z, py - this.h * 0.25 * z);
+            ctx.stroke();
+        }
+    }
     draw(ctx, cam, dt) {
         const px = cam.sx(this.x);
         const py = cam.sy(this.y);
@@ -186,6 +241,15 @@ export class Building extends Entity {
             h = this.h * cam.z,
             x = px - w / 2,
             y = py - h;
+        // Stone plinth down to the lowest ground under the footprint.
+        const low = Math.max(groundAt(this.x - this.w / 2), groundAt(this.x + this.w / 2));
+        if (low - this.y > 1.5) {
+            ctx.fillStyle = "#3f3f46";
+            ctx.fillRect(x - 3 * cam.z, py, w + 6 * cam.z, (low - this.y + 4) * cam.z);
+            ctx.fillStyle = "rgba(0,0,0,0.3)";
+            ctx.fillRect(x - 3 * cam.z, py, w + 6 * cam.z, 3 * cam.z);
+        }
+        if (this.type === "barricade") { this.drawBarricade(ctx, px, py, cam.z); this.drawHp(ctx, cam, this.w + 16, -this.h - 14); this.drawDmg(ctx, cam, dt); return; }
 
         if (this.building) {
             ctx.fillStyle = "rgba(59,130,246,0.15)";

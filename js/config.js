@@ -17,7 +17,7 @@
  * }}
  */
 export const CONFIG = {
-    WORLD_WIDTH: 4500,
+    WORLD_WIDTH: 9000,
     GROUND_Y: window.innerHeight - 180,
     GRAVITY: 0.5,
     EDGE_SCROLL_MARGIN: 50,

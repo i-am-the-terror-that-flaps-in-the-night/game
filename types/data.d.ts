@@ -96,4 +96,5 @@ interface BuildingDef {
     buildTime?: number;
     unlock?: string[];
     armor?: number;
+    blocks?: boolean;
 }

@@ -2,7 +2,7 @@ import { TEAMS } from '../config.js';
 import { BUILDING_TYPES } from '../data/buildings.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { UNIT_TYPES } from '../data/units.js';
-import { HIGH_GROUND } from './terrain.js';
+import { FOREST_COVER, HIGH_GROUND, terrain } from './terrain.js';
 // Targets are identified by a `kind` flag ("unit" | "building") set in the
 // entity constructors, rather than `instanceof`, so this module needs no import
 // of the entity classes — breaking the unit<->combat and building->projectile->
@@ -87,6 +87,9 @@ export function resolveDamage(base, src, target, formation) {
 // { amt, tag } as resolveDamage so callers can still read `tag` for hit FX.
 export function dealDamage(base, src, target) {
     const formation = typeof game !== "undefined" ? game.formation : undefined;
+    // Forest cover: ranged fire into the trees loses its bite (flyers are above it).
+    if (src.ranged && !target.flying && target.kind !== "building" && terrain.forestAt(target.x) && !terrain.inTunnel(target.x))
+        base *= FOREST_COVER;
     const res = resolveDamage(base, src, target, formation);
     target.takeDamage(res.amt, res.tag);
     return res;

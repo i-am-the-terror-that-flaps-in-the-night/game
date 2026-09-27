@@ -4,7 +4,7 @@ import { PROJECTILE_TYPES } from '../data/projectiles.js';
 import { dist, rand, shade } from '../utils.js';
 import { GFX } from './graphics.js';
 import { GLRenderer } from './gl-renderer.js';
-import { groundAt } from './terrain.js';
+import { groundAt, terrain } from './terrain.js';
 
 // --- PROJECTILES & MAGIC ---
 export class Projectile {
@@ -29,7 +29,9 @@ export class Projectile {
             team: team,
             isUnit: o.isUnit || false,
             fromY: o.fromY,
+            ranged: true, // forest cover applies to every shot
         };
+        this.fromTunnel = terrain.inTunnel(x);
 
         this.tX = target.x;
         this.tY = target.y; // Fix #5: Cache coords
@@ -145,6 +147,8 @@ export class Projectile {
             return;
         }
 
+        // A shot can't pass a tunnel wall: it smacks the rock instead.
+        if (terrain.inTunnel(target.x) !== this.fromTunnel) { this.hitFloor(); return; }
         dealDamage(this.dmg, this.src, target);
         const ang = Math.atan2(this.vy, this.vx) + Math.PI;
         game.fx.spark(this.x, this.y, ang, {
@@ -183,6 +187,7 @@ export class Projectile {
                       ),
                   ];
         for (const t of targets) {
+            if (terrain.inTunnel(t.x) !== this.fromTunnel) continue; // sheltered
             if (dist(this.x, this.y, t.x, t.y) < this.aoe) {
                 dealDamage(this.dmg * 0.6, this.src, t);
             }
