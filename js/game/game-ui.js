@@ -171,7 +171,7 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
             const st = hp.querySelector(".hero-status");
             if (st) st.innerText = !this.hero.active
                 ? "Reviving…"
-                : ready ? "Singularity ▸ B" : `Charging ${Math.floor(frac * 100)}%`;
+                : ready ? "Singularity ▸ auto (B)" : `Charging ${Math.floor(frac * 100)}%`;
         }
 
         if (this.waveM) {

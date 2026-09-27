@@ -3,6 +3,7 @@ import { TEAMS } from '../config.js';
 import { HEROES } from '../data/heroes.js';
 import { Singularity } from '../systems/void.js';
 import { GFX } from '../systems/graphics.js';
+import { terrain } from '../systems/terrain.js';
 
 // --- HERO: a persistent, respawning player unit with an active ability --------
 //
@@ -18,6 +19,7 @@ import { GFX } from '../systems/graphics.js';
 
 /** Convert wall-clock ms to dt-frames (game normalizes to 60fps). */
 const msToFrames = (ms) => ms / (1000 / 60);
+const AUTO_CAST_RANGE = 650; // enemies this close trigger the auto Singularity
 
 export class Hero extends Unit {
     /**
@@ -66,6 +68,22 @@ export class Hero extends Unit {
     update(dt) {
         super.update(dt);
         if (this.abilityCd > 0) this.abilityCd = Math.max(0, this.abilityCd - dt);
+        this._autoCast();
+    }
+
+    // Auto-cast: the moment the meter is full and enemies are within reach,
+    // drop the Singularity on the densest nearby pack (checked a few times a
+    // second). Enemies sheltering in a tunnel don't count. B still casts it
+    // manually.
+    _autoCast() {
+        if (!this.canCast() || (this.frame | 0) % 10 !== 0) return;
+        const g = window.game;
+        if (!g || g.state !== "playing") return;
+        const near = { x: this.x, r: AUTO_CAST_RANGE };
+        let any = false;
+        for (const e of g.enemies)
+            if (e.active && e.hp > 0 && Math.abs(e.x - this.x) <= AUTO_CAST_RANGE && !terrain.inTunnel(e.x)) { any = true; break; }
+        if (any) this.castAbility(undefined, near);
     }
 
     /**
@@ -118,9 +136,10 @@ export class Hero extends Unit {
     /**
      * Cast the hero's active ability toward a world x.
      * @param {number} worldX target x in world space
+     * @param {{x:number, r:number}} [near] optional window limiting target choice (auto-cast)
      * @returns {boolean} whether the cast fired
      */
-    castAbility(worldX) {
+    castAbility(worldX, near) {
         const g = window.game;
         const def = this.abilityDef;
         if (!def || !this.active) return false;
@@ -132,7 +151,7 @@ export class Hero extends Unit {
         // cluster rather than wherever the cursor happens to be, so the rift
         // reliably lands on enemies. Fall back to the passed worldX (or the
         // hero's front) only when there are no enemies to target.
-        const target = Singularity.pickTarget(this.x + this.facing * 160, def.radius);
+        const target = Singularity.pickTarget(this.x + this.facing * 160, def.radius, near);
         const tx = Number.isFinite(target) ? target
             : Number.isFinite(worldX) ? worldX
             : this.x + this.facing * 200;

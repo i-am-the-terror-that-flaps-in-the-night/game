@@ -348,6 +348,21 @@ try {
         g.returnToMenu();
         return r;
     });
+    const auto = await page.evaluate(() => {
+        const g = window.game;
+        g.loadLvl(0);
+        const h = g.hero;
+        g.spawnEnemy('ogre', 5000);                 // far away: no cast
+        h.voidCharge = h.maxCharge; h.frame = 0; h._autoCast();
+        const heldFar = g.singularities.length === 0 && h.voidCharge === h.maxCharge;
+        g.spawnEnemy('rabble', h.x + 300);          // in reach: casts
+        h.frame = 0; h._autoCast();
+        const cast = g.singularities.length === 1 && h.voidCharge === 0;
+        const nearPack = cast && Math.abs(g.singularities[0].x - (h.x + 300)) < 200;
+        g.returnToMenu();
+        return heldFar && cast && nearPack;
+    });
+    ok(auto, 'Voidcaller auto-casts Singularity on a nearby pack when charged');
     ok(pw.rises && pw.castle && pw.hero, 'power level scales castle + Voidcaller with waves and time');
     ok(pw.revive, 'Voidcaller revives faster with waves survived and deaths (min 4s)');
     ok(sell, 'selling refunds half the price paid; castle and hero can\'t be sold');
