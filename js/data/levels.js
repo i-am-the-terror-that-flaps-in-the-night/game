@@ -4,6 +4,8 @@ export const LEVELS = [
         ground: "#143d26",
         sky: "#0f172a",
         weather: "none",
+        terrain: { hills: [{ x: 1500, w: 600, h: 36 }], patches: [] },
+        hazard: null,
         waves: [
             { time: 10, enemies: [{ t: "rabble", c: 6 }] },
             { time: 35, enemies: [{ t: "rabble", c: 10 }] },
@@ -23,6 +25,8 @@ export const LEVELS = [
         ground: "#214a1b",
         sky: "#1e1b4b",
         weather: "none",
+        terrain: { hills: [{ x: 1150, w: 520, h: 55 }, { x: 2300, w: 600, h: 62 }], patches: [{ x0: 1700, x1: 1880, kind: "mud" }] },
+        hazard: { type: "rockslide", every: [28, 42] },
         waves: [
             { time: 10, enemies: [{ t: "rabble", c: 10 }] },
             {
@@ -55,6 +59,8 @@ export const LEVELS = [
         ground: "#2b4d1d",
         sky: "#172554",
         weather: "rain",
+        terrain: { hills: [{ x: 900, w: 640, h: 42 }], patches: [{ x0: 1350, x1: 1560, kind: "mud" }] },
+        hazard: { type: "lightning", every: [26, 40] },
         waves: [
             { time: 15, enemies: [{ t: "marauder", c: 8 }] },
             {
@@ -90,6 +96,8 @@ export const LEVELS = [
         ground: "#345920",
         sky: "#2e1065",
         weather: "rain",
+        terrain: { hills: [{ x: 1250, w: 560, h: 64 }, { x: 2600, w: 500, h: 50 }], patches: [{ x0: 1800, x1: 2020, kind: "marsh" }] },
+        hazard: { type: "lightning", every: [22, 34] },
         waves: [
             {
                 time: 15,
@@ -132,6 +140,8 @@ export const LEVELS = [
         ground: "#2c6213",
         sky: "#022c22",
         weather: "none",
+        terrain: { hills: [{ x: 1000, w: 500, h: 58 }, { x: 1900, w: 560, h: 68 }], patches: [{ x0: 1400, x1: 1560, kind: "marsh" }] },
+        hazard: { type: "rockslide", every: [26, 38] },
         waves: [
             {
                 time: 15,
@@ -172,6 +182,8 @@ export const LEVELS = [
         ground: "#45413c",
         sky: "#3b1703",
         weather: "snow",
+        terrain: { hills: [{ x: 1300, w: 700, h: 50 }], patches: [{ x0: 900, x1: 1080, kind: "snow" }, { x0: 1900, x1: 2120, kind: "snow" }] },
+        hazard: { type: "whiteout", every: [26, 38] },
         waves: [
             {
                 time: 20,
@@ -215,6 +227,8 @@ export const LEVELS = [
         ground: "#5c280b",
         sky: "#18181b",
         weather: "snow",
+        terrain: { hills: [{ x: 1100, w: 520, h: 60 }, { x: 2200, w: 640, h: 70 }], patches: [{ x0: 1550, x1: 1760, kind: "snow" }] },
+        hazard: { type: "whiteout", every: [22, 34] },
         waves: [
             { time: 10, enemies: [{ t: "rabble", c: 30 }] },
             {
@@ -259,6 +273,8 @@ export const LEVELS = [
         ground: "#3b0606",
         sky: "#000000",
         weather: "rain",
+        terrain: { hills: [{ x: 1400, w: 600, h: 56 }, { x: 2800, w: 700, h: 66 }], patches: [] },
+        hazard: { type: "fireVent", every: [18, 30], vents: [1000, 1750, 2150, 2500, 3300] },
         waves: [
             {
                 time: 20,

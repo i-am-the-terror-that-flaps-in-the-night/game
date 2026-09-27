@@ -4,6 +4,7 @@ import { dealDamage } from '../systems/combat.js';
 import { Projectile } from '../systems/projectile.js';
 import { clamp, lerp, particleQuality, rand, toRgba } from '../utils.js';
 import { GFX } from '../systems/graphics.js';
+import { groundAt } from '../systems/terrain.js';
 
 // --- BOSS: "Rustmaw, the Hollow Engine" ---------------------------------
 // A colossal eldritch locomotive — not a member of ENEMY_TYPES and not driven
@@ -30,7 +31,7 @@ const SMOKE_COLS = ['#f59e0b', '#b45309', '#7c3aed', '#6b7280', '#a16207'];
 
 export class Boss extends Entity {
     constructor(x, hp) {
-        super(x, CONFIG.GROUND_Y, TEAMS.ENEMY);
+        super(x, groundAt(x), TEAMS.ENEMY);
         // Combat identity. kind is deliberately NOT "building" so resolveDamage
         // takes the armour-class branch; `large` feeds the Catapult vsLarge mod.
         this.kind = 'boss';
@@ -119,29 +120,29 @@ export class Boss extends Entity {
         // The plating detonates outward: a white core flash, stacked shockwaves,
         // a spark storm, a shrapnel burst, twin steam geysers and a scorched
         // footprint — the whole field lurches with it.
-        const cx = this.x, cy = CONFIG.GROUND_Y - 48;
+        const cx = this.x, cy = this.y - 48;
         g.fx.flash(cx, cy, { r: 195, col: '#fffbeb', life: 22 });
         g.fx.flash(cx, cy, { r: 110, col: '#fde68a', life: 16 });
         g.fx.ring(cx, cy, { r0: 10, r1: 235, col: '#7c3aed', w: 6, life: 32 });
         g.fx.ring(cx, cy, { r0: 6, r1: 170, col: '#f59e0b', w: 4, life: 26 });
-        g.fx.ring(cx, CONFIG.GROUND_Y, { r0: 6, r1: 195, col: '#fbbf24', w: 3, life: 28 });
+        g.fx.ring(cx, this.y, { r0: 6, r1: 195, col: '#fbbf24', w: 3, life: 28 });
         for (let a = 0; a < 6; a++)
             g.fx.spark(cx, cy, (a / 6) * Math.PI * 2, { n: 5, spread: 0.5, len: 34, col: '#fed7aa' });
         g.particles.emit(cx, cy, 46, '#a855f7', 9, 4, 'float');
         g.particles.emit(cx, cy, 34, '#fbbf24', 8, 4, 'spark');
         g.particles.emit(cx, cy, 26, '#f59e0b', 6, 5, 'float');
         this._debris(cx, cy + 8, 18, 8);
-        this._steam(this.x - 30, CONFIG.GROUND_Y - 96, 8, '#e5e7eb', 3, 6);
-        this._steam(this.x + 30, CONFIG.GROUND_Y - 96, 8, '#e5e7eb', 3, 6);
+        this._steam(this.x - 30, this.y - 96, 8, '#e5e7eb', 3, 6);
+        this._steam(this.x + 30, this.y - 96, 8, '#e5e7eb', 3, 6);
         // Phase 3 is the hull-shedding reveal — give it an extra violet ring and
         // a spit of embers over the base burst.
         if (p >= 3) {
             g.fx.ring(cx, cy, { r0: 4, r1: 150, col: '#c084fc', w: 3, life: 30 });
             g.particles.emit(cx, cy, 22, '#f97316', 7, 3, 'spark');
         }
-        g.decals.add(cx, CONFIG.GROUND_Y, 'scorch', 84);
-        g.decals.add(cx - 54, CONFIG.GROUND_Y, 'scorch', 44);
-        g.decals.add(cx + 54, CONFIG.GROUND_Y, 'scorch', 44);
+        g.decals.add(cx, this.y, 'scorch', 84);
+        g.decals.add(cx - 54, this.y, 'scorch', 44);
+        g.decals.add(cx + 54, this.y, 'scorch', 44);
         g.bossFlash = Math.max(g.bossFlash || 0, 0.6);
     }
 
@@ -203,10 +204,19 @@ export class Boss extends Entity {
             if (this.summonCd <= 0) { this._summon(); this.summonCd = 340; }
             // The failing engine leaks sparks from its seams.
             if ((this.frame | 0) % 16 === 0)
-                game.particles.emit(this.x + rand(-42, 42), CONFIG.GROUND_Y - rand(42, 82), 2, '#f97316', 3, 2, 'spark');
+                game.particles.emit(this.x + rand(-42, 42), this.y - rand(42, 82), 2, '#f97316', 3, 2, 'spark');
         }
 
         this.x = clamp(this.x, 180, CONFIG.WORLD_WIDTH - 140);
+        this._followGround(dt);
+    }
+
+    // Ride the terrain: sit on the ground line and pitch the whole engine to
+    // the chord between its front and rear wheels (eased, so crests don't snap).
+    _followGround(dt) {
+        this.y = groundAt(this.x);
+        const want = Math.atan2(groundAt(this.x + 70) - groundAt(this.x - 70), 140);
+        this.tilt = (this.tilt || 0) + (want - (this.tilt || 0)) * Math.min(1, 0.15 * dt);
     }
 
     _patrol(dt, spd) {
@@ -239,11 +249,11 @@ export class Boss extends Entity {
         game.shake = Math.max(game.shake, 3 + rampT * 4);
         const f = this.facing, fr = this.frame | 0;
         if (fr % 2 === 0) {
-            game.particles.emit(this.x + f * 60, CONFIG.GROUND_Y - 30, 3, '#f59e0b', 5, 3, 'spark');
-            this._steam(this.x + f * 62, CONFIG.GROUND_Y - 12, 3, '#e5e7eb', 2.4, 4); // pressure venting
+            game.particles.emit(this.x + f * 60, this.y - 30, 3, '#f59e0b', 5, 3, 'spark');
+            this._steam(this.x + f * 62, this.y - 12, 3, '#e5e7eb', 2.4, 4); // pressure venting
         }
         if (fr % 10 === 0)
-            game.fx.ring(this.x - f * 8, CONFIG.GROUND_Y - 56, { r0: 68, r1: 8, col: '#f97316', w: 3, life: 14 });
+            game.fx.ring(this.x - f * 8, this.y - 56, { r0: 68, r1: 8, col: '#f97316', w: 3, life: 14 });
         if (this.modeT <= 0) this._beginCharge();
     }
 
@@ -257,10 +267,10 @@ export class Boss extends Entity {
         game.shake = Math.max(game.shake, 14);
         // Launch burst: forward flash, expanding ring, steam blast and shrapnel.
         const f = this.chargeDir;
-        game.fx.flash(this.x + f * 40, CONFIG.GROUND_Y - 40, { r: 72, col: '#f59e0b', life: 12 });
-        game.fx.ring(this.x, CONFIG.GROUND_Y - 30, { r0: 6, r1: 92, col: '#fb923c', w: 4, life: 18 });
-        this._steam(this.x + f * 60, CONFIG.GROUND_Y - 16, 8, '#e5e7eb', 3.5, 6);
-        this._debris(this.x - f * 40, CONFIG.GROUND_Y - 8, 6, 6);
+        game.fx.flash(this.x + f * 40, this.y - 40, { r: 72, col: '#f59e0b', life: 12 });
+        game.fx.ring(this.x, this.y - 30, { r0: 6, r1: 92, col: '#fb923c', w: 4, life: 18 });
+        this._steam(this.x + f * 60, this.y - 16, 8, '#e5e7eb', 3.5, 6);
+        this._debris(this.x - f * 40, this.y - 8, 6, 6);
     }
 
     _charge(dt) {
@@ -270,10 +280,10 @@ export class Boss extends Entity {
         // Rhythmic pounding shake on top of the sustained rumble.
         game.shake = Math.max(game.shake, 7 + (fr % 6 === 0 ? 4 : 0));
         // Scorched, smoking rail + grinding wheel-sparks and dust in its wake.
-        if (fr % 4 === 0) game.decals.add(this.x, CONFIG.GROUND_Y, 'scorch', rand(34, 52));
-        game.particles.emit(this.x - f * 28, CONFIG.GROUND_Y - 6, 3, '#6b5a44', 2.4, 4, 'fade');
-        game.particles.emit(this.x - f * 20, CONFIG.GROUND_Y - 10, 2, '#f97316', 4, 3, 'spark');
-        game.particles.emit(this.x - f * 70, CONFIG.GROUND_Y - 30, 2, SMOKE_COLS[fr % SMOKE_COLS.length], 3, 4, 'float');
+        if (fr % 4 === 0) game.decals.add(this.x, this.y, 'scorch', rand(34, 52));
+        game.particles.emit(this.x - f * 28, this.y - 6, 3, '#6b5a44', 2.4, 4, 'fade');
+        game.particles.emit(this.x - f * 20, this.y - 10, 2, '#f97316', 4, 3, 'spark');
+        game.particles.emit(this.x - f * 70, this.y - 30, 2, SMOKE_COLS[fr % SMOKE_COLS.length], 3, 4, 'float');
         // Crush anything in the locomotive's path — once per target per charge.
         const halfW = 76;
         const ahead = this.x + this.chargeDir * 40;
@@ -288,7 +298,7 @@ export class Boss extends Entity {
             if (b.active && !this._charged.has(b) && Math.abs(b.x - ahead) < halfW) {
                 this._charged.add(b);
                 dealDamage(this.chargeDmg, this._chargeSrc, b); // siege -> x2 vs buildings
-                this._crushFx(b.x, CONFIG.GROUND_Y - 24, true);
+                this._crushFx(b.x, this.y - 24, true);
             }
         }
         // Stop when the lunge has run its course or reached the castle line.
@@ -296,8 +306,8 @@ export class Boss extends Entity {
             this.mode = 'recover';
             this.modeT = 70;
             // Braking screech: showering sparks + a steam blow-off as it halts.
-            game.fx.spark(this.x + f * 40, CONFIG.GROUND_Y - 14, f < 0 ? Math.PI : 0, { n: 10, spread: 0.9, len: 26, col: '#fde68a' });
-            this._steam(this.x, CONFIG.GROUND_Y - 40, 10, '#e5e7eb', 3, 6);
+            game.fx.spark(this.x + f * 40, this.y - 14, f < 0 ? Math.PI : 0, { n: 10, spread: 0.9, len: 26, col: '#fde68a' });
+            this._steam(this.x, this.y - 40, 10, '#e5e7eb', 3, 6);
             game.shake = Math.max(game.shake, 10);
         }
     }
@@ -319,7 +329,7 @@ export class Boss extends Entity {
         const target = this._pickTarget();
         if (!target) return;
         const n = this.phase; // 1 / 2 / 3 cinders
-        const oy = CONFIG.GROUND_Y - 64;
+        const oy = this.y - 64;
         const ox = this.x + this.facing * 30;
         for (let i = 0; i < n; i++) {
             // Aim slightly apart so a volley fans across the target's line.
@@ -355,23 +365,23 @@ export class Boss extends Entity {
     _summon() {
         if (game.enemies.length >= 48) return; // shared swarm ceiling
         const x = clamp(this.x + rand(-50, 50), 300, CONFIG.WORLD_WIDTH - 100);
-        game.spawnEnemy('rabble', x, CONFIG.GROUND_Y);
-        game.particles.emit(x, CONFIG.GROUND_Y - 20, 16, '#a855f7', 4, 3, 'float');
-        game.fx.ring(x, CONFIG.GROUND_Y - 18, { r0: 4, r1: 28, col: '#7c3aed', w: 2, life: 16 });
+        game.spawnEnemy('rabble', x, groundAt(x));
+        game.particles.emit(x, this.y - 20, 16, '#a855f7', 4, 3, 'float');
+        game.fx.ring(x, this.y - 18, { r0: 4, r1: 28, col: '#7c3aed', w: 2, life: 16 });
     }
 
     _emitSmoke() {
         const f = this.facing;
         const fr = this.frame | 0;
         // Funnel: layered corrupted smoke (front of the boiler) + a rising ember.
-        const fx = this.x + f * 52, fy = CONFIG.GROUND_Y - 118;
+        const fx = this.x + f * 52, fy = this.y - 118;
         const col = SMOKE_COLS[fr % SMOKE_COLS.length];
         game.particles.emit(fx, fy, this.phase >= 3 ? 4 : 3, col, 1.8, 5, 'float');
         game.particles.emit(fx, fy - 6, 1, '#fb923c', 2.4, 2, 'spark');
         // Steam dome venting soft white steam.
-        if (fr % 2 === 0) this._steam(this.x + f * 20, CONFIG.GROUND_Y - 104, 2, '#e5e7eb', 1.4, 4);
+        if (fr % 2 === 0) this._steam(this.x + f * 20, this.y - 104, 2, '#e5e7eb', 1.4, 4);
         // Cylinder cocks: low steam jets by the front driving wheel.
-        if (fr % 5 === 0) this._steam(this.x + f * 66, CONFIG.GROUND_Y - 14, 3, '#cbd5e1', 1.9, 4);
+        if (fr % 5 === 0) this._steam(this.x + f * 66, this.y - 14, 3, '#cbd5e1', 1.9, 4);
     }
 
     // ── VFX helpers (visual only) ───────────────────────────────────────
@@ -396,7 +406,7 @@ export class Boss extends Entity {
         if (this._dustT > 0) return;
         this._dustT = heavy ? 3 : 7;
         const rx = this.x - this.facing * 46;
-        game.particles.emit(rx, CONFIG.GROUND_Y - 4, heavy ? 3 : 2, '#6b5a44', heavy ? 2.4 : 1.6, 4, 'fade');
+        game.particles.emit(rx, this.y - 4, heavy ? 3 : 2, '#6b5a44', heavy ? 2.4 : 1.6, 4, 'fade');
     }
 
     // Charge / crush impact burst: flash, shockwave ring, spark fan, shrapnel
@@ -407,7 +417,7 @@ export class Boss extends Entity {
         game.fx.spark(x, y, this.chargeDir < 0 ? Math.PI : 0, { n: big ? 9 : 6, spread: 1.1, len: 22, col: '#fed7aa' });
         this._debris(x, y, big ? 10 : 6, big ? 7 : 5);
         game.shake = Math.max(game.shake, big ? 12 : 8);
-        if (big) game.decals.add(x, CONFIG.GROUND_Y, 'scorch', 46);
+        if (big) game.decals.add(x, this.y, 'scorch', 46);
     }
 
     _updateDying(dt) {
@@ -432,14 +442,14 @@ export class Boss extends Entity {
             const reach = 70 + t * 55;
             const sz = lerp(0.7, 1.9, t);
             const bx = this.x + rand(-reach, reach);
-            const by = CONFIG.GROUND_Y - rand(10, 100);
+            const by = this.y - rand(10, 100);
             g.fx.flash(bx, by, { r: rand(46, 90) * sz, col: '#fde68a', life: 15 });
             g.fx.ring(bx, by, { r0: 4, r1: rand(46, 100) * sz, col: t > 0.5 ? '#fbbf24' : '#f59e0b', w: 3, life: 20 });
             g.particles.emit(bx, by, 22 * sz, SMOKE_COLS[(this.frame | 0) % SMOKE_COLS.length], 6, 4, 'float');
             g.particles.emit(bx, by, 8 * sz, '#fb923c', 5, 3, 'spark');
             this._debris(bx, by, Math.round(8 * sz), 7);
             this._steam(bx, by + 18, 5, '#e5e7eb', 3, 6);
-            g.decals.add(bx, CONFIG.GROUND_Y, 'scorch', rand(30, 62));
+            g.decals.add(bx, this.y, 'scorch', rand(30, 62));
             g.shake = Math.max(g.shake, 8 + t * 9);
             g.audio.playExplosion();
         }
@@ -447,8 +457,8 @@ export class Boss extends Entity {
         // Final over-pressure shudder: fire jets scream from every widening seam
         // and the hull rattles harder the closer it gets to letting go.
         if (t > 0.55 && (this.frame | 0) % 3 === 0) {
-            g.particles.emit(this.x + rand(-72, 72), CONFIG.GROUND_Y - rand(34, 104), 2, '#fde68a', 5, 2, 'spark');
-            this._steam(this.x + rand(-44, 44), CONFIG.GROUND_Y - rand(60, 112), 2, '#e5e7eb', 2.4, 5);
+            g.particles.emit(this.x + rand(-72, 72), this.y - rand(34, 104), 2, '#fde68a', 5, 2, 'spark');
+            this._steam(this.x + rand(-44, 44), this.y - rand(60, 112), 2, '#e5e7eb', 2.4, 5);
             g.shake = Math.max(g.shake, 6 + (t - 0.55) * 34);
         }
 
@@ -467,7 +477,7 @@ export class Boss extends Entity {
     // and a scorched crater. Fired once from _updateDying.
     _detonate() {
         const g = game;
-        const cx = this.x, cy = CONFIG.GROUND_Y - 44;
+        const cx = this.x, cy = this.y - 44;
         g.audio.bossRoar();
         g.audio.playExplosion();
         g.bossFlash = Math.max(g.bossFlash || 0, 1);   // full whiteout
@@ -478,7 +488,7 @@ export class Boss extends Entity {
         for (let i = 0; i < 5; i++)
             g.fx.ring(cx, cy, { r0: 6 + i * 14, r1: 250 + i * 90, col: i % 2 ? '#7c3aed' : '#f59e0b', w: 6 - i * 0.7, life: 30 + i * 8 });
         // Ground shockwave hugging the rails.
-        g.fx.ring(cx, CONFIG.GROUND_Y, { r0: 10, r1: 380, col: '#fbbf24', w: 4, life: 34 });
+        g.fx.ring(cx, this.y, { r0: 10, r1: 380, col: '#fbbf24', w: 4, life: 34 });
         // Omnidirectional spark storm.
         for (let a = 0; a < 8; a++)
             g.fx.spark(cx, cy, (a / 8) * Math.PI * 2, { n: 6, spread: 0.5, len: 48, col: '#fde68a' });
@@ -492,7 +502,7 @@ export class Boss extends Entity {
         // Steam geyser + a scorched crater stamped across the rails.
         this._steam(cx, cy + 20, 18, '#e5e7eb', 4, 8);
         for (let i = -2; i <= 2; i++)
-            g.decals.add(cx + i * 54, CONFIG.GROUND_Y, 'scorch', rand(50, 94));
+            g.decals.add(cx + i * 54, this.y, 'scorch', rand(50, 94));
     }
 
     // ── Rendering ───────────────────────────────────────────────────────
@@ -521,6 +531,7 @@ export class Boss extends Entity {
 
         ctx.save();
         ctx.translate(p.x, p.y + wob * z);
+        ctx.rotate(this.tilt || 0);
         ctx.scale(this.facing * z, z);
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';

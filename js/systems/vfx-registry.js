@@ -21,7 +21,7 @@
 // particle-count multiplier), color (fire/spark tint), shake (ambient amp
 // override), dir {x,y} (muzzle/recoil direction), ground (y for decals).
 
-import { CONFIG } from '../config.js';
+import { groundAt } from './terrain.js';
 
 /** @typedef {{x:number,y:number,scale?:number,power?:number,color?:string,shake?:number,dir?:{x:number,y:number},ground?:number}} FXCtx */
 
@@ -36,8 +36,8 @@ function distort(g, x, y, desc) {
     if (g.wgpu && typeof g.wgpu.addDistortion === "function") g.wgpu.addDistortion({ x, y, ...desc });
 }
 
-// Ground Y for a decal (defaults to the world ground line, like the old sites).
-function groundY(o) { return o.ground != null ? o.ground : CONFIG.GROUND_Y; }
+// Ground Y for a decal (defaults to the terrain surface under the effect).
+function groundY(o) { return o.ground != null ? o.ground : groundAt(o.x); }
 
 // One entry per named effect. Signature: (g, x, y, o) => void, where o is the
 // resolved options object (always has x,y; scale/power default to 1).
@@ -139,6 +139,7 @@ export class VFXRegistry {
         const o = opts || {};
         // Resolve defaults once so recipes can assume scale/power exist.
         const ctx = {
+            x,
             scale: o.scale != null ? o.scale : 1,
             power: o.power != null ? o.power : 1,
             color: o.color,

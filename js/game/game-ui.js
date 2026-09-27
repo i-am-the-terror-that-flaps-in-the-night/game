@@ -1,6 +1,7 @@
 import { CONFIG } from '../config.js';
 import { el } from '../ui/dom.js';
-import { btnId, costStr, formatTime } from '../utils.js';
+import { btnId, costStr, formatTime, toRgba } from '../utils.js';
+import { TERRAIN_PATCHES } from '../systems/terrain.js';
 import { defOf, describeMatchups, waveHint } from '../systems/combat.js';
 import { clearSaves } from '../systems/storage.js';
 import { BUILDING_TYPES } from '../data/buildings.js';
@@ -228,7 +229,9 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
                         return `${d2 ? d2.name : gr.t} ×${gr.c}`;
                     })
                     .join(" · ");
-                prevEl.innerHTML = `⚠ <span style="color:#fca5a5;">${str}</span><br><span style="color:#7dd3fc;font-size:11px;">${waveHint(groups)}</span>`;
+                const hz = this.hazards.def();
+                const hzLine = hz ? `<br><span style="color:#fdba74;font-size:11px;">⚠ ${hz.name}: ${hz.tip}</span>` : "";
+                prevEl.innerHTML = `⚠ <span style="color:#fca5a5;">${str}</span><br><span style="color:#7dd3fc;font-size:11px;">${waveHint(groups)}</span>${hzLine}`;
             } else prevEl.innerHTML = "";
         } else if (prevEl) prevEl.innerHTML = "";
         el("statKills").innerText = this.stats.kills;
@@ -299,6 +302,27 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
         cx.clearRect(0, 0, mw, mh);
 
         const sX = mw / CONFIG.WORLD_WIDTH;
+
+        // Terrain: hill silhouette along the bottom, slow patches as bands.
+        if (!this.terrain.isFlat()) {
+            cx.fillStyle = "rgba(148,163,184,0.28)";
+            cx.beginPath();
+            cx.moveTo(0, mh);
+            for (let x = 0; x <= mw; x += 3)
+                cx.lineTo(x, mh - 1 - this.terrain.heightAt(x / sX) * 0.28);
+            cx.lineTo(mw, mh);
+            cx.closePath();
+            cx.fill();
+        }
+        for (const p of this.terrain.patches) {
+            cx.fillStyle = toRgba(TERRAIN_PATCHES[p.kind].sheen, 0.45);
+            cx.fillRect(p.x0 * sX, mh - 3, (p.x1 - p.x0) * sX, 3);
+        }
+        // Hazards: pulsing warning dot where one is building / raging.
+        for (const h of this.hazards.list) {
+            cx.fillStyle = `rgba(248,113,113,${0.55 + 0.45 * Math.sin(this.frames * 0.3)})`;
+            cx.beginPath(); cx.arc(h.x * sX, mh - 20, 3, 0, Math.PI * 2); cx.fill();
+        }
 
         this.buildings.forEach((b) => {
             if (!b.active) return;

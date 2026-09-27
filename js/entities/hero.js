@@ -137,7 +137,7 @@ export class Hero extends Unit {
             : Number.isFinite(worldX) ? worldX
             : this.x + this.facing * 200;
         this.voidCharge = 0;                 // spend the whole meter
-        // Hero already sits on CONFIG.GROUND_Y, so this.y is the ground line.
+        // Hero follows the terrain (groundAt), so this.y is the ground line.
         g.singularities.push(new Singularity(tx, this.y, def));
         if (g.audio) g.audio.playMagic();
         return true;

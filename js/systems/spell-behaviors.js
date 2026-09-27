@@ -1,6 +1,7 @@
 import { CONFIG } from '../config.js';
 import { SPELLS } from '../data/spells.js';
 import { dist, rand } from '../utils.js';
+import { groundAt } from './terrain.js';
 
 // --- SPELL EFFECTS ---
 // One entry per spell id. SpellManager.cast() runs the shared preamble (spend
@@ -26,7 +27,7 @@ export const SPELL_BEHAVIORS = {
             // Composed explosion (fireball + sparks + debris + smoke + shockwave
             // + dynamic light + camera punch + scorch decal). Scale tracks the
             // spell radius so the crater/light match the blast size.
-            game.vfx.spawn("explosion", w.x, CONFIG.GROUND_Y, {
+            game.vfx.spawn("explosion", w.x, groundAt(w.x), {
                 scale: sp.radius / 90,
                 power: 1.6,
                 shake: 25,
@@ -37,7 +38,7 @@ export const SPELL_BEHAVIORS = {
                 (1 + (game.upgrades.magic_damage || 0)); // Fix #9
             game.enemies.forEach((en) => {
                 if (
-                    dist(w.x, CONFIG.GROUND_Y, en.x, en.y) <
+                    dist(w.x, groundAt(w.x), en.x, en.y) <
                     sp.radius
                 ) {
                     en.takeDamage(pwr, "strong");

@@ -57,7 +57,7 @@ export class Singularity {
 
     /**
      * @param {number} x world x
-     * @param {number} y world y (usually CONFIG.GROUND_Y)
+     * @param {number} y world y (usually groundAt(x))
      * @param {import('../data/heroes.js').HEROES['voidcaller']['ability']} def ability def
      */
     constructor(x, y, def) {

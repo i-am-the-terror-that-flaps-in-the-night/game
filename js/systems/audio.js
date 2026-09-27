@@ -64,6 +64,34 @@ export class AudioEngine {
     playCoin() {
         this.playTone(1200, 0.1, "sine", 0.05);
     }
+    // ── Environmental hazard cues ───────────────────────────────────────
+    // Rising two-note alarm as a hazard telegraphs.
+    hazardWarn() {
+        this.playTone(520, 0.12, "triangle", 0.06);
+        this.playTone(700, 0.16, "triangle", 0.06, 0.14);
+    }
+    // Sharp crack then a rolling low boom.
+    thunder() {
+        this.playTone(1400, 0.06, "square", 0.08);
+        this.playTone(70, 1.1, "sawtooth", 0.2, 0.03);
+        this.playTone(45, 1.4, "square", 0.12, 0.12);
+    }
+    // Grinding rockfall rumble.
+    rumble() {
+        this.playTone(58, 0.9, "sawtooth", 0.16);
+        this.playTone(84, 0.6, "square", 0.08, 0.1);
+        this.playTone(40, 1.0, "sawtooth", 0.1, 0.3);
+    }
+    // Howling wind swell.
+    gust() {
+        this.playTone(330, 0.9, "sine", 0.06);
+        this.playTone(247, 1.2, "sine", 0.05, 0.2);
+    }
+    // Deep volcanic whoosh.
+    ventRoar() {
+        this.playTone(90, 0.7, "sawtooth", 0.18);
+        this.playTone(160, 0.35, "square", 0.08, 0.05);
+    }
     // ── Boss "Rustmaw" cues ─────────────────────────────────────────────
     // Ominous inbound-warning swell.
     bossWarning() {

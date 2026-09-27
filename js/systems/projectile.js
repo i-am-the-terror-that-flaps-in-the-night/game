@@ -4,6 +4,7 @@ import { PROJECTILE_TYPES } from '../data/projectiles.js';
 import { dist, rand, shade } from '../utils.js';
 import { GFX } from './graphics.js';
 import { GLRenderer } from './gl-renderer.js';
+import { groundAt } from './terrain.js';
 
 // --- PROJECTILES & MAGIC ---
 export class Projectile {
@@ -27,6 +28,7 @@ export class Projectile {
             siege: siege || false,
             team: team,
             isUnit: o.isUnit || false,
+            fromY: o.fromY,
         };
 
         this.tX = target.x;
@@ -73,7 +75,9 @@ export class Projectile {
                     this.arcH +
                 (this.tY - this.startY) * this.arcP;
 
-            if (this.arcP >= 1 || this.y >= CONFIG.GROUND_Y) {
+            // Only the descending half can strike the ground, so a lob launched
+            // from a slope doesn't clip the hillside it starts on.
+            if (this.arcP >= 1 || (this.arcP > 0.5 && this.y >= groundAt(this.x))) {
                 // Fix #2: Hit properly
                 if (this.t && this.t.hp > 0 && !this.aoe)
                     this.hit(this.t);
@@ -81,7 +85,7 @@ export class Projectile {
             }
         } else {
             this.y += this.vy * dt;
-            if (this.y > CONFIG.GROUND_Y) this.hitFloor();
+            if (this.y > groundAt(this.x) + 4) this.hitFloor();
         }
 
         // Distance-sampled history (not per-frame): appends only after moving a
@@ -106,7 +110,7 @@ export class Projectile {
             this.active = false;
     }
     hitFloor() {
-        this.y = CONFIG.GROUND_Y;
+        this.y = groundAt(this.x);
         if (this.aoe) this.explode();
         else {
             this.active = false;
@@ -124,7 +128,7 @@ export class Projectile {
     hit(target) {
         this.active = false;
         if (this.summon && this.team === TEAMS.ENEMY) {
-            game.spawnEnemy(NECRO_MINION_TYPE, this.x, CONFIG.GROUND_Y);
+            game.spawnEnemy(NECRO_MINION_TYPE, this.x, groundAt(this.x));
             game.particles.emit(
                 this.x,
                 this.y,
@@ -197,7 +201,7 @@ export class Projectile {
         game.fx.flash(this.x, this.y, { r: this.aoe * 0.8, col: shade(this.col, 0.4), life: 12 });
         game.decals.add(
             this.x,
-            CONFIG.GROUND_Y,
+            groundAt(this.x),
             "scorch",
             this.aoe * 0.8,
         );
