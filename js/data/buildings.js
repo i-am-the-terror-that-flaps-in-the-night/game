@@ -6,7 +6,7 @@ export const BUILDING_TYPES = {
         width: 160,
         height: 140,
         cost: {},
-        desc: "Your stronghold. Generates gold/iron/crystal per sec. Its battlements scorch anything that reaches the gate — short range, but merciless — and its skyward flak-fire reaches far to blast Dragons and other airborne foes out of the sky. An always-on orbital strike cannon vaporizes any enemy pack that comes within ~1100 px.",
+        desc: "Your stronghold. Generates gold/iron/crystal per sec. Its battlements scorch anything that reaches the gate — short range, but merciless — and its skyward flak-fire reaches far to blast Dragons and other airborne foes out of the sky. An always-on orbital laser burns down any enemy that comes within ~1100 px.",
         income: { g: 1, i: 0.5, c: 0.85 },
         dmg: 8,
         range: 160,
