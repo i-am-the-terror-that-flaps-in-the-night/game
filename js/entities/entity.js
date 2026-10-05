@@ -1,5 +1,17 @@
 import { HIT_FLASH_FRAMES, HIT_FLINCH_FRAMES, TEAMS } from '../config.js';
 import { rand } from '../utils.js';
+import { PERF } from '../systems/perf.js';
+
+// Floating combat text, capped per entity (anti-lag): beyond the cap the oldest
+// number is dropped. In a late-endless brawl the orbital beam alone ticks every
+// enemy ~10×/s; uncapped, each body carried 7+ live numbers, every one a
+// strokeText+fillText per frame. Cap 0 (Damage Numbers: Off) records nothing.
+function pushDmgText(list, t) {
+    const cap = PERF.dmgCap;
+    if (cap <= 0) return;
+    list.push(t);
+    if (list.length > cap) list.splice(0, list.length - cap);
+}
 
 // --- ENTITIES ---
 export class Entity {
@@ -27,7 +39,7 @@ export class Entity {
             : tag === "magic" ? "#c084fc"
             : "#ef4444";
         const sz = tag === "strong" ? 24 : tag === "weak" ? 12 : 15;
-        this.dmgTexts.push({
+        pushDmgText(this.dmgTexts, {
             v: Math.floor(amt),
             x: rand(-12, 12),
             y: -30,
@@ -41,7 +53,7 @@ export class Entity {
         if (this.hp <= 0) return;
         const actual = Math.min(this.maxHp - this.hp, amt);
         this.hp += actual;
-        this.dmgTexts.push({
+        pushDmgText(this.dmgTexts, {
             v: "+" + Math.floor(actual),
             x: 0,
             y: -45,
@@ -71,29 +83,46 @@ export class Entity {
             bh - 2,
         );
     }
-    drawDmg(ctx, cam, dt) {
-        const px = cam.sx(this.x);
-        const py = cam.sy(this.y);
+    // Age floating texts (split from drawing so off-screen, culled entities
+    // still expire theirs — the removal filter keeps a dead entity alive until
+    // its texts are gone).
+    ageDmg(dt) {
         for (let i = this.dmgTexts.length - 1; i >= 0; i--) {
             const d = this.dmgTexts[i];
             d.life -= dt;
             d.y -= 0.8 * dt;
-            if (d.life <= 0) {
-                this.dmgTexts.splice(i, 1);
-                continue;
-            }
-            ctx.fillStyle = d.c;
-            ctx.globalAlpha = Math.min(1, d.life / 15);
-            ctx.font = `900 ${d.s * cam.z}px system-ui`;
+            if (d.life <= 0) this.dmgTexts.splice(i, 1);
+        }
+    }
+    drawDmg(ctx, cam, dt) {
+        this.ageDmg(dt);
+        const n = this.dmgTexts.length;
+        // Per-frame budget across all entities (anti-lag): past it, texts keep
+        // aging but aren't drawn this frame. strokeText+fillText is costly.
+        if (n && PERF.dmgLeft > 0) {
+            PERF.dmgLeft -= n;
+            const px = cam.sx(this.x);
+            const py = cam.sy(this.y);
+            // Shared state set once per entity; font only when the size changes.
             ctx.textAlign = "center";
             ctx.strokeStyle = "rgba(0,0,0,0.8)";
             ctx.lineWidth = 4 * cam.z;
-            ctx.strokeText(
-                d.v,
-                px + d.x * cam.z,
-                py + d.y * cam.z,
-            );
-            ctx.fillText(d.v, px + d.x * cam.z, py + d.y * cam.z);
+            let fs = -1;
+            for (let i = n - 1; i >= 0; i--) {
+                const d = this.dmgTexts[i];
+                ctx.fillStyle = d.c;
+                ctx.globalAlpha = Math.min(1, d.life / 15);
+                if (d.s !== fs) {
+                    fs = d.s;
+                    ctx.font = `900 ${fs * cam.z}px system-ui`;
+                }
+                ctx.strokeText(
+                    d.v,
+                    px + d.x * cam.z,
+                    py + d.y * cam.z,
+                );
+                ctx.fillText(d.v, px + d.x * cam.z, py + d.y * cam.z);
+            }
         }
         ctx.globalAlpha = 1;
     }

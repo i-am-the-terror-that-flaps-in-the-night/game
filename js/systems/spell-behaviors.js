@@ -42,7 +42,7 @@ export const SPELL_BEHAVIORS = {
                     dist(w.x, groundAt(w.x), en.x, en.y) <
                     sp.radius
                 ) {
-                    en.takeDamage(pwr, "strong");
+                    en.takeDamage(pwr * (en.merged || 1), "strong"); // merged = that many bodies caught
                     // Airborne foes sit above the impact — throw fire up to
                     // them so the strike clearly connects, not just the ground.
                     if (en.flying) {
@@ -69,7 +69,7 @@ export const SPELL_BEHAVIORS = {
                 );
                 game.enemies.forEach((en) => {
                     if (!terrain.inTunnel(en.x) && dist(w.x, wy, en.x, en.y) < sp.radius) {
-                        en.takeDamage(12, "magic");
+                        en.takeDamage(12 * (en.merged || 1), "magic");
                         en.x = Math.min(
                             CONFIG.WORLD_WIDTH - 50,
                             en.x + en.speed * 0.9,

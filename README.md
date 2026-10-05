@@ -38,6 +38,7 @@ js/
     waves.js          WaveManager, EndlessWave
     achievements.js   ACHIEVEMENTS + AchievementSystem
     meta.js           MetaProgression: Renown currency + permanent unit unlocks (War Council)
+    perf.js           Anti-lag settings, adaptive load-shedding governor, FPS limiter
   game/               The Game class, split by concern
     game.js           Core state, save/load, update loop, victory/defeat
     game-flow.js      Campaign/endless/level flow (mixin)
@@ -123,6 +124,48 @@ Chrome, drives VFX-heavy events, asserts no GPU validation errors, screenshots t
 (`tools/smoke.mjs`) runs without WebGPU and asserts the fallback path stays green.
 Type definitions come from the `@webgpu/types` **devDependency** (typecheck only;
 zero runtime cost).
+
+## Performance & anti-lag
+
+Late endless mode fields hundreds of enemies, so performance work is split
+between **always-on optimizations** (invisible, no setting) and an **adaptive
+anti-lag system** the player controls from **Settings → Performance & Anti-Lag**
+(also reachable mid-run from the ⚙ HUD button, which pauses the game).
+
+**Always on**
+- Off-screen culling: units, enemies, projectiles, decals, particles and
+  effects outside the view are skipped (culled entities still age their damage
+  numbers so dead bodies are removed on time).
+- Algorithmic fixes: the orbital laser's target pick is a sorted sliding window
+  (was all-pairs O(n²)); idle healers re-check every few frames instead of
+  scanning every ally each frame; cheap range checks run before tunnel scans.
+- Allocation fixes: weapon/shield/hit-flash gradients are cached instead of
+  rebuilt per unit per frame; HUD text/HTML is only rewritten when it changes.
+- Caps: damage numbers per entity and per frame, live effects, decals,
+  Cinematic particles (was uncapped). Projectiles sub-step big frame steps so
+  low FPS or the 30 FPS limit can't make bolts skip past targets.
+
+**Settings** (`js/systems/perf.js`, stored under `sd_perf_v1`, separate from
+the main save so its format is unchanged and "Reset All Saves" keeps them)
+- **Anti-Lag** Off / **Auto** / Max. Auto measures FPS in ~1 s windows and steps a
+  shedding level 0→3 when frames run slow; each step must prove it helped or
+  it's undone, and it steps back down once frames recover. Levels progressively
+  cut particles, effects, decals and damage numbers; simplify crowds; drop
+  shadows/post-FX/distortion, dynamic lights, scenery detail, weather and HUD
+  glass blur; and lower render and overlay resolution. Max pins level 3.
+- **Horde merge** (part of Anti-Lag, endless only): with 150+ live enemies a new
+  spawn folds into a nearby enemy of the same type (up to ×4, shown as a "×N"
+  badge). HP, damage, healing, bounty, drops and kill count add up, and area
+  damage scales by the merge count, so the threat and the payout match the
+  bodies it replaced.
+- **FPS Limit** Unlimited / 120 / **60** / 30. Skips vsyncs on high-refresh
+  screens; the simulation runs on real elapsed time, so game speed is unchanged.
+- **Render Resolution** Auto / 100% / 75% / 50%.
+- **Damage Numbers** All / Reduced / Off.
+- **Crowd Detail** Auto / Full / Simple. Simple draws common humanoids as cheap
+  stick figures (~5 canvas calls each instead of ~35); Auto switches to them
+  when the screen is crowded.
+- **Show FPS**: overlay with FPS, frame CPU time, anti-lag level and foe count.
 
 ## Strategy systems
 

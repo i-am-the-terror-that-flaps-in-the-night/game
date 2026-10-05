@@ -35,7 +35,7 @@ export const HAZARD_TYPES = {
         tip: "Lightning strikes where the armies clash — watch for the crackling ground marks and pull back.",
         strike(g, h) {
             const gy = groundAt(h.x);
-            for (const e of victims(g, h.x, this.r, true)) dealDamage(40, src("magic"), e);
+            for (const e of victims(g, h.x, this.r, true)) dealDamage(40, src("magic"), e, true);
             for (let i = 0; i < 3; i++)
                 g.lightningArcs.push({ x1: h.x + rand(-60, 60), y1: gy - 720, x2: h.x + rand(-10, 10), y2: gy, life: 14 });
             g.fx.flash(h.x, gy - 20, { r: 90, col: "#e0f2fe", life: 12 });
@@ -75,7 +75,7 @@ export const HAZARD_TYPES = {
                 for (const e of victims(g, r.x, r.sz + 12)) {
                     if (r.hit.has(e)) continue;
                     r.hit.add(e);
-                    dealDamage(35, src("blunt"), e);
+                    dealDamage(35, src("blunt"), e, true);
                     g.fx.flash(e.x, e.y - 20, { r: 22, col: "#fde68a", life: 8 });
                 }
                 // Stalled out (or left the field): shatter.
@@ -131,7 +131,7 @@ export const HAZARD_TYPES = {
             h.frostT = (h.frostT || 0) - dt;
             if (h.frostT <= 0) {
                 h.frostT = 60;
-                for (const e of victims(g, h.x, this.r)) dealDamage(8, src("magic"), e);
+                for (const e of victims(g, h.x, this.r)) dealDamage(8, src("magic"), e, true);
             }
             if (Math.floor(h.age) % 3 === 0)
                 g.particles.emit(h.x + rand(-this.r, this.r), groundAt(h.x) - rand(10, 90), 1, "#f8fafc", 2.5, 3, "float");
@@ -168,7 +168,7 @@ export const HAZARD_TYPES = {
         tip: "The ground here is molten — fire vents erupt without mercy. Keep troops off the glowing cracks.",
         strike(g, h) {
             const gy = groundAt(h.x);
-            for (const e of victims(g, h.x, this.r, true)) dealDamage(45, src("magic"), e);
+            for (const e of victims(g, h.x, this.r, true)) dealDamage(45, src("magic"), e, true);
             g.fx.flash(h.x, gy - 40, { r: 80, col: "#fdba74", life: 14 });
             g.fx.ring(h.x, gy, { r0: 6, r1: this.r * 1.4, col: "#f97316", w: 4, life: 18 });
             g.particles.emit(h.x, gy - 6, 26, "#f97316", 7, 4, "spark");

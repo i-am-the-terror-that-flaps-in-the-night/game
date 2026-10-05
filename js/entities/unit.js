@@ -141,6 +141,10 @@ export class Unit extends Entity {
                     this.healTimer = this.healCd;
                     this.state = "attack";
                     this.cdTimer = 30;
+                } else {
+                    // Nobody hurt: re-check shortly instead of re-scanning every
+                    // ally every frame (late endless stacks dozens of shamans).
+                    this.healTimer = 5;
                 }
             }
         }
@@ -157,7 +161,8 @@ export class Unit extends Entity {
         const inReach = (e) => (isPlayer ? e.x <= reach : Math.abs(e.x - this.x) <= reach);
 
         // Fix #4: ground units ignore airborne foes; tunnels block shots.
-        let res = nearestX(this.x, enemies, (e) => e.hp > 0 && this._canHit(e) && inReach(e));
+        // Cheap reach test first: _canHit walks the tunnel list for ranged/flyers.
+        let res = nearestX(this.x, enemies, (e) => e.hp > 0 && inReach(e) && this._canHit(e));
         let tgt = res.tgt,
             cD = res.d;
         if (!tgt) {
@@ -297,7 +302,8 @@ export class Unit extends Entity {
         this.stageT = (this.stageT || 0) + dt;
         if ((this.frame | 0) % 15 === 0) {
             let n = 0;
-            for (const e of game.enemies) if (e.active && Math.abs(e.x - this.x) < 160) n++;
+            // A horde-merged enemy counts as the bodies it absorbed.
+            for (const e of game.enemies) if (e.active && Math.abs(e.x - this.x) < 160) n += e.merged || 1;
             this._pack = n;
         }
         const shrine = this.wp.kind === "shrine";
@@ -380,7 +386,7 @@ export class Unit extends Entity {
                         t.hp > 0 &&
                         dist(this.x, this.y, t.x, t.y) < this.aoe
                     ) {
-                        dealDamage(this.dmg * 0.5, src, t);
+                        dealDamage(this.dmg * 0.5, src, t, true);
                         t.recoil = (t.x > this.x ? 1 : -1) * 4;
                     }
                 // Ground-slam shockwave
@@ -530,15 +536,18 @@ export class Unit extends Entity {
             35 * this.scale,
         );
         if (this.team === TEAMS.ENEMY) {
+            // A horde-merged enemy (anti-lag) stands in for `merged` bodies: its
+            // bounty was summed on absorb; kills and drops scale here.
+            const mN = this.merged || 1;
             game.addGold(this.bounty);
-            game.stats.kills++;
+            game.stats.kills += mN;
             game.audio.playCoin();
             
             // Crystal / iron drops (per-enemy table lives in data/enemies.js)
             const drops = ENEMY_TYPES[this.type].drops;
             if (drops) {
-                if (drops.crystal) game.crystal += drops.crystal;
-                if (drops.iron) game.iron += drops.iron;
+                if (drops.crystal) game.crystal += drops.crystal * mN;
+                if (drops.iron) game.iron += drops.iron * mN;
             }
             // Dragon kill flag for achievement
             if (this.type === "dragon") game._dragonKilled = true;

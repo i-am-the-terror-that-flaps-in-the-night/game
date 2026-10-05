@@ -2,6 +2,7 @@ import { RESOURCES } from '../config.js';
 import { SPELLS } from '../data/spells.js';
 import { SPELL_BEHAVIORS } from './spell-behaviors.js';
 import { cap } from '../utils.js';
+import { el, setText } from '../ui/dom.js';
 import { groundAt } from './terrain.js';
 
 export class SpellManager {
@@ -70,13 +71,13 @@ export class SpellManager {
             (RESOURCES.MANA_REGEN + this.dynamicRegen) *
             (1 + (game.upgrades.mana ? 0.5 : 0));
         this.mana = Math.min(this.maxMana, this.mana + regen * dt);
-        document.getElementById("manaDisplay").innerText =
-            Math.floor(this.mana) + "/" + this.maxMana;
+        // Runs every frame: cached lookups, and the text only rewrites on change.
+        setText(el("manaDisplay"), Math.floor(this.mana) + "/" + this.maxMana);
 
-        Object.keys(SPELLS).forEach((s) => {
-            const btn = document.getElementById("btnSpell" + cap(s));
+        for (const s in SPELLS) {
+            const btn = el("btnSpell" + cap(s));
             if (btn) btn.disabled = this.mana < SPELLS[s].cost;
-        });
+        }
     }
     select(spellId) {
         if (this.mana < SPELLS[spellId].cost) {

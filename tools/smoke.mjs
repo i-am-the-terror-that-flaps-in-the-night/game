@@ -385,6 +385,82 @@ try {
     ok(true, 'castle destruction triggers defeat');
     ok(await page.evaluate(() => !document.getElementById('gameOver').classList.contains('hidden')), 'game-over overlay shown');
 
+    // ── 4b. Anti-lag (js/systems/perf.js) ────────────────────────────────
+    console.log('\n[anti-lag]');
+    await page.evaluate(() => game.returnToMenu());
+    await poll(`game.state === 'menu'`);
+    const perf = await page.evaluate(() => {
+        const g = window.game, r = {};
+        const pick = (id, v) => { const s = document.getElementById(id); s.value = v; s.dispatchEvent(new Event('change')); };
+        // Settings apply + persist under their own key.
+        pick('perfAntiLag', 'max');
+        pick('perfDmgNums', 'reduced');
+        pick('perfShowFps', '1');
+        const saved = JSON.parse(localStorage.getItem('sd_perf_v1') || 'null');
+        r.persist = !!saved && saved.antiLag === 'max' && saved.dmgNums === 'reduced' && saved.showFps === true;
+        r.max = g.perf.level === 3 && g.perf.dmgCap === 0 && document.body.classList.contains('perf-lite')
+            && !document.getElementById('fpsMeter').classList.contains('is-hidden');
+        pick('perfAntiLag', 'auto');
+        r.auto = g.perf.level === 0 && g.perf.dmgCap === 2 && !document.body.classList.contains('perf-lite');
+        pick('perfShowFps', '0');
+        // Damage numbers are capped per entity.
+        g.mode = 'campaign';
+        g.loadLvl(0);
+        g.spawnEnemy('ogre', 5000);
+        const og = g.enemies[g.enemies.length - 1];
+        for (let i = 0; i < 10; i++) og.takeDamage(1);
+        r.dmgCap = og.dmgTexts.length === 2;
+        pick('perfDmgNums', 'all');
+        // Off-screen culling still ages a dead enemy's damage numbers, so the
+        // removal filter drops it.
+        g.camera.x = g.camera.tX = 0;
+        og.takeDamage(1e9);
+        for (let i = 0; i < 60; i++) g.draw(1);
+        g.update(1);
+        r.culled = og.dmgTexts.length === 0 && !g.enemies.includes(og);
+        // Orbital laser locks onto the densest pack.
+        for (let i = 0; i < 3; i++) g.spawnEnemy('rabble', 700 + i * 5);
+        for (let i = 0; i < 9; i++) g.spawnEnemy('rabble', 1000 + i * 8);
+        const c = g.orbital.castle(), best = g.orbital._pick(c);
+        r.orbital = !!best && best.x >= 1000;
+        g.returnToMenu();
+        return r;
+    });
+    ok(perf.persist, 'anti-lag settings persist under sd_perf_v1');
+    ok(perf.max && perf.auto, 'Anti-Lag Max sheds to level 3 (perf-lite, no dmg numbers); Auto resets to 0');
+    ok(perf.dmgCap, 'damage numbers are capped per entity (Reduced = 2)');
+    ok(perf.culled, 'culled off-screen enemies still expire damage text and get removed');
+    ok(perf.orbital, 'orbital target pick finds the densest pack');
+
+    await page.evaluate(() => game.startEndless());
+    await poll(`game.state === 'playing' && game.mode === 'endless'`);
+    const merge = await page.evaluate(() => {
+        const g = window.game, r = {};
+        for (let i = 0; i < 160; i++) g.spawnEnemy('rabble', 6000 + (i % 40) * 50);
+        const n0 = g.enemies.length;
+        const host = g.enemies.reduce((a, e) => (Math.abs(e.x - 6010) < Math.abs(a.x - 6010) ? e : a));
+        const hp0 = host.maxHp, b0 = host.bounty;
+        g.spawnEnemy('rabble', 6010);
+        r.merged = g.enemies.length === n0 && host.merged === 2 && Math.abs(host.maxHp - hp0 * 2) < 1e-6 && host.bounty === b0 * 2;
+        g.perf.merge = false;                   // Anti-Lag Off disables merging
+        g.spawnEnemy('rabble', 6010);
+        r.off = g.enemies.length === n0 + 1;
+        g.perf.merge = true;
+        return r;
+    });
+    ok(merge.merged, 'horde merge folds a spawn into a nearby same-type enemy (HP/bounty summed)');
+    ok(merge.off, 'horde merge is disabled when Anti-Lag is Off');
+    const pause = await page.evaluate(() => {
+        const g = window.game;
+        g.setSpeed(2);
+        g.openSettings();
+        const paused = g.state === 'paused';
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape' }));
+        const closed = document.getElementById('settingsOverlay').classList.contains('hidden');
+        return paused && closed && g.state === 'playing' && g.ts === 2;
+    });
+    ok(pause, 'in-game settings pause the run; Escape closes and resumes at the same speed');
+
     // ── 5. Save-format byte-compat ───────────────────────────────────────
     console.log('\n[save-format]');
     await page.evaluate((fx) => {

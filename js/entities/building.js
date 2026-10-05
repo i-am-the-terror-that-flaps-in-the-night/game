@@ -86,10 +86,11 @@ export class Building extends Entity {
                         : game.units;
                 // Flyers can be engaged from farther out (flak-fire); ground
                 // targets use the normal, shorter range. Nearest eligible foe.
+                // Range test before the tunnel scan (cheap check first).
                 const { tgt: c } = nearestX(this.x, trgs, (t, d) =>
                     t.hp > 0 &&
-                    !terrain.inTunnel(t.x) && // tunnel roofs shelter from tower fire
-                    d <= (t.flying && this.flyRange ? this.flyRange : this.range),
+                    d <= (t.flying && this.flyRange ? this.flyRange : this.range) &&
+                    !terrain.inTunnel(t.x), // tunnel roofs shelter from tower fire
                 );
                 if (c) {
                     // The castle fires a continuous machine-gun raycast beam; all

@@ -54,6 +54,13 @@ export class Projectile {
         this.arcP = 0;
     }
     update(dt) {
+        // A big step (low FPS or the 30 FPS limit, × game speed) could carry a
+        // fast bolt clean past its PROJ_HIT_RADIUS window, so split it into
+        // sub-steps of ≤ 24px. At 60 fps / 1× speed this is one step, as before.
+        const n = Math.min(4, Math.ceil((this.sp * dt) / 24)) || 1;
+        for (let i = 0; i < n && this.active; i++) this._step(dt / n);
+    }
+    _step(dt) {
         if (!this.active) return;
 
         if (this.t && this.t.hp > 0) {
@@ -187,10 +194,9 @@ export class Projectile {
                       ),
                   ];
         for (const t of targets) {
+            if (dist(this.x, this.y, t.x, t.y) >= this.aoe) continue;
             if (terrain.inTunnel(t.x) !== this.fromTunnel) continue; // sheltered
-            if (dist(this.x, this.y, t.x, t.y) < this.aoe) {
-                dealDamage(this.dmg * 0.6, this.src, t);
-            }
+            dealDamage(this.dmg * 0.6, this.src, t, true);
         }
         game.particles.emit(
             this.x,

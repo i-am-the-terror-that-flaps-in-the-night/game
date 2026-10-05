@@ -289,13 +289,15 @@ export class WGPURenderer {
         });
     }
 
-    /** Match the swapchain backing store to the viewport. */
-    resize(w, h) {
+    /** Match the swapchain backing store to the viewport.
+     *  `maxDpr` caps the device-pixel ratio (GFX.overlayDpr; sticky). */
+    resize(w, h, maxDpr = this.maxDpr || 2) {
         this.w = w;
         this.h = h;
+        this.maxDpr = maxDpr;
         if (!this.ok && !this.device) return; // remember size for post-init resize
         if (!this.canvas) return;
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
         this.canvas.width = Math.round(w * dpr);
         this.canvas.height = Math.round(h * dpr);
         this._dpr = dpr;

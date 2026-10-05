@@ -33,6 +33,7 @@ export function lowestHpAllyInRange(self, allies, range) {
             a !== self &&
             a.hp > 0 &&
             a.hp / a.maxHp < lowHp &&
+            Math.abs(a.x - self.x) < range && // cheap reject before the sqrt
             dist(self.x, self.y, a.x, a.y) < range
         ) {
             lowHp = a.hp / a.maxHp;

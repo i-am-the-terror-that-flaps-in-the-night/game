@@ -141,6 +141,14 @@ export const inputMethods = /** @type {ThisType<any>} */ ({
 
         // Keyboard
         window.addEventListener("keydown", (e) => {
+            // Settings open (from the menu or the in-game ⚙ button): keys don't
+            // reach the game — no hotkey buys, no pause toggle resuming the run
+            // under the dialog. Escape closes it.
+            const so = document.getElementById("settingsOverlay");
+            if (so && !so.classList.contains("hidden")) {
+                if (e.key === "Escape") this.closeSettings();
+                return;
+            }
             // Camera panning + pause toggle work in BOTH playing and paused
             // states (so you can scroll the field while paused). Record held
             // pan keys; updateCamera() pans per-frame — smooth from frame 1, no
@@ -182,6 +190,11 @@ export const inputMethods = /** @type {ThisType<any>} */ ({
             refreshGraphics();
             this.resize();
         });
+        // Anti-lag settings apply (and persist) the moment they change.
+        for (const id of ["perfAntiLag", "perfFpsCap", "perfRes", "perfDmgNums", "perfCrowd", "perfShowFps"]) {
+            const sel = document.getElementById(id);
+            if (sel) sel.addEventListener("change", () => this.onPerfSetting());
+        }
 
         // Minimap
         const mm = document.getElementById("minimap");

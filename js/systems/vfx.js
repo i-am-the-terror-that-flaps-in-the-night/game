@@ -1,5 +1,6 @@
 import { lerp, particleQuality, rand, randInt, toRgba } from '../utils.js';
 import { GFX } from './graphics.js';
+import { PERF } from './perf.js';
 import { GLRenderer } from './gl-renderer.js';
 import { groundAt } from './terrain.js';
 
@@ -9,7 +10,9 @@ export class DecalSystem {
         this.decals = [];
     }
     add(x, y, type, size) {
-        if (this.decals.length > 200) this.decals.shift();
+        // Capped (anti-lag: PERF.decalCap shrinks with the shedding level).
+        const cap = PERF.decalCap;
+        if (this.decals.length >= cap) this.decals.splice(0, this.decals.length - cap + 1);
         this.decals.push({
             x,
             y,
@@ -27,38 +30,29 @@ export class DecalSystem {
             if (this.decals[i].life <= 0) this.decals.splice(i, 1);
         }
     }
+    // Off-screen decals are skipped, and runs of same-type/same-alpha decals
+    // (nearly all of them: alpha only changes in the last 100 frames) share
+    // one path and one fill instead of a fill each (anti-lag).
     draw(ctx, cam) {
+        const vL = cam.x - 120, vR = cam.x + cam.viewW / cam.z + 120;
+        let type = null, alpha = -1, open = false;
         for (const d of this.decals) {
-            const px = cam.sx(d.x), py = cam.sy(d.y);
-            ctx.globalAlpha = d.alpha;
-            if (d.type === "blood") {
-                ctx.fillStyle = "#7f1d1d";
+            if (d.x < vL || d.x > vR) continue;
+            if (d.type !== "blood" && d.type !== "scorch") continue;
+            if (d.type !== type || d.alpha !== alpha) {
+                if (open) ctx.fill();
+                type = d.type;
+                alpha = d.alpha;
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = type === "blood" ? "#7f1d1d" : "#020617";
                 ctx.beginPath();
-                ctx.ellipse(
-                    px,
-                    py + 2,
-                    d.size * cam.z,
-                    d.size * 0.4 * cam.z,
-                    0,
-                    0,
-                    Math.PI * 2,
-                );
-                ctx.fill();
-            } else if (d.type === "scorch") {
-                ctx.fillStyle = "#020617";
-                ctx.beginPath();
-                ctx.ellipse(
-                    px,
-                    py + 2,
-                    d.size * cam.z,
-                    d.size * 0.3 * cam.z,
-                    0,
-                    0,
-                    Math.PI * 2,
-                );
-                ctx.fill();
+                open = true;
             }
+            const px = cam.sx(d.x), py = cam.sy(d.y) + 2, rx = d.size * cam.z;
+            ctx.moveTo(px + rx, py);
+            ctx.ellipse(px, py, rx, d.size * (type === "blood" ? 0.4 : 0.3) * cam.z, 0, 0, Math.PI * 2);
         }
+        if (open) ctx.fill();
         ctx.globalAlpha = 1;
     }
 }
@@ -122,7 +116,9 @@ export class ParticleSystem {
         const useGL = g && g.gl && g.gl.ok && GFX.webgl;
         const sx = useGL ? g._shakeX || 0 : 0;
         const sy = useGL ? g._shakeY || 0 : 0;
+        const vL = cam.x - 60, vR = cam.x + cam.viewW / cam.z + 60;
         for (const p of this.p) {
+            if (p.x < vL || p.x > vR) continue; // off-screen (anti-lag)
             const px = cam.sx(p.x), py = cam.sy(p.y);
             const additive = p.type === "float" || p.type === "spark";
             const alpha = Math.max(0, p.life / p.maxL);
@@ -162,12 +158,37 @@ export class ParticleSystem {
     }
 }
 
+// Hit-flash gradients: one unit-radius radial per colour, scaled to each
+// flash and faded via globalAlpha. Identical output to the old fresh gradient
+// per flash per frame (stop alphas 0.85a/0.3a/0 == globalAlpha a × 0.85/0.3/0),
+// without the allocation — flashes fire on every hit, death and castle shot.
+const _flashGrads = new Map();
+function flashGrad(ctx, col) {
+    let g = _flashGrads.get(col);
+    if (!g) {
+        g = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+        g.addColorStop(0, toRgba(col, 0.85));
+        g.addColorStop(0.5, toRgba(col, 0.3));
+        g.addColorStop(1, toRgba(col, 0));
+        _flashGrads.set(col, g);
+    }
+    return g;
+}
+
 // Transient combat-feedback effects: weapon-swing crescents,
 // impact shockwave rings, hit flashes and directional spark bursts.
 export class EffectSystem {
     constructor() { this.e = []; }
+    // Live effects are capped (anti-lag; PERF.fxCap shrinks as the shedding
+    // level rises). Oldest go first — they're the most faded anyway. Every
+    // flash builds a radial gradient per frame, so an uncapped late-endless
+    // melee (hits + deaths + castle beam) was hundreds of gradients a frame.
+    _add(f) {
+        this.e.push(f);
+        if (this.e.length > PERF.fxCap) this.e.splice(0, this.e.length - PERF.fxCap);
+    }
     slash(x, y, ang, opt = {}) {
-        this.e.push({
+        this._add({
             type: "slash", x, y, ang,
             len: opt.len || 28, w: opt.w || 5,
             col: opt.col || "#ffffff",
@@ -176,7 +197,7 @@ export class EffectSystem {
         });
     }
     ring(x, y, opt = {}) {
-        this.e.push({
+        this._add({
             type: "ring", x, y,
             r0: opt.r0 || 4, r1: opt.r1 || 40,
             col: opt.col || "#ffffff", w: opt.w || 3,
@@ -184,7 +205,7 @@ export class EffectSystem {
         });
     }
     flash(x, y, opt = {}) {
-        this.e.push({
+        this._add({
             type: "flash", x, y,
             r: opt.r || 28, col: opt.col || "#ffffff",
             life: opt.life || 7, maxL: opt.life || 7,
@@ -196,7 +217,7 @@ export class EffectSystem {
         const rays = [];
         for (let k = 0; k < n; k++)
             rays.push({ a: ang + rand(-spread, spread), L: len * rand(0.55, 1.25) });
-        this.e.push({
+        this._add({
             type: "spark", x, y, rays,
             col: opt.col || "#fde68a", w: opt.w || 2,
             life: opt.life || 7, maxL: opt.life || 7,
@@ -213,10 +234,12 @@ export class EffectSystem {
         ctx.save();
         ctx.globalCompositeOperation = "screen";
         ctx.lineCap = "round";
+        const sw = cam.viewW + 320;
         for (const f of this.e) {
             const a = Math.max(0, f.life / f.maxL); // 1 -> 0
             const t = 1 - a; // progress 0 -> 1
             const px = cam.sx(f.x), py = cam.sy(f.y);
+            if (px < -320 || px > sw) continue; // off-screen (anti-lag)
             if (f.type === "slash") {
                 const rad = f.len * cam.z * (0.55 + t * 0.75);
                 const a0 = f.ang - f.arc / 2, a1 = f.ang + f.arc / 2;
@@ -242,14 +265,17 @@ export class EffectSystem {
                 ctx.stroke();
             } else if (f.type === "flash") {
                 const r = Math.max(1, f.r * cam.z * (0.5 + t * 0.8));
-                const g = ctx.createRadialGradient(px, py, 0, px, py, r);
-                g.addColorStop(0, toRgba(f.col, 0.85 * a));
-                g.addColorStop(0.5, toRgba(f.col, 0.3 * a));
-                g.addColorStop(1, toRgba(f.col, 0));
-                ctx.fillStyle = g;
+                // Flash never set globalAlpha itself: it inherits whatever the
+                // previous effect left, so scale that (restored after).
+                ctx.save();
+                ctx.globalAlpha *= a;
+                ctx.fillStyle = flashGrad(ctx, f.col);
+                ctx.translate(px, py);
+                ctx.scale(r, r);
                 ctx.beginPath();
-                ctx.arc(px, py, r, 0, Math.PI * 2);
+                ctx.arc(0, 0, 1, 0, Math.PI * 2);
                 ctx.fill();
+                ctx.restore();
             } else if (f.type === "spark") {
                 ctx.globalAlpha = a;
                 ctx.strokeStyle = f.col;
@@ -280,7 +306,8 @@ export class WeatherSystem {
     update(dt, cam) {
         if (this.type === "none") return;
         const q = particleQuality();
-        const count = this.type === "rain" ? 4 * q : 2 * q;
+        // Anti-lag (lite >= 2): stop spawning; drops already falling finish.
+        const count = PERF.lite >= 2 ? 0 : this.type === "rain" ? 4 * q : 2 * q;
 
         for (let i = 0; i < count * dt; i++) {
             this.particles.push({

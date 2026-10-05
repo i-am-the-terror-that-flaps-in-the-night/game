@@ -35,9 +35,152 @@ function headGrad(ctx, skin, headR) {
     return g;
 }
 
+// Fixed-colour, fixed-local-coordinate gradients (shields, blades, club head,
+// horse body) — built once and reused, exactly like the torso/head caches
+// above. These were fresh allocations per unit per frame (1-2 per marauder).
+const _gradCache = new Map();
+function cachedGrad(key, build) {
+    let g = _gradCache.get(key);
+    if (!g) {
+        g = build();
+        _gradCache.set(key, g);
+    }
+    return g;
+}
+const WHITE_45 = toRgba("#fff", 0.45);
+const WHITE_85 = toRgba("#ffffff", 0.85);
+
 // --- UNIT RENDERING (stickman drawing, split from Unit class) ---
 Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
+    // Crowd LOD dispatch (anti-lag): when Game.draw flags the frame as crowded
+    // (_lodE for enemies, _lodP for the player's troops), common humanoids use
+    // the cheap drawLite figure. Catapults, dragons, bosses and the hero
+    // (which calls this from Hero.draw) keep full art.
     draw(ctx, cam, dt) {
+        const g = window.game;
+        if (this.active && g && (this.team === TEAMS.PLAYER ? g._lodP : g._lodE)
+            && !this.isHero && !this.boss && this.vis !== "catapult" && this.vis !== "dragon")
+            return this.drawLite(ctx, cam, dt);
+        return this.drawFull(ctx, cam, dt);
+    },
+
+    // Simplified stick figure: one limb path, a torso stroke, a head, a weapon
+    // line (+ shield slab) — ~5 draw calls with no gradients, versus ~35 calls
+    // and several gradients for the full figure (~5× cheaper to draw, measured).
+    // Silhouette, team/type colour, gait, attack swing, hit flash, HP bar and
+    // damage numbers are kept. (Batching every figure into a few shared paths
+    // was tried and measured slower: big many-subpath strokes rasterize worse
+    // than many small ones, and it loses depth order.)
+    drawLite(ctx, cam, dt) {
+        const px = cam.sx(this.x), py = cam.sy(this.y);
+        const s = this.scale * cam.z;
+        const walking = this.state === "walk";
+        const gp = this.frame * 0.22 * clamp(this.speed / 2, 0.5, 2.2);
+        const bob = walking ? -Math.abs(Math.sin(gp)) * 2.4 : 0;
+        const hipY = -18 + bob, shY = -40 + bob, headCY = -50 + bob;
+        const v = this.vis;
+        const horse = v === "horse";
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.scale(this.facing * s, s);
+        ctx.fillStyle = "rgba(0,0,0,0.28)";
+        ctx.fillRect(-11, -2, 22, 4);
+        if (this.flying) ctx.translate(0, -70 + Math.sin(this.frame * 0.1) * 12);
+        ctx.lineCap = "round";
+        if (horse) {
+            ctx.translate(0, -18);
+            const l1 = Math.sin(gp * 1.3) * 6;
+            ctx.strokeStyle = "#5b3a1a";
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(-14, 2); ctx.lineTo(-14 + l1, 18);
+            ctx.moveTo(13, 2); ctx.lineTo(13 - l1, 18);
+            ctx.stroke();
+            ctx.fillStyle = "#7a5230";
+            ctx.fillRect(-22, -12, 42, 14);
+            ctx.fillRect(16, -27, 8, 19);
+        }
+        // Limbs: legs (or dangling legs + wings for flyers) and arms, one path.
+        const atk = this.atk; // 1 (just struck) -> 0
+        const hx = 9 + atk * 7, hy = shY + 9 - atk * 6; // weapon hand
+        ctx.strokeStyle = "#e2e8f0";
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        if (this.flying) {
+            const fl = Math.sin(this.frame * 0.3) * 8;
+            ctx.moveTo(0, hipY); ctx.lineTo(-2, hipY + 15);
+            ctx.moveTo(-2, shY + 4); ctx.lineTo(-20, shY - 8 + fl);
+            ctx.moveTo(-2, shY + 4); ctx.lineTo(-13, shY - 17 + fl);
+        } else if (!horse) {
+            const st = walking ? Math.sin(gp) * 8 : 0;
+            ctx.moveTo(st, 0); ctx.lineTo(0, hipY); ctx.lineTo(-st, 0);
+        }
+        ctx.moveTo(-7, shY + 15); ctx.lineTo(0, shY + 2); ctx.lineTo(hx, hy);
+        ctx.stroke();
+        // Torso + head in the unit's colour (white while hit-flashing).
+        const body = this.flashT > 0 ? "#ffffff" : this.col;
+        ctx.strokeStyle = body;
+        ctx.lineWidth = 7;
+        ctx.beginPath(); ctx.moveTo(0, hipY); ctx.lineTo(0, shY); ctx.stroke();
+        ctx.fillStyle = body;
+        ctx.beginPath(); ctx.arc(0, headCY, 7.5, 0, Math.PI * 2); ctx.fill();
+        // Weapon.
+        ctx.strokeStyle = "#cbd5e1";
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        let tipX = 0, tipY = 0;
+        if (v === "bow" || v === "crossbow") ctx.arc(hx - 4, hy, 10, -1.2, 1.2);
+        else if (v === "staff" || v === "mage") { ctx.moveTo(hx, hy + 12); ctx.lineTo(hx, hy - 22); }
+        else {
+            const a = -0.9 + Math.sin(atk * Math.PI) * 1.4;
+            const L = v === "spear" || horse ? 34 : v === "club" ? 18 : 20;
+            tipX = hx + Math.cos(a) * L;
+            tipY = hy + Math.sin(a) * L;
+            ctx.moveTo(hx, hy); ctx.lineTo(tipX, tipY);
+        }
+        ctx.stroke();
+        // Shields (same spots/sizes as the full art) and the ogre's club head.
+        if (v === "sword_shield") {
+            ctx.fillStyle = "#64748b";
+            ctx.beginPath(); ctx.arc(8, shY + 9, 10, 0, Math.PI * 2); ctx.fill();
+        } else if (v === "tower_shield") {
+            ctx.fillStyle = "#64748b";
+            ctx.fillRect(5, shY - 11, 9, 40);
+        } else if (v === "club") {
+            ctx.fillStyle = "#7a5230";
+            ctx.beginPath(); ctx.arc(tipX, tipY, 7, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+        this.drawHp(ctx, cam, 35 * this.scale, -75 * this.scale);
+        this._drawBadges(ctx, cam);
+        this.drawDmg(ctx, cam, dt);
+    },
+
+    // Promotion stars (player) and the horde-merge count (enemy, anti-lag).
+    _drawBadges(ctx, cam) {
+        if (!this.active) return;
+        const star = this.team === TEAMS.PLAYER && this.level > 1;
+        const merged = (this.merged || 1) > 1;
+        if (!star && !merged) return;
+        const plx = cam.sx(this.x), ply = cam.sy(this.y);
+        ctx.save();
+        ctx.textAlign = 'center';
+        if (star) {
+            ctx.fillStyle = '#fbbf24';
+            if (GFX.shadows) { ctx.shadowBlur = 8; ctx.shadowColor = '#fbbf24'; }
+            ctx.font = `bold ${10 * cam.z}px system-ui`;
+            ctx.fillText('★'.repeat(this.level - 1), plx, ply - (82 * this.scale + 2) * cam.z);
+            ctx.shadowBlur = 0;
+        }
+        if (merged) {
+            ctx.fillStyle = '#fca5a5';
+            ctx.font = `900 ${11 * cam.z}px system-ui`;
+            ctx.fillText('×' + this.merged, plx, ply - (80 * this.scale + 2) * cam.z);
+        }
+        ctx.restore();
+    },
+
+    drawFull(ctx, cam, dt) {
         if (!this.active) {
             this.drawDmg(ctx, cam, dt);
             return;
@@ -267,10 +410,12 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
             bone(-15, 2, -15 + Math.sin(hg) * 6, GY, 4, legD);
             bone(12, 2, 12 + Math.sin(hg + Math.PI) * 6, GY, 4, legD);
             // body
-            const bg = ctx.createLinearGradient(0, -14, 0, 6);
-            bg.addColorStop(0, "#8a5a2b");
-            bg.addColorStop(1, "#5b3a1a");
-            ctx.fillStyle = bg;
+            ctx.fillStyle = cachedGrad("horse", () => {
+                const bg = ctx.createLinearGradient(0, -14, 0, 6);
+                bg.addColorStop(0, "#8a5a2b");
+                bg.addColorStop(1, "#5b3a1a");
+                return bg;
+            });
             ctx.beginPath(); ctx.ellipse(-2, -4, 22, 10, 0, 0, Math.PI * 2); ctx.fill();
             ctx.beginPath(); ctx.ellipse(-18, -3, 7, 9, 0, 0, Math.PI * 2); ctx.fill(); // haunch
             ctx.beginPath(); ctx.ellipse(16, -5, 8, 8, 0, 0, Math.PI * 2); ctx.fill();  // chest
@@ -405,25 +550,29 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
             ctx.save();
             ctx.translate(bhx, bhy);
             if (this.vis === "tower_shield") {
-                const sg = ctx.createLinearGradient(-3, 0, 7, 0);
-                sg.addColorStop(0, "#8a98ab");
-                sg.addColorStop(1, "#4a5667");
-                ctx.fillStyle = sg;
+                ctx.fillStyle = cachedGrad("towerShield", () => {
+                    const sg = ctx.createLinearGradient(-3, 0, 7, 0);
+                    sg.addColorStop(0, "#8a98ab");
+                    sg.addColorStop(1, "#4a5667");
+                    return sg;
+                });
                 ctx.fillRect(-3, -20, 9, 40);
                 ctx.strokeStyle = "#cbd5e1";
                 ctx.lineWidth = 1.5;
                 ctx.strokeRect(-3, -20, 9, 40);
                 ctx.fillStyle = skin;
                 ctx.fillRect(-0.5, -7, 4, 16);
-                ctx.strokeStyle = toRgba("#fff", 0.45);
+                ctx.strokeStyle = WHITE_45;
                 ctx.lineWidth = 1;
                 ctx.beginPath(); ctx.moveTo(-1.5, -18); ctx.lineTo(-1.5, 18); ctx.stroke();
             } else {
-                const sg = ctx.createRadialGradient(-3, -3, 1, 0, 0, 11);
-                sg.addColorStop(0, "#aebccd");
-                sg.addColorStop(0.7, "#6b7a8d");
-                sg.addColorStop(1, "#3b4757");
-                ctx.fillStyle = sg;
+                ctx.fillStyle = cachedGrad("roundShield", () => {
+                    const sg = ctx.createRadialGradient(-3, -3, 1, 0, 0, 11);
+                    sg.addColorStop(0, "#aebccd");
+                    sg.addColorStop(0.7, "#6b7a8d");
+                    sg.addColorStop(1, "#3b4757");
+                    return sg;
+                });
                 ctx.beginPath(); ctx.arc(0, 0, 11, 0, Math.PI * 2); ctx.fill();
                 ctx.strokeStyle = "#cbd5e1";
                 ctx.lineWidth = 1.8;
@@ -589,10 +738,12 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
                 ctx.closePath(); ctx.fill();
             } else if (this.vis === "club") {
                 bone(-4, 0, 9, 0, 3.4, "#6b4423");
-                const cg2 = ctx.createRadialGradient(15, -1, 1, 16, 0, 8);
-                cg2.addColorStop(0, "#a16207");
-                cg2.addColorStop(1, "#5b3a1a");
-                ctx.fillStyle = cg2;
+                ctx.fillStyle = cachedGrad("club", () => {
+                    const cg2 = ctx.createRadialGradient(15, -1, 1, 16, 0, 8);
+                    cg2.addColorStop(0, "#a16207");
+                    cg2.addColorStop(1, "#5b3a1a");
+                    return cg2;
+                });
                 ctx.beginPath(); ctx.ellipse(16, 0, 7, 8, 0, 0, Math.PI * 2); ctx.fill();
                 ctx.fillStyle = "#3a2410";
                 for (const a of [-0.7, 0, 0.7]) {
@@ -604,13 +755,16 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
                 // sword / sword_shield / tower_shield (short sword) / dual
                 const L = this.vis === "tower_shield" ? 15 : this.vis === "dual" ? 16 : 20;
                 bone(-4, 0, 0, 0, 3, "#78350f"); // grip
-                const bg2 = ctx.createLinearGradient(0, 0, L, 0);
-                bg2.addColorStop(0, "#9aa6b5");
-                bg2.addColorStop(0.6, "#e5e7eb");
-                bg2.addColorStop(1, "#ffffff");
-                ctx.strokeStyle = bg2; ctx.lineWidth = 3.2;
+                ctx.strokeStyle = cachedGrad("blade" + L, () => {
+                    const bg2 = ctx.createLinearGradient(0, 0, L, 0);
+                    bg2.addColorStop(0, "#9aa6b5");
+                    bg2.addColorStop(0.6, "#e5e7eb");
+                    bg2.addColorStop(1, "#ffffff");
+                    return bg2;
+                });
+                ctx.lineWidth = 3.2;
                 ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(L, 0); ctx.stroke();
-                ctx.strokeStyle = toRgba("#ffffff", 0.85); ctx.lineWidth = 0.9;
+                ctx.strokeStyle = WHITE_85; ctx.lineWidth = 0.9;
                 ctx.beginPath(); ctx.moveTo(L * 0.4, -0.7); ctx.lineTo(L, -0.4); ctx.stroke();
                 ctx.strokeStyle = "#fbbf24"; ctx.lineWidth = 3;
                 ctx.beginPath(); ctx.moveTo(0, -4); ctx.lineTo(0, 4); ctx.stroke();
@@ -693,17 +847,7 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
         ctx.restore(); // root transform
 
         this.drawHp(ctx, cam, 35 * this.scale, -75 * this.scale);
-        // Level star badge
-        if (this.team === TEAMS.PLAYER && this.level > 1 && this.active) {
-            const plx = cam.sx(this.x), ply = cam.sy(this.y);
-            ctx.save();
-            ctx.fillStyle = '#fbbf24';
-            if (GFX.shadows) { ctx.shadowBlur = 8; ctx.shadowColor = '#fbbf24'; }
-            ctx.font = `bold ${10 * cam.z}px system-ui`;
-            ctx.textAlign = 'center';
-            ctx.fillText('★'.repeat(this.level - 1), plx, ply - (82 * this.scale + 2) * cam.z);
-            ctx.shadowBlur = 0; ctx.restore();
-        }
+        this._drawBadges(ctx, cam);
         this.drawDmg(ctx, cam, dt);
     }
 }));

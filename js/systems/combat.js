@@ -85,7 +85,12 @@ export function resolveDamage(base, src, target, formation) {
 
 // Resolve an attack and apply it to the target in one step. Returns the same
 // { amt, tag } as resolveDamage so callers can still read `tag` for hit FX.
-export function dealDamage(base, src, target) {
+// `splash` marks an area hit. A horde-merged enemy (anti-lag, js/systems/
+// perf.js) stands in for `merged` bodies that would each have been caught, so
+// it takes that many hits' worth — AoE stays as strong against a merged horde.
+// Single-target, chain and capped multi-hit attacks leave it false.
+export function dealDamage(base, src, target, splash = false) {
+    if (splash && target.merged > 1) base *= target.merged;
     const formation = typeof game !== "undefined" ? game.formation : undefined;
     // Forest cover: ranged fire into the trees loses its bite (flyers are above it).
     if (src.ranged && !target.flying && target.kind !== "building" && terrain.forestAt(target.x) && !terrain.inTunnel(target.x))
