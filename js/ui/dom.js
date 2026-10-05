@@ -19,3 +19,24 @@ export function el(id) {
     }
     return node;
 }
+
+// --- Write-if-changed (anti-lag) ---
+// updateUI() runs every frame; assigning innerText/innerHTML — even the same
+// value — replaces child nodes and invalidates style/layout (innerHTML also
+// re-parses). These remember the last value written on the node itself and
+// skip identical writes. Only use them for nodes no other code writes to,
+// or the remembered value goes stale.
+export function setText(node, v) {
+    const s = String(v);
+    if (node._txt !== s) {
+        node._txt = s;
+        node.innerText = s;
+    }
+}
+
+export function setHTML(node, html) {
+    if (node._html !== html) {
+        node._html = html;
+        node.innerHTML = html;
+    }
+}

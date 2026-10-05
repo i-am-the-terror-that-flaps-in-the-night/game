@@ -10,6 +10,7 @@ import { loadJSON, saveJSON } from '../systems/storage.js';
 import { formatTime } from '../utils.js';
 import { DecalSystem, EffectSystem, ParticleSystem, WeatherSystem } from '../systems/vfx.js';
 import { GFX, refreshGraphics } from '../systems/graphics.js';
+import { PERF, loadPerf, perfNewRun, perfTick, perfWork, skipFrame } from '../systems/perf.js';
 import { GLRenderer } from '../systems/gl-renderer.js';
 import { WGPURenderer } from '../systems/wgpu-renderer.js';
 import { CameraFX } from '../systems/camera-fx.js';
@@ -119,8 +120,12 @@ export class Game {
         this.achievements    = null; // inited after game is declared
         this.meta            = new MetaProgression(this); // permanent unlocks
         this.loadSave(); // Fix #20
+        loadPerf();      // anti-lag settings (own key) — before refreshGraphics layers them
+        this.perf = PERF; // live anti-lag state (handy from the console / smoke test)
+        this.syncPerfUI();
         refreshGraphics();
         this.resize();
+        this.applyPerfClasses();
         this.bindEvents();
         this.loop();
     }
@@ -185,12 +190,15 @@ export class Game {
         // resize() runs once in the constructor before this.camera exists (the
         // Camera seeds viewW itself); guard for that first call.
         if (this.camera) this.camera.viewW = window.innerWidth;
-        if (this.glWebgl) this.glWebgl.resize(this.vw, this.vh);
-        if (this.wgpu) this.wgpu.resize(this.vw, this.vh);
+        if (this.glWebgl) this.glWebgl.resize(this.vw, this.vh, GFX.overlayDpr);
+        if (this.wgpu) this.wgpu.resize(this.vw, this.vh, GFX.overlayDpr);
         this._buildBackdropCache();
     }
 
     reset(g) {
+        // Each run starts at full detail; the anti-lag governor re-sheds as
+        // the field fills up (Max mode stays maxed).
+        if (perfNewRun()) this.applyPerf();
         this.clearBoss(); // tear down any prior boss encounter + engine audio
         this.hazards.clear();
         if (this.difficultyMult < 1.0) g = Math.floor(g * 1.25);
@@ -517,6 +525,16 @@ export class Game {
 
     loop() {
         const n = performance.now();
+        // FPS limit (anti-lag setting): skip this vsync entirely — no update,
+        // no draw. dt below spans the skipped frames, so game speed is unchanged.
+        if (skipFrame(n)) {
+            requestAnimationFrame(() => this.loop());
+            return;
+        }
+        // Adaptive anti-lag governor: measures real FPS and, when the shedding
+        // level changes, re-applies graphics (and resolution) on the spot.
+        if (perfTick(n, this.state === "playing")) this.applyPerf();
+        this.updateFpsMeter();
         let dt = (n - this.lastT) / (1000 / 60);
         if (dt > 3) dt = 3;
         this.lastT = n;
@@ -529,6 +547,7 @@ export class Game {
         // scrolling never stalls when paused or slowed.
         this.updateCamera(dt);
         this.draw(dt * (this.state === "playing" ? this.ts : 1));
+        perfWork(performance.now() - n); // this frame's CPU cost, for the governor
 
         requestAnimationFrame(() => this.loop());
     }

@@ -146,6 +146,14 @@
                 ▶▶
             </button>
             <button
+                class="time-btn"
+                id="btnSettings"
+                onclick="game.openSettings()"
+                title="Settings &amp; Anti-Lag (pauses)"
+            >
+                ⚙
+            </button>
+            <button
                 class="time-btn time-btn--quit"
                 id="btnQuit"
                 onclick="confirmQuitToMenu()"
@@ -357,6 +365,7 @@
             <canvas id="minimap" width="240" height="80"></canvas>
         </div>
 
+        <div id="fpsMeter" class="fps-meter is-hidden" aria-hidden="true"></div>
         <div id="notificationArea"></div>
         <div id="tooltip" class="tooltip hidden"></div>
 
@@ -614,6 +623,60 @@
                         <option value="0.5">Performance</option>
                         <option value="1" selected>Standard</option>
                         <option value="2">Cinematic</option>
+                    </select>
+                </div>
+                <div class="settings-section">⚡ Performance &amp; Anti-Lag</div>
+                <div class="settings-row">
+                    <label for="perfAntiLag">Anti-Lag
+                        <small class="settings-hint">Auto sheds effects &amp; detail when FPS drops, and merges huge endless hordes</small></label>
+                    <select id="perfAntiLag">
+                        <option value="off">Off</option>
+                        <option value="auto" selected>Auto</option>
+                        <option value="max">Max</option>
+                    </select>
+                </div>
+                <div class="settings-row">
+                    <label for="perfFpsCap">FPS Limit
+                        <small class="settings-hint">Lower = less CPU work on high-refresh screens</small></label>
+                    <select id="perfFpsCap">
+                        <option value="0">Unlimited</option>
+                        <option value="120">120</option>
+                        <option value="60" selected>60 (recommended)</option>
+                        <option value="30">30</option>
+                    </select>
+                </div>
+                <div class="settings-row">
+                    <label for="perfRes">Render Resolution
+                        <small class="settings-hint">Auto follows the quality preset &amp; anti-lag</small></label>
+                    <select id="perfRes">
+                        <option value="auto" selected>Auto</option>
+                        <option value="100">100%</option>
+                        <option value="75">75%</option>
+                        <option value="50">50%</option>
+                    </select>
+                </div>
+                <div class="settings-row">
+                    <label for="perfDmgNums">Damage Numbers</label>
+                    <select id="perfDmgNums">
+                        <option value="all" selected>All</option>
+                        <option value="reduced">Reduced</option>
+                        <option value="off">Off</option>
+                    </select>
+                </div>
+                <div class="settings-row">
+                    <label for="perfCrowd">Crowd Detail
+                        <small class="settings-hint">Simple draws big crowds as quick stick figures</small></label>
+                    <select id="perfCrowd">
+                        <option value="auto" selected>Auto</option>
+                        <option value="full">Full</option>
+                        <option value="simple">Simple</option>
+                    </select>
+                </div>
+                <div class="settings-row">
+                    <label for="perfShowFps">Show FPS</label>
+                    <select id="perfShowFps">
+                        <option value="0" selected>Off</option>
+                        <option value="1">On</option>
                     </select>
                 </div>
                 <div class="settings-row">

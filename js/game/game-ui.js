@@ -1,5 +1,5 @@
 import { CONFIG, TEAMS } from '../config.js';
-import { el } from '../ui/dom.js';
+import { el, setHTML, setText } from '../ui/dom.js';
 import { btnId, costStr, formatTime, toRgba } from '../utils.js';
 import { TERRAIN_PATCHES } from '../systems/terrain.js';
 import { defOf, describeMatchups, waveHint } from '../systems/combat.js';
@@ -8,6 +8,8 @@ import { BUILDING_TYPES } from '../data/buildings.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { TECH_TREE } from '../data/tech.js';
 import { UNIT_TYPES } from '../data/units.js';
+import { GFX, refreshGraphics } from '../systems/graphics.js';
+import { PERF, derivePerf, resetGovernor, savePerf } from '../systems/perf.js';
 
 // --- GAME: panels, notifications, HUD & minimap (installed by install-mixins.js) ---
 export const uiMethods = /** @type {ThisType<any>} */ ({
@@ -62,6 +64,12 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
     },
 
     openSettings() {
+        // Opened mid-run (the ⚙ HUD button): pause underneath, resume on close.
+        // Only a running game is resumed — never call setSpeed(n>0) from the
+        // menu, which would flip the state to 'playing'.
+        this._settingsResume = this.state === "playing" ? this.ts : 0;
+        if (this._settingsResume) this.setSpeed(0);
+        this.syncPerfUI();
         el("settingsOverlay").classList.remove("hidden");
     },
 
@@ -73,6 +81,64 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
         this.audio.updateVols();
         el("settingsOverlay").classList.add("hidden");
         this.saveGame();
+        if (this._settingsResume && this.state === "paused") this.setSpeed(this._settingsResume);
+        this._settingsResume = 0;
+    },
+
+    // ── Anti-lag settings (state + governor live in js/systems/perf.js) ──
+    // Push the saved PERF values into the Settings selects.
+    syncPerfUI() {
+        const put = (id, v) => { const n = el(id); if (n) n.value = String(v); };
+        put("perfAntiLag", PERF.antiLag);
+        put("perfFpsCap", PERF.fpsCap);
+        put("perfRes", PERF.res);
+        put("perfDmgNums", PERF.dmgNums);
+        put("perfCrowd", PERF.crowd);
+        put("perfShowFps", PERF.showFps ? "1" : "0");
+    },
+
+    // A Performance select changed: read them all back, persist, apply now.
+    onPerfSetting() {
+        const get = (id, ok, dflt) => {
+            const n = el(id), v = n ? n.value : dflt;
+            return ok.includes(v) ? v : dflt;
+        };
+        const mode = PERF.antiLag;
+        PERF.antiLag = get("perfAntiLag", ["off", "auto", "max"], "auto");
+        PERF.fpsCap = Number(get("perfFpsCap", ["0", "30", "60", "120"], "60"));
+        PERF.res = get("perfRes", ["auto", "100", "75", "50"], "auto");
+        PERF.dmgNums = get("perfDmgNums", ["all", "reduced", "off"], "all");
+        PERF.crowd = get("perfCrowd", ["auto", "full", "simple"], "auto");
+        PERF.showFps = get("perfShowFps", ["0", "1"], "0") === "1";
+        if (PERF.antiLag !== mode) resetGovernor();
+        else derivePerf();
+        savePerf();
+        this.applyPerf();
+    },
+
+    // Re-layer graphics after a shedding-level or setting change; a new render
+    // resolution needs the canvas backing store resized.
+    applyPerf() {
+        const rs = GFX.renderScale, od = GFX.overlayDpr;
+        refreshGraphics();
+        if (GFX.renderScale !== rs || GFX.overlayDpr !== od) this.resize();
+        this.applyPerfClasses();
+    },
+
+    // perf-lite (shedding level 2+) strips blurred HUD glass + decorative CSS
+    // animation (css/hud.css); the FPS meter shows only when enabled.
+    applyPerfClasses() {
+        document.body.classList.toggle("perf-lite", PERF.lite >= 2);
+        const m = el("fpsMeter");
+        if (m) m.classList.toggle("is-hidden", !PERF.showFps);
+    },
+
+    updateFpsMeter() {
+        if (!PERF.showFps || this.frames % 15 !== 0) return;
+        const m = el("fpsMeter");
+        if (!m) return;
+        const lag = PERF.antiLag === "off" ? "Anti-lag off" : `Anti-lag L${PERF.level}`;
+        setText(m, `${PERF.fps} FPS · ${PERF.work.toFixed(1)} ms · ${lag} · ${this.enemies.length} foes`);
     },
 
     // Erase all persisted progress (campaign, endless records, renown &
@@ -128,7 +194,7 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
 
     updateUI() {
         this.updateBossBar(); // sync boss health bar while an encounter is live
-        el("goldDisplay").innerText = Math.floor(this.gold);
+        setText(el("goldDisplay"), Math.floor(this.gold));
         // Income per second display
         const incomeMult2 = 1 + (this.upgrades.income || 0);
         const lvlMult2 = this.levelIncomeMult || 1;
@@ -138,15 +204,11 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
                 incomePerSec += b.income.g * incomeMult2 * lvlMult2;
         });
         const irEl = el("incomeRate");
-        if (irEl) irEl.innerText = incomePerSec > 0 ? `+${incomePerSec.toFixed(0)}/s` : "";
-        el("ironDisplay").innerText =
-            Math.floor(this.iron);
-        el("crystalDisplay").innerText =
-            Math.floor(this.crystal);
-        el("popDisplay").innerText =
-            this.pop + "/" + this.maxPop;
-        el("levelDisplay").innerText =
-            this.mode === "campaign" ? this.level + 1 : "∞";
+        if (irEl) setText(irEl, incomePerSec > 0 ? `+${incomePerSec.toFixed(0)}/s` : "");
+        setText(el("ironDisplay"), Math.floor(this.iron));
+        setText(el("crystalDisplay"), Math.floor(this.crystal));
+        setText(el("popDisplay"), this.pop + "/" + this.maxPop);
+        setText(el("levelDisplay"), this.mode === "campaign" ? this.level + 1 : "∞");
 
         const c = this.buildings.find((b) => b.type === "castle");
         if (c) {
@@ -154,8 +216,7 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
                 "castleHealthFill",
             ).style.width =
                 (Math.max(0, c.hp) / c.maxHp) * 100 + "%";
-            el("castleHealthText").innerText =
-                Math.floor(Math.max(0, c.hp)) + " / " + c.maxHp;
+            setText(el("castleHealthText"), Math.floor(Math.max(0, c.hp)) + " / " + c.maxHp);
         }
 
         // Hero Void-Charge ring: --cd goes 0 (empty) -> 1 (full/READY), drawn by
@@ -168,10 +229,10 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
             hp.style.opacity = this.hero.active ? "1" : "0.45";
             const ready = this.hero.canCast && this.hero.canCast();
             hp.classList.toggle("ready", ready);
-            const st = hp.querySelector(".hero-status");
-            if (st) st.innerText = !this.hero.active
+            const st = hp._statusEl || (hp._statusEl = hp.querySelector(".hero-status"));
+            if (st) setText(st, !this.hero.active
                 ? "Reviving…"
-                : ready ? "Singularity ▸ auto (B)" : `Charging ${Math.floor(frac * 100)}%`;
+                : ready ? "Singularity ▸ auto (B)" : `Charging ${Math.floor(frac * 100)}%`);
         }
 
         if (this.waveM) {
@@ -181,14 +242,10 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
                     0,
                     Math.floor((w.int - w.t) / 60),
                 );
-                el("waveTimer").innerText =
-                    "Next Wave: " + nxt + "s";
+                setText(el("waveTimer"), "Next Wave: " + nxt + "s");
                 const isBossW = w.wave > 0 && w.wave % 5 === 0;
                 const wnEl = el("waveNumber");
-                wnEl.innerText =
-                    "Endless - Wave " +
-                    w.wave +
-                    (isBossW ? " [BOSS WAVE]" : "");
+                setText(wnEl, "Endless - Wave " + w.wave + (isBossW ? " [BOSS WAVE]" : ""));
                 if (isBossW) wnEl.classList.add("boss-wave");
                 else wnEl.classList.remove("boss-wave");
             } else {
@@ -203,12 +260,8 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
                               ),
                           )
                         : 0;
-                el("waveTimer").innerText =
-                    w.cw < w.tw
-                        ? "Next Wave: " + nxt + "s"
-                        : "Final Wave!";
-                el("waveNumber").innerText =
-                    "Wave " + w.cw + " / " + w.tw;
+                setText(el("waveTimer"), w.cw < w.tw ? "Next Wave: " + nxt + "s" : "Final Wave!");
+                setText(el("waveNumber"), "Wave " + w.cw + " / " + w.tw);
             }
             const cwBtn = el("btnCallWave");
             if (cwBtn)
@@ -238,18 +291,13 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
                     .join(" · ");
                 const hz = this.hazards.def();
                 const hzLine = hz ? `<br><span style="color:#fdba74;font-size:11px;">⚠ ${hz.name}: ${hz.tip}</span>` : "";
-                prevEl.innerHTML = `⚠ <span style="color:#fca5a5;">${str}</span><br><span style="color:#7dd3fc;font-size:11px;">${waveHint(groups)}</span>${hzLine}`;
-            } else prevEl.innerHTML = "";
-        } else if (prevEl) prevEl.innerHTML = "";
-        el("statKills").innerText = this.stats.kills;
-        el("statGold").innerText = Math.floor(
-            this.stats.gold,
-        );
-        el("statLosses").innerText =
-            this.stats.loss;
-        el("statTime").innerText = formatTime(
-            (Date.now() - this.stats.start) / 1000,
-        );
+                setHTML(prevEl, `⚠ <span style="color:#fca5a5;">${str}</span><br><span style="color:#7dd3fc;font-size:11px;">${waveHint(groups)}</span>${hzLine}`);
+            } else setHTML(prevEl, "");
+        } else if (prevEl) setHTML(prevEl, "");
+        setText(el("statKills"), this.stats.kills);
+        setText(el("statGold"), Math.floor(this.stats.gold));
+        setText(el("statLosses"), this.stats.loss);
+        setText(el("statTime"), formatTime((Date.now() - this.stats.start) / 1000));
 
         // Which building unlocks each unit (for the lock label)
         const unlockedBy = {};
@@ -268,11 +316,8 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
                 locked ||
                 !this.checkCost(cost) ||
                 this.pop + d.pop > this.maxPop;
-            const cs = b.querySelector(".cost");
-            if (cs)
-                cs.innerText = locked
-                    ? `🔒 ${unlockedBy[t] || "?"}`
-                    : costStr(cost);
+            const cs = b._costEl || (b._costEl = b.querySelector(".cost"));
+            if (cs) setText(cs, locked ? `🔒 ${unlockedBy[t] || "?"}` : costStr(cost));
         }
         // Build buttons — castle has no button, so getElementById skips it.
         for (const t of Object.keys(BUILDING_TYPES)) {
@@ -282,22 +327,22 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
             b.disabled =
                 !this.checkCost(cost) || !this.unlocked.b.has(t);
             if (t === "mine") {
-                const cs = b.querySelector(".cost");
-                if (cs) cs.innerText = costStr(cost);
+                const cs = b._costEl || (b._costEl = b.querySelector(".cost"));
+                if (cs) setText(cs, costStr(cost));
             }
         }
 
         const td = el("activeUpgrades");
         if (this.techs.size === 0)
-            td.innerHTML =
-                '<div class="stat-row"><span>No upgrades purchased</span></div>';
+            setHTML(td, '<div class="stat-row"><span>No upgrades purchased</span></div>');
         else {
-            td.innerHTML = "";
+            let html = "";
             this.techs.forEach((id) => {
                 const t = TECH_TREE.find((x) => x.id === id);
                 if (t)
-                    td.innerHTML += `<div class="stat-row"><span>${t.name}</span><span style="color:var(--success)">Active</span></div>`;
+                    html += `<div class="stat-row"><span>${t.name}</span><span style="color:var(--success)">Active</span></div>`;
             });
+            setHTML(td, html);
         }
     },
 

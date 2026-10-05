@@ -1,4 +1,5 @@
 import { el } from '../ui/dom.js';
+import { shedGfx } from './perf.js';
 
 // `webgl`: route the additive glow layer (particles + hero/singularity auras)
 // through the GPU overlay (js/systems/gl-renderer.js). On for every tier — it's
@@ -7,19 +8,25 @@ import { el } from '../ui/dom.js';
 // (see js/systems/wgpu-renderer.js). They only take effect when a WebGPU device
 // actually initialized; otherwise the WebGL glow overlay (`webgl`) is used and
 // these are ignored. Performance stays on pure WebGL glow (no extra GPU passes).
+// `overlayDpr`: device-pixel-ratio ceiling for the GPU glow overlays (2× on
+// HiDPI quadruples their pixel work; Performance and anti-lag level 2+ use 1).
 const PRESETS = {
-    performance: { tier: 'performance', particleMul: 0.5, particleCap: 180, shadows: false, postFX: false, renderScale: 0.7, flatScenery: true,  webgl: true, webgpu: false, lights: false, bloom: false,   distortion: false },
-    standard:    { tier: 'standard',    particleMul: 1,   particleCap: 600, shadows: false, postFX: false, renderScale: 1,   flatScenery: false, webgl: true, webgpu: true,  lights: true,  bloom: 'low',   distortion: false },
-    cinematic:   { tier: 'cinematic',   particleMul: 2,   particleCap: Infinity, shadows: true, postFX: true, renderScale: 1, flatScenery: false, webgl: true, webgpu: true,  lights: true,  bloom: 'high',  distortion: true },
+    performance: { tier: 'performance', particleMul: 0.5, particleCap: 180, shadows: false, postFX: false, renderScale: 0.7, flatScenery: true,  webgl: true, webgpu: false, lights: false, bloom: false,   distortion: false, overlayDpr: 1 },
+    standard:    { tier: 'standard',    particleMul: 1,   particleCap: 600, shadows: false, postFX: false, renderScale: 1,   flatScenery: false, webgl: true, webgpu: true,  lights: true,  bloom: 'low',   distortion: false, overlayDpr: 2 },
+    cinematic:   { tier: 'cinematic',   particleMul: 2,   particleCap: Infinity, shadows: true, postFX: true, renderScale: 1, flatScenery: false, webgl: true, webgpu: true,  lights: true,  bloom: 'high',  distortion: true, overlayDpr: 2 },
 };
 
 export const GFX = { ...PRESETS.standard };
 
 const TIER = { '0.5': 'performance', '1': 'standard', '2': 'cinematic' };
 
+// Apply the chosen preset, then layer the anti-lag shedding level and the
+// render-resolution override on top (js/systems/perf.js). Re-run whenever the
+// preset, a performance setting, or the adaptive shedding level changes.
 export function refreshGraphics() {
     const n = el('particleQuality');
     Object.assign(GFX, PRESETS[(n && TIER[n.value]) || 'standard']);
+    shedGfx(GFX);
     return GFX;
 }
 

@@ -247,7 +247,7 @@ export class Singularity {
                 const d = Math.hypot(this.x - e.x, this.y - e.y);
                 if (d <= R) {
                     const mult = 1 + 0.6 * (1 - d / R);   // core hits harder
-                    dealDamage(def.damage * mult, src, e);
+                    dealDamage(def.damage * mult, src, e, true);
                 }
             }
         }

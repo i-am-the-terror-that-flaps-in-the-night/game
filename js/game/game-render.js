@@ -3,7 +3,18 @@ import { LEVELS } from '../data/levels.js';
 import { clamp, mixCol, mixRgb, rgba, shade, toRgb, toRgba } from '../utils.js';
 import { GFX } from '../systems/graphics.js';
 import { GLRenderer } from '../systems/gl-renderer.js';
+import { PERF } from '../systems/perf.js';
 import { TERRAIN_PATCHES, terrain } from '../systems/terrain.js';
+
+// World-px slack around the viewport before an entity is culled: covers the
+// widest common sprite (an ogre / merged elite), HP bars and camera shake.
+const CULL_MARGIN = 160;
+
+// Bookkeeping a culled (off-screen) unit would otherwise do in its draw().
+function culled(o, dt) {
+    if (o.dmgTexts.length) o.ageDmg(dt);
+    if (o.wTrail && o.wTrail.length) o.wTrail.length = 0;
+}
 
 // --- GAME: backdrop, foreground, post-FX & frame draw (installed by install-mixins.js) ---
 export const renderMethods = /** @type {ThisType<any>} */ ({
@@ -909,12 +920,37 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
         // combined spread + a {t,o} wrapper per entity (whose `t` tag was never
         // read) every frame. Same concat order + stable sort => identical draw
         // order, including y-ties. draw() does not mutate these arrays.
+        //
+        // Off-screen culling (anti-lag): the world is ~5 screens wide and a
+        // late-endless horde spans all of it, so units/enemies/projectiles
+        // outside the view (+ a margin for big sprites, HP bars and shake) are
+        // skipped. Culled entities still age their damage numbers — the
+        // removal filter waits on those — and drop stale weapon trails.
+        // Buildings (few, wide), the hero and bosses always draw.
+        //
+        // Crowd LOD: past PERF.lodAt visible enemies (hysteresis stops flicker
+        // at the threshold) they draw as simplified figures (Unit.drawLite);
+        // the player's troops join at the top shedding level.
         const ents = this._drawList || (this._drawList = []);
         ents.length = 0;
+        const vL = cam.x - CULL_MARGIN, vR = cam.x + w / (cam.z || 1) + CULL_MARGIN;
+        let visE = 0;
         for (const b of this.buildings) ents.push(b);
-        for (const u of this.units) ents.push(u);
-        for (const e of this.enemies) ents.push(e);
-        for (const p of this.projectiles) ents.push(p);
+        for (const u of this.units) {
+            if (u === this.hero || (u.x > vL && u.x < vR)) ents.push(u);
+            else culled(u, dt);
+        }
+        for (const e of this.enemies) {
+            if (e.isBoss || (e.x > vL && e.x < vR)) {
+                ents.push(e);
+                if (e.active && !e.isBoss) visE++;
+            } else culled(e, dt);
+        }
+        for (const p of this.projectiles) if (p.x > vL && p.x < vR) ents.push(p);
+        const at = PERF.lodAt;
+        this._lodE = this._lodE ? visE > at * 0.8 - 2 : visE > at;
+        this._lodP = PERF.lodPlayers;
+        PERF.dmgLeft = PERF.dmgBudget; // per-frame floating-text budget (Entity.drawDmg)
         ents.sort((a, b) => a.y - b.y);
         ents.forEach((o) => o.draw(ctx, cam, dt));
         this.drawTerrainFront(ctx, w, cam); // tunnel gloom + portals, forest canopy
@@ -931,7 +967,7 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
         // self-queue in their own draw()). Culled to lit sprites + capped, so a
         // scene with no lights costs nothing. WebGPU tier only (reliefSprite is
         // a no-op on WebGL/Canvas).
-        if (this.gl && this.gl.reliefSprite && GFX.lights && this.lights.lights.length) {
+        if (this.gl && this.gl.reliefSprite && GFX.lights && !PERF.lite && this.lights.lights.length) {
             const La = this.lights.lights;
             const litNear = (wx, wy) => {
                 for (let k = 0; k < La.length; k++) {
@@ -944,7 +980,8 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
             const queue = (arr, fallbackCol, strength) => {
                 for (let i = 0; i < arr.length && budget > 0; i++) {
                     const u = arr[i];
-                    if (!u.active || u === this.hero || u.boss) continue;
+                    // isBoss: the Hollow Engine self-queues in its own draw().
+                    if (!u.active || u === this.hero || u.boss || u.isBoss || u.x < vL || u.x > vR) continue;
                     const sscale = u.scale || 1;
                     if (!litNear(u.x, u.y - 20 * sscale)) continue;
                     const rgb = u._reliefRGB || (u._reliefRGB = GLRenderer.parseColor(u.col || fallbackCol));
@@ -1065,6 +1102,7 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
             if (this.gl.setFrame) this.gl.setFrame(dt, cam, this._shakeX, this._shakeY, this.frames);
             this.gl.flush();
         }
-        this.drawMinimap();
+        // Anti-lag: under heavy shedding the minimap redraws every Nth frame.
+        if (PERF.minimapEvery <= 1 || this.frames % PERF.minimapEvery === 0) this.drawMinimap();
     },
 });

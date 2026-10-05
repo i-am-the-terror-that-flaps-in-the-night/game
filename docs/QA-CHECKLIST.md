@@ -34,6 +34,14 @@ between phases — this is a behavior-preservation checklist, not a feature test
 - [ ] War Council: unlock a unit with Renown, reload → still unlocked
 - [ ] Sound/music/particle-quality settings persist across reload
 
+## Performance & anti-lag
+- [ ] Settings → Performance rows apply instantly and persist across reload
+- [ ] ⚙ HUD button pauses mid-run; Apply (or Escape) resumes at the same speed
+- [ ] Show FPS on → meter under the time controls shows FPS / ms / level / foes
+- [ ] Late endless (or Anti-Lag: Max): crowds draw as simple figures, no stutter
+- [ ] Endless with 150+ enemies: merged enemies show a "×N" badge
+- [ ] Damage Numbers Off → no floating numbers; Crowd Detail Full → full art
+
 ## Controls & display
 - [ ] Edge-scroll (mouse to screen edges) pans the camera to both world ends
 - [ ] Pause (speed 0) and speed 1×/2× toggle; active button highlights

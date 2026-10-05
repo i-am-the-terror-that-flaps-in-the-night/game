@@ -129,4 +129,8 @@
         top: 120px;
         right: 10px;
     }
+    .fps-meter {
+        top: 10px;
+        right: 10px;
+    }
 }

@@ -4,6 +4,7 @@ import { TECH_TREE } from '../data/tech.js';
 import { UNIT_TYPES } from '../data/units.js';
 import { Building } from '../entities/building.js';
 import { Unit } from '../entities/unit.js';
+import { MERGE_AT, MERGE_MAX, MERGE_RANGE, PERF } from '../systems/perf.js';
 import { btnId, costStr, rand } from '../utils.js';
 
 // --- GAME: resources, recruiting, building & tech (installed by install-mixins.js) ---
@@ -184,7 +185,39 @@ export const economyMethods = /** @type {ThisType<any>} */ ({
         e.maxHp *= (this.diff || 1) * (this.difficultyMult || 1);
         e.dmg   *= (this.diff || 1) * (this.difficultyMult || 1);
         e.hp = e.maxHp;
+        if (this.mergeSpawn(e)) return;
         this.enemies.push(e);
+    },
+
+    // Horde merge (anti-lag; endless only, while Anti-Lag isn't Off — see
+    // js/systems/perf.js). Once the field holds MERGE_AT+ live enemies, a fresh
+    // spawn folds into the nearest same-type enemy near it instead of adding a
+    // body. HP, damage, healing and bounty add up (kills/drops scale on death),
+    // so the wave's threat and payout are preserved while the body count — the
+    // real driver of late-endless lag — stays bounded. True when absorbed.
+    mergeSpawn(e) {
+        if (!PERF.merge || this.mode !== "endless" || e.boss) return false;
+        const E = this.enemies;
+        if (E.length < MERGE_AT) return false; // cheap pre-check (counts dying bodies too)
+        let live = 0, host = null, bestD = MERGE_RANGE;
+        for (const o of E) {
+            if (!o.active || o.hp <= 0) continue;
+            live++;
+            if (o.type !== e.type || o.isBoss || (o.merged || 1) >= MERGE_MAX) continue;
+            const d = Math.abs(o.x - e.x);
+            if (d < bestD) { bestD = d; host = o; }
+        }
+        if (live < MERGE_AT || !host) return false;
+        const n = (host.merged || 1) + 1;
+        host.baseScale = host.baseScale || host.scale;
+        host.merged = n;
+        host.maxHp += e.maxHp;
+        host.hp += e.maxHp;
+        host.dmg += e.dmg;
+        host.healAmt += e.healAmt;
+        host.bounty += e.bounty;
+        host.scale = host.baseScale * (1 + 0.1 * (n - 1)); // visual only: reads as an elite
+        return true;
     },
 
     buyTech(id) {

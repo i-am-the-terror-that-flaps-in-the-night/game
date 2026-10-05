@@ -57,15 +57,27 @@ export class OrbitalCannon {
     _lvl() { return this.g.powerLevel ? this.g.powerLevel() : 1; }
     radius() { return ORBITAL.radius * Math.min(1.8, 1 + (this._lvl() - 1) * 0.1); }
 
-    // Densest cluster of enemies inside the laser's reach.
+    // Densest cluster of enemies inside the laser's reach: for each candidate,
+    // the boss-weighted count of candidates within 2·radius; ties go to the one
+    // nearest the beam. Sorted by x with a sliding window, so it's O(k log k)
+    // instead of the old all-pairs O(k²) (with radius() recomputed through the
+    // power chain k² times) — that was a top cost in a late-endless horde, as
+    // the beam re-picks every time it kills its target.
     _pick(c) {
-        const cand = this.g.enemies.filter((e) => this._valid(e, c));
-        let best = null, bestN = 0;
-        for (const e of cand) {
-            let n = 0;
-            for (const o of cand) if (Math.abs(o.x - e.x) < this.radius() * 2) n += o.isBoss ? 4 : 1;
-            if (n > bestN || (n === bestN && best && Math.abs(e.x - this.x) < Math.abs(best.x - this.x))) { bestN = n; best = e; }
+        const cand = this._cand || (this._cand = []);
+        cand.length = 0;
+        for (const e of this.g.enemies) if (this._valid(e, c)) cand.push(e);
+        if (!cand.length) return null;
+        cand.sort((a, b) => a.x - b.x);
+        const R2 = this.radius() * 2;
+        let best = null, bestN = 0, lo = 0, hi = 0, w = 0;
+        for (let i = 0; i < cand.length; i++) {
+            const e = cand[i];
+            while (hi < cand.length && cand[hi].x - e.x < R2) w += cand[hi++].isBoss ? 4 : 1;
+            while (e.x - cand[lo].x >= R2) w -= cand[lo++].isBoss ? 4 : 1;
+            if (w > bestN || (w === bestN && best && Math.abs(e.x - this.x) < Math.abs(best.x - this.x))) { bestN = w; best = e; }
         }
+        cand.length = 0; // don't pin dead enemies between picks
         return best;
     }
 
@@ -99,9 +111,15 @@ export class OrbitalCannon {
             this.tickT = ORBITAL.tick;
             const src = { dmgType: "magic", team: TEAMS.PLAYER, isUnit: false };
             const dmg = ORBITAL.dmg * this._lvl(), R = this.radius();
-            for (const e of g.enemies.slice())
-                if (e.active && e.hp > 0 && !terrain.inTunnel(e.x) && Math.abs(e.x - this.x) < R)
-                    dealDamage(dmg * (e.isBoss ? ORBITAL.bossMult : 1), src, e);
+            // Captured length: same as iterating a copy (anything spawned by a
+            // hit is skipped), without allocating one every tick. Nothing
+            // removes from enemies mid-frame (removal is Game.update's filter).
+            const E = g.enemies;
+            for (let i = 0, n = E.length; i < n; i++) {
+                const e = E[i];
+                if (e.active && e.hp > 0 && Math.abs(e.x - this.x) < R && !terrain.inTunnel(e.x))
+                    dealDamage(dmg * (e.isBoss ? ORBITAL.bossMult : 1), src, e, true);
+            }
         }
         this._groundFx(dt);
     }

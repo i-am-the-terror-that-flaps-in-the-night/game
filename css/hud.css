@@ -675,3 +675,39 @@
     display: block;
     border-radius: var(--r-sm);
 }
+
+/* FPS meter (Settings → Show FPS) — sits under the time controls */
+.fps-meter {
+    position: absolute;
+    top: 64px;
+    right: 20px;
+    z-index: var(--z-hud);
+    padding: 3px 8px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--accent-bright);
+    background: rgba(7, 16, 26, 0.78);
+    border: var(--edge);
+    border-radius: var(--r-sm);
+    white-space: nowrap;
+    pointer-events: none;
+}
+.fps-meter.is-hidden {
+    display: none;
+}
+
+/* Anti-lag shedding level 2+ (body.perf-lite, set by Game.applyPerfClasses):
+   backdrop-filter re-blurs the animating canvas behind every glass panel each
+   frame, so heavy shedding flattens the glass and stops decorative loops. */
+body.perf-lite *,
+body.perf-lite *::before,
+body.perf-lite *::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+body.perf-lite .overlay h1 {
+    animation: none !important;
+}
+body.perf-lite .ember {
+    display: none;
+}

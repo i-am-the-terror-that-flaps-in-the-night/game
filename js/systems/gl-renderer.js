@@ -133,12 +133,14 @@ export class GLRenderer {
         return p;
     }
 
-    /** Match the overlay backing store to the viewport (called from resize). */
-    resize(w, h) {
+    /** Match the overlay backing store to the viewport (called from resize).
+     *  `maxDpr` caps the device-pixel ratio (GFX.overlayDpr; sticky). */
+    resize(w, h, maxDpr = this.maxDpr || 2) {
+        this.maxDpr = maxDpr;
         if (!this.ok) return;
         this.w = w;
         this.h = h;
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
         this.canvas.width = Math.round(w * dpr);
         this.canvas.height = Math.round(h * dpr);
         this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
