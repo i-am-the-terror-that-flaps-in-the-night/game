@@ -11,3 +11,8 @@ tools/
 .assetsignore
 wrangler.jsonc
 .idea/
+scratch/
+node_modules/
+.claude/
+.vscode/
+.DS_Store
