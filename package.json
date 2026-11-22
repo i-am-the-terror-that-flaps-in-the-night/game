@@ -7,7 +7,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "serve": "python3 -m http.server 8000",
-    "smoke": "node tools/smoke.mjs"
+    "smoke": "node tools/smoke.mjs",
+    "build:khan": "node tools/build-khan.mjs"
   },
   "devDependencies": {
     "@webgpu/types": "^0.1.71",
