@@ -54,15 +54,6 @@ export class Building extends Entity {
                     });
                     game.notify('⚒ Forge active — melee units gain +25% damage!');
                 }
-                if (this.type === 'archery') {
-                    game.units.forEach(u => {
-                        if (u.team === TEAMS.PLAYER && u.type === 'crossbow') {
-                            u.dmg   = Math.ceil(u.dmg   * 1.20);
-                            u.range = Math.ceil(u.range * 1.15);
-                        }
-                    });
-                    game.notify('🎯 Archery Range — Crossbowmen enhanced!');
-                }
             }
             return;
         }
@@ -307,17 +298,6 @@ export class Building extends Entity {
                 w * 0.4,
                 25 * cam.z,
             );
-        } else if (this.type === "wall") {
-            ctx.fillStyle = "#475569";
-            ctx.fillRect(x, y, w, h);
-            ctx.strokeStyle = "#1e293b";
-            ctx.lineWidth = 3 * cam.z;
-            for (let i = 0; i < 4; i++) {
-                ctx.beginPath();
-                ctx.moveTo(x, y + i * (h / 4));
-                ctx.lineTo(x + w, y + i * (h / 4));
-                ctx.stroke();
-            }
         } else if (this.type === "forge") {
             ctx.fillStyle = "#2d1a0e";
             ctx.fillRect(x, y, w, h);

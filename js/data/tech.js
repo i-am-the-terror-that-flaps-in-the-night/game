@@ -83,14 +83,6 @@ export const TECH_TREE = [
         val: 5,
     },
     {
-        id: "fortified_walls",
-        name: "Titanium Walls",
-        cost: 140,
-        desc: "+10 Wall armor rating",
-        type: "wall_armor",
-        val: 10,
-    },
-    {
         id: "quick_reload",
         name: "Rapid Fire",
         cost: 160,

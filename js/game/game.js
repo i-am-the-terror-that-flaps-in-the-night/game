@@ -75,17 +75,15 @@ export class Game {
         this.upgrades = {};
         this.techs = new Set();
         // Only basic troops to start — buildings unlock the rest
-        // (Barracks, Archery Range, Academy, War Forge).
+        // (Barracks, Academy, War Forge).
         this.unlocked = {
             u: new Set(["militia", "archer"]),
             b: new Set([
                 "castle",
                 "mine",
                 "tower",
-                "wall",
                 "barracks",
                 "academy",
-                "archery",
                 "obelisk",
                 "forge",
             ]),

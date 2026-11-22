@@ -151,7 +151,7 @@ export const ENEMY_TYPES = {
         dmgType: "pierce",
         armorClass: "shield",
         drops: { iron: 5 },
-        desc: "Shield bounces arrows, halberd punches through anyone without a shield of their own. Field a Swordsman.",
+        desc: "Shield bounces arrows, halberd punches through anyone without a shield of their own. Field shielded Spearmen.",
         scale: 1.05,
         color: "#eab308",
         visual: "tower_shield",

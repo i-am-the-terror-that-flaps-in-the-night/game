@@ -171,7 +171,7 @@ export const LEVELS = [
         name: "Ogre March",
         ground: "#45413c",
         sky: "#3b1703",
-        weather: "snow",
+        weather: "none",
         waves: [
             {
                 time: 20,
@@ -214,7 +214,7 @@ export const LEVELS = [
         name: "The Horde",
         ground: "#5c280b",
         sky: "#18181b",
-        weather: "snow",
+        weather: "none",
         waves: [
             { time: 10, enemies: [{ t: "rabble", c: 30 }] },
             {

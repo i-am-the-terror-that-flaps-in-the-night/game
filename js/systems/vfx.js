@@ -280,7 +280,7 @@ export class WeatherSystem {
     update(dt, cam) {
         if (this.type === "none") return;
         const q = particleQuality();
-        const count = this.type === "rain" ? 4 * q : 2 * q;
+        const count = 4 * q; // rain is the only weather type
 
         for (let i = 0; i < count * dt; i++) {
             this.particles.push({
@@ -288,9 +288,9 @@ export class WeatherSystem {
                     cam.x +
                     rand(-200, window.innerWidth / cam.z + 200),
                 y: cam.y - 100,
-                s: this.type === "rain" ? rand(15, 25) : rand(2, 5),
-                vx: this.type === "rain" ? 2 : rand(-1, 1),
-                sz: this.type === "rain" ? rand(1, 2) : rand(2, 4),
+                s: rand(15, 25),
+                vx: 2,
+                sz: rand(1, 2),
             });
         }
 
@@ -304,27 +304,14 @@ export class WeatherSystem {
     draw(ctx, cam) {
         if (this.type === "none") return;
         ctx.save();
-        ctx.fillStyle =
-            this.type === "rain"
-                ? "rgba(150,200,255,0.4)"
-                : "rgba(255,255,255,0.6)";
+        ctx.strokeStyle = "rgba(150,200,255,0.4)";
         for (const p of this.particles) {
             const px = cam.sx(p.x), py = cam.sy(p.y);
-            if (this.type === "rain") {
-                ctx.beginPath();
-                ctx.moveTo(px, py);
-                ctx.lineTo(
-                    px - p.vx * cam.z,
-                    py - p.s * cam.z,
-                );
-                ctx.strokeStyle = ctx.fillStyle;
-                ctx.lineWidth = p.sz * cam.z;
-                ctx.stroke();
-            } else {
-                ctx.beginPath();
-                ctx.arc(px, py, p.sz * cam.z, 0, Math.PI * 2);
-                ctx.fill();
-            }
+            ctx.beginPath();
+            ctx.moveTo(px, py);
+            ctx.lineTo(px - p.vx * cam.z, py - p.s * cam.z);
+            ctx.lineWidth = p.sz * cam.z;
+            ctx.stroke();
         }
         ctx.restore();
     }
