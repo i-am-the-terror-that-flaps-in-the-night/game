@@ -4,7 +4,7 @@ import { clamp } from '../utils.js';
 // --- TERRAIN: the whole battlefield is shaped ground ---
 // Logic stays 1-D (x drives targeting), but the ground is a height curve and
 // every stretch of the map is a set piece: rolling hills, highlands, forests,
-// rivers (fords or bridges), mud/snow/marsh, barricaded passes, hilltop
+// rivers (fords or bridges), mud/marsh, barricaded passes, hilltop
 // shrines, and great ridges with a tunnel bored beneath them.
 //
 // Two surfaces are kept:
@@ -25,7 +25,6 @@ const TUNNEL_ARCH = 96;     // tunnel mouth height above its floor
 // Slow-ground kinds. `slow` multiplies walking speed (flyers are immune).
 export const TERRAIN_PATCHES = {
     mud:   { name: "Mud",       slow: 0.6,  top: "#3b2a1a", sheen: "#6b4f33", fx: "#5b4631" },
-    snow:  { name: "Snowdrift", slow: 0.75, top: "#dbe4ee", sheen: "#f8fafc", fx: "#e2e8f0" },
     marsh: { name: "Marsh",     slow: 0.65, top: "#1c3b36", sheen: "#5eead4", fx: "#94a3b8" },
 };
 
@@ -72,7 +71,6 @@ const SEGMENTS = {
     bridge:   { w: 700, make(f, x0, x1, r) { river(f, x0, x1, r, true); } },
     mud:      { w: 700, make(f, x0, x1, r) { bumps(f, x0, x1, r, 2, 16, 36); patch(f, x0, x1, r, "mud"); } },
     marsh:    { w: 720, make(f, x0, x1, r) { bumps(f, x0, x1, r, 1, 14, 28); patch(f, x0, x1, r, "marsh"); } },
-    snow:     { w: 760, make(f, x0, x1, r) { bumps(f, x0, x1, r, 2, 30, 70); patch(f, x0, x1, r, "snow"); } },
     pass:     { w: 820, make(f, x0, x1, r) {
         // Two shoulders with a barricaded saddle between them.
         const m = (x0 + x1) / 2, w = (x1 - x0);
@@ -346,13 +344,13 @@ export class Terrain {
         const p = this.patchAt(x);
         if (p) parts.push(`<b>${TERRAIN_PATCHES[p.kind].name}</b>: ×${TERRAIN_PATCHES[p.kind].slow} move speed`);
         const z = this.zoneAt(x);
-        if (z) parts.push(`<b>Whiteout</b>: ×${z.slow} move speed`);
+        if (z) parts.push(`<b>Hazard zone</b>: ×${z.slow} move speed`);
         return parts.join("<br>");
     }
 
     // Random Endless map: a full run of segments across the whole field.
     static randomSpec() {
-        const pool = ["rolling", "highland", "forest", "hillforest", "tunnel", "tunnelforest", "ford", "bridge", "mud", "marsh", "snow", "pass"];
+        const pool = ["rolling", "highland", "forest", "hillforest", "tunnel", "tunnelforest", "ford", "bridge", "mud", "marsh", "pass"];
         const rewards = ["gold", "mana", "watch"];
         const segs = [];
         for (let i = 0; i < 11; i++) {

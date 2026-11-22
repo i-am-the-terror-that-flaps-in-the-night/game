@@ -15,13 +15,12 @@ import { btnId, cap, costStr } from '../utils.js';
 // [type, hotkey-display-char] in on-screen order. Exported as the single source
 // of the roster + hotkeys — game-input.js derives its keyboard map from these.
 export const UNIT_ROSTER = [
-    ['militia', '1'], ['swordsman', '2'], ['spearman', '3'], ['archer', '4'],
-    ['crossbow', '5'], ['cleric', '6'], ['knight', '7'], ['mage', '8'],
-    ['catapult', '9'], ['paladin', '0'],
+    ['militia', '1'], ['spearman', '2'], ['archer', '3'], ['crossbow', '4'],
+    ['knight', '5'], ['mage', '6'], ['catapult', '7'], ['paladin', '8'],
 ];
 export const BUILDING_ROSTER = [
-    ['mine', 'Q'], ['barracks', 'W'], ['tower', 'E'], ['wall', 'R'],
-    ['academy', 'T'], ['obelisk', 'F'], ['archery', 'G'], ['forge', 'H'],
+    ['mine', 'Q'], ['barracks', 'W'], ['tower', 'E'],
+    ['academy', 'T'], ['obelisk', 'F'], ['forge', 'H'],
 ];
 // Per-button accent modifiers (premium/fire units).
 const MODIFIER = { paladin: ' btn--gold', forge: ' btn--ember' };

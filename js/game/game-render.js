@@ -741,8 +741,8 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
         ctx.lineJoin = "miter";
     },
 
-    // Slow-ground patches painted onto the surface: glossy mud with bubbles,
-    // wind-carved snowdrifts, and reedy marsh water.
+    // Slow-ground patches painted onto the surface: glossy mud with bubbles
+    // and reedy marsh water.
     _drawPatches(ctx, w, gy, cam) {
         const z = cam.z;
         for (const p of terrain.patches) {
@@ -750,7 +750,7 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
             if (x1 < -20 || x0 > w + 20) continue;
             const def = TERRAIN_PATCHES[p.kind];
             const surf = (wx) => gy - terrain.heightAt(wx) * z;
-            const depth = (p.kind === "snow" ? 9 : 12) * z;
+            const depth = 12 * z;
             ctx.save();
             ctx.fillStyle = def.top;
             ctx.globalAlpha = p.kind === "marsh" ? 0.82 : 0.92;
@@ -758,8 +758,7 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
             // Tapered ends so the patch blends into the grass.
             ctx.moveTo(x0 - 10 * z, surf(p.x0) + 1);
             for (let wx = p.x0; wx <= p.x1; wx += 10) {
-                const bump = p.kind === "snow" ? Math.abs(Math.sin(wx * 0.045)) * 5 * z : 0;
-                ctx.lineTo(cam.sx(wx), surf(wx) - 2 * z - bump);
+                ctx.lineTo(cam.sx(wx), surf(wx) - 2 * z);
             }
             ctx.lineTo(x1 + 10 * z, surf(p.x1) + 1);
             for (let wx = p.x1; wx >= p.x0; wx -= 20) ctx.lineTo(cam.sx(wx), surf(wx) + depth);
@@ -771,7 +770,7 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
             ctx.lineWidth = 1.2 * z;
             ctx.beginPath();
             for (let wx = p.x0 + 8; wx <= p.x1 - 8; wx += 10) {
-                const y = surf(wx) - (p.kind === "snow" ? 3 : 1) * z;
+                const y = surf(wx) - 1 * z;
                 if (wx === p.x0 + 8) ctx.moveTo(cam.sx(wx), y); else ctx.lineTo(cam.sx(wx), y);
             }
             ctx.stroke();

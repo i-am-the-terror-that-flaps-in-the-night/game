@@ -256,24 +256,24 @@ export const LEVELS = [
         name: "Ogre March",
         ground: "#45413c",
         sky: "#3b1703",
-        weather: "snow",
+        weather: "none",
         terrain: {
             seed: 606,
             rough: 30,
             segments: [
-                "snow",
+                "rolling",
                 "highland",
                 "tunnel",
                 "shrine:gold",
                 "pass",
-                "snow",
+                "rolling",
                 "hillforest",
                 "bridge",
                 "pass",
-                "snow",
+                "rolling",
             ],
         },
-        hazard: { type: "whiteout", every: [26, 38] },
+        hazard: { type: "rockslide", every: [26, 38] },
         waves: [
             {
                 time: 20,
@@ -316,7 +316,7 @@ export const LEVELS = [
         name: "The Horde",
         ground: "#5c280b",
         sky: "#18181b",
-        weather: "snow",
+        weather: "none",
         terrain: {
             seed: 707,
             rough: 34,
@@ -324,7 +324,7 @@ export const LEVELS = [
                 "hillforest",
                 "bridge",
                 "shrine:gold",
-                "snow",
+                "rolling",
                 "tunnelforest",
                 "ford",
                 "shrine:watch",
@@ -333,7 +333,7 @@ export const LEVELS = [
                 "forest",
             ],
         },
-        hazard: { type: "whiteout", every: [22, 34] },
+        hazard: { type: "rockslide", every: [22, 34] },
         waves: [
             { time: 10, enemies: [{ t: "rabble", c: 30 }] },
             {

@@ -8,12 +8,10 @@ import { loadJSON, saveJSON } from './storage.js';
 // advanced troops — once unlocked they are available from the START of every
 // future run (campaign or endless) without rebuilding their unlock structure.
 //
-// Militia and Archer are always free; the eight advanced units below are the
+// Militia and Archer are always free; the six advanced units below are the
 // permanent-unlock pool. Costs roughly track combat value.
 export const ADVANCED_UNITS = [
-    { id: "swordsman", cost: 25,  icon: "🗡️" },
     { id: "spearman",  cost: 30,  icon: "🔱" },
-    { id: "cleric",    cost: 40,  icon: "✨" },
     { id: "crossbow",  cost: 45,  icon: "🎯" },
     { id: "knight",    cost: 60,  icon: "🐎" },
     { id: "mage",      cost: 75,  icon: "🔥" },
@@ -33,10 +31,8 @@ export const ADVANCED_UNITS = [
 export const UNIT_UPGRADES = {
     militia:   { icon: "🗡️", dmgPer: 2, hpPer: 14, gold: [150, 260, 420, 640, 900],   renown: [3, 5, 8, 12, 17] },
     archer:    { icon: "🏹", dmgPer: 2, hpPer: 8,  gold: [170, 290, 460, 700, 980],   renown: [3, 5, 8, 12, 17] },
-    swordsman: { icon: "🛡", dmgPer: 2, hpPer: 18, gold: [240, 400, 620, 900, 1250],  renown: [4, 7, 11, 16, 22] },
     spearman:  { icon: "🔱", dmgPer: 3, hpPer: 14, gold: [240, 400, 620, 900, 1250],  renown: [4, 7, 11, 16, 22] },
     crossbow:  { icon: "🎯", dmgPer: 4, hpPer: 9,  gold: [280, 460, 720, 1050, 1450], renown: [4, 7, 11, 16, 22] },
-    cleric:    { icon: "✨", dmgPer: 1, hpPer: 12, gold: [240, 400, 620, 900, 1250],  renown: [4, 7, 11, 16, 22] },
     knight:    { icon: "🐎", dmgPer: 5, hpPer: 30, gold: [420, 680, 1000, 1400, 1900], renown: [6, 10, 15, 21, 28] },
     mage:      { icon: "🔥", dmgPer: 6, hpPer: 8,  gold: [420, 680, 1000, 1400, 1900], renown: [6, 10, 15, 21, 28] },
     catapult:  { icon: "🪨", dmgPer: 1, hpPer: 24, gold: [420, 680, 1000, 1400, 1900], renown: [6, 10, 15, 21, 28] },
@@ -108,6 +104,7 @@ export class MetaProgression {
                 this.unitUpgrades = s.unitUpgrades || {};
                 this.heroUpgrades = s.heroUpgrades || {};
                 this.castleUpgrades = s.castleUpgrades || {};
+                this._migrateMergedUnits();
             }
         } catch (e) { /* keep defaults */ }
     }
@@ -322,6 +319,31 @@ export class MetaProgression {
         if (first) this.cleared.add(level);
         this.save();
         return amt;
+    }
+
+    // Swordsman was merged into Spearman and Cleric into Paladin. Old saves may
+    // still hold those ids: refund the Renown spent unlocking them (the merged
+    // unit has its own unlock price), and carry any bought upgrade levels over
+    // to the merged unit (keeping whichever level is higher). Idempotent — once
+    // the old ids are gone this is a no-op, and save() persists the result.
+    _migrateMergedUnits() {
+        const MERGED = { swordsman: { into: "spearman", refund: 25 }, cleric: { into: "paladin", refund: 40 } };
+        let changed = false;
+        for (const [old, m] of Object.entries(MERGED)) {
+            if (this.unlocked.has(old)) {
+                this.unlocked.delete(old);
+                this.renown += m.refund;
+                changed = true;
+            }
+            const up = this.unitUpgrades[old];
+            if (up) {
+                const tgt = (this.unitUpgrades[m.into] = this.unitUpgrades[m.into] || {});
+                for (const tr of Object.keys(up)) tgt[tr] = Math.max(tgt[tr] || 0, up[tr] || 0);
+                delete this.unitUpgrades[old];
+                changed = true;
+            }
+        }
+        if (changed) this.save();
     }
 
     // Merge permanent unlocks into a run's active roster (called from reset()).

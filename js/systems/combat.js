@@ -125,9 +125,9 @@ export const WAVE_HINTS = [
     ["necromancer", "Necromancers raise skeletons — kill them before the dead pile up."],
     ["ogre",        "Ogres wear heavy armor — Spearmen and Crossbows pierce it; keep militia away."],
     ["shieldman",   "Shield wall — arrows bounce off. Crack it with Blunt (Catapult, Paladin) or Magic."],
-    ["halberdier",  "Shielded halberdiers bounce arrows and stab back with pierce — a Swordsman shrugs off the return hit."],
+    ["halberdier",  "Shielded halberdiers bounce arrows and stab back with pierce — a shielded Spearman shrugs off the return hit."],
     ["shaman",      "Shamans heal from the back — snipe them or hit the pack with AoE."],
-    ["archer",      "Arrow volleys ahead — shielded Swordsmen soak pierce damage."],
+    ["archer",      "Arrow volleys ahead — shielded Spearmen soak pierce damage."],
     ["berserker",   "Berserkers sprint for your backline — hold a solid melee screen."],
     ["marauder",    "Light raiders — Archers and a melee line trade well."],
 ];

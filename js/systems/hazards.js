@@ -117,50 +117,6 @@ export const HAZARD_TYPES = {
         },
     },
 
-    // Snow maps: a howling whiteout that bogs down anyone caught inside.
-    whiteout: {
-        name: "Whiteout", col: "#e2e8f0", r: 110, linger: 360,
-        tip: "Whiteouts freeze the ground — anything caught inside slows to a crawl and takes frostbite.",
-        strike(g, h) {
-            terrain.addZone(h.x - this.r, h.x + this.r, 0.6, this.linger, "whiteout");
-            g.particles.emit(h.x, groundAt(h.x) - 30, 24, "#f1f5f9", 5, 5, "float");
-            g.fx.ring(h.x, groundAt(h.x), { r0: 10, r1: this.r, col: "#e0f2fe", w: 3, life: 22 });
-            g.audio.gust();
-        },
-        tick(g, h, dt) {
-            h.frostT = (h.frostT || 0) - dt;
-            if (h.frostT <= 0) {
-                h.frostT = 60;
-                for (const e of victims(g, h.x, this.r)) dealDamage(8, src("magic"), e, true);
-            }
-            if (Math.floor(h.age) % 3 === 0)
-                g.particles.emit(h.x + rand(-this.r, this.r), groundAt(h.x) - rand(10, 90), 1, "#f8fafc", 2.5, 3, "float");
-        },
-        drawOver(g, h, ctx, cam, k) {
-            // A soft dome of blowing snow hugging the ground (fades in and out).
-            const gy = cam.sy(groundAt(h.x)), px = cam.sx(h.x);
-            const a = 0.34 * Math.min(1, k * 4) * Math.min(1, (1 - k) * 5);
-            const r = this.r * 1.25 * cam.z;
-            ctx.save();
-            ctx.translate(px, gy);
-            ctx.scale(1, 0.6);
-            const grd = ctx.createRadialGradient(0, 0, r * 0.15, 0, 0, r);
-            grd.addColorStop(0, `rgba(241,245,249,${a})`);
-            grd.addColorStop(0.6, `rgba(226,232,240,${a * 0.6})`);
-            grd.addColorStop(1, "rgba(226,232,240,0)");
-            ctx.fillStyle = grd;
-            ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
-            // Wind streaks raking through it.
-            ctx.strokeStyle = `rgba(248,250,252,${a * 1.4})`;
-            ctx.lineWidth = 1.5 * cam.z;
-            for (let i = 0; i < 6; i++) {
-                const sx = ((h.age * 9 + i * 71) % (2 * r)) - r;
-                const sy = -((i * 37) % 70 + 10) * cam.z;
-                ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + 26 * cam.z, sy + 3 * cam.z); ctx.stroke();
-            }
-            ctx.restore();
-        },
-    },
 
     // Volcanic maps: fissure vents erupt in a column of fire.
     fireVent: {
