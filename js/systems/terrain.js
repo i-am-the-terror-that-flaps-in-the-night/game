@@ -21,6 +21,12 @@ const MAX_SLOPE = 0.55;     // steepest walkable rise (px per px)
 const PLATEAU = 650;        // castle plateau: flat up to here...
 const PLATEAU_RAMP = 450;   // ...then terrain eases in over this span
 const TUNNEL_ARCH = 96;     // tunnel mouth height above its floor
+// Every tunnel is a two-level crossing: troops split between the bore and a
+// road over the top. The top road sits DECK px above the tunnel floor (bore +
+// rock cover) and climbs to it over RAMP px of approach on each side — long
+// enough to stay under MAX_SLOPE.
+const DECK = TUNNEL_ARCH + 38;
+const RAMP = 380;
 
 // Slow-ground kinds. `slow` multiplies walking speed (flyers are immune).
 export const TERRAIN_PATCHES = {
@@ -119,6 +125,9 @@ export class Terrain {
         const n = Math.ceil(CONFIG.WORLD_WIDTH / STEP) + 2;
         this.samples = new Float32Array(n);
         this.top = new Float32Array(n);
+        this.upper = new Float32Array(n);   // walking surface of the top lane
+        this.crossings = [];                 // { t, x0, x1 } incl. both ramps
+        this._laneTick = [0, 0];             // per-team alternation counter
         this.zones = []; // temporary slow zones (hazards): {x0,x1,slow,life,kind}
         this.load(null);
     }
@@ -199,25 +208,31 @@ export class Terrain {
         const lim = MAX_SLOPE * STEP;
         for (let i = 1; i < n; i++) S[i] = clamp(S[i], S[i - 1] - lim, S[i - 1] + lim);
         for (let i = n - 2; i >= 0; i--) S[i] = clamp(S[i], S[i + 1] - lim, S[i + 1] + lim);
-        // Visible top = walking surface, raised into a hill over each tunnel:
-        // a rock face climbs to the portal (bore + ~38 px of cover), then the
-        // hill crowns toward t.h with a weathered crest. Troops walk the bore.
-        this.top.set(S);
-        const cover = TUNNEL_ARCH + 38;
+        // Two-level crossings. `upper` (the top lane) equals the ground
+        // everywhere except over each tunnel, where it ramps up to a road DECK
+        // px above the floor, runs across the ridge, and ramps back down. The
+        // visible top of the land IS that road there (no separate crown).
+        const U = this.upper;
+        U.set(S);
         const smooth = (u) => u * u * (3 - 2 * u);
+        this.crossings = [];
         for (const t of this.tunnels) {
-            const half = (t.x1 - t.x0) / 2;
-            const i0 = Math.max(0, Math.floor((t.x0 - 90) / STEP)), i1 = Math.min(n - 1, Math.ceil((t.x1 + 90) / STEP));
+            const z0 = t.x0 - RAMP, z1 = t.x1 + RAMP;
+            const i0 = Math.max(0, Math.floor(z0 / STEP)), i1 = Math.min(n - 1, Math.ceil(z1 / STEP));
             for (let i = i0; i <= i1; i++) {
                 const x = i * STEP;
-                const e = Math.min(x - t.x0, t.x1 - x); // depth inside the hill
-                const prof = e < 0
-                    ? cover * smooth(clamp((e + 90) / 90, 0, 1))
-                    : cover + (t.h - cover) * smooth(clamp(e / (half * 0.8), 0, 1));
-                const crag = e > 0 ? (8 * Math.sin(x * 0.031) + 5 * Math.sin(x * 0.087)) * clamp(e / 120, 0, 1) : 0;
-                this.top[i] = Math.max(S[i], S[i] + prof + crag);
+                const e = Math.min(x - t.x0, t.x1 - x);          // <0 outside the bore
+                const prof = e >= -20 ? DECK : DECK * smooth(clamp((e + RAMP) / (RAMP - 20), 0, 1));
+                U[i] = Math.max(U[i], S[i] + prof);
             }
+            // Keep the road walkable even where the ground under it undulates.
+            const lim = MAX_SLOPE * STEP;
+            for (let i = i0 + 1; i <= i1; i++) U[i] = Math.min(U[i], U[i - 1] + lim);
+            for (let i = i1 - 1; i >= i0; i--) U[i] = Math.min(U[i], U[i + 1] + lim);
+            for (let i = i0; i <= i1; i++) U[i] = Math.max(U[i], S[i]);
+            this.crossings.push({ t, x0: z0, x1: z1 });
         }
+        this.top.set(U);
         this.flatMap = !S.some((v) => v > 0.5);
         this._findCrests();
         this._buildAnchors();
@@ -274,15 +289,16 @@ export class Terrain {
         return a + (b - a) * (f - i);
     }
 
-    heightAt(x) { return this._at(this.samples, x); }
+    // lane 0 = ground / tunnel floor, lane 1 = the road over each crossing.
+    heightAt(x, lane) { return this._at(lane === 1 ? this.upper : this.samples, x); }
 
     // Visible top of the land (ridge crowns over tunnels).
     topAt(x) { return this._at(this.top, x); }
 
-    groundAt(x) { return CONFIG.GROUND_Y - this.heightAt(x); }
+    groundAt(x, lane) { return CONFIG.GROUND_Y - this.heightAt(x, lane); }
 
     // Rise per px of +x (positive = ground climbs toward the right).
-    slopeAt(x) { return (this.heightAt(x + 8) - this.heightAt(x - 8)) / 16; }
+    slopeAt(x, lane) { return (this.heightAt(x + 8, lane) - this.heightAt(x - 8, lane)) / 16; }
 
     _span(list, x) {
         for (const p of list) if (x >= p.x0 && x <= p.x1) return p;
@@ -294,10 +310,35 @@ export class Terrain {
     riverAt(x) { return this._span(this.rivers, x); }
     tunnelAt(x) { return this._span(this.tunnels, x); }
     inTunnel(x) { return this._span(this.tunnels, x) !== null; }
+    crossingAt(x) { return this._span(this.crossings, x); }
+
+    // Underground = inside a bore AND below the top road. Point form (shots,
+    // impacts) and entity form; flyers are never underground.
+    underAt(x, y) { return this.inTunnel(x) && y > this.groundAt(x, 1) + 2; }
+    underground(e) { return !!e && !e.flying && this.underAt(e.x, e.y); }
 
     // Line-of-sight cover: ranged shots, flyers, towers, spells and hazards
-    // can't reach across a tunnel wall — only one side being inside blocks.
-    blocksShot(ax, tx) { return this.inTunnel(ax) !== this.inTunnel(tx); }
+    // can't reach across a tunnel wall — only one side being underground blocks.
+    blocksShot(a, t) { return this.underground(a) !== this.underground(t); }
+
+    // Same level? Only two units inside the SAME crossing on different lanes
+    // are separated (bore vs top road). A foe beyond the crossing is on the
+    // merged lane and reachable from either level — gating that would make a
+    // unit flip-flop at the ramp foot and stall.
+    sameLevel(a, b) {
+        if (a.flying || b.flying) return true;
+        if ((a.lane || 0) === (b.lane || 0)) return true;
+        const ca = this.crossingAt(a.x);
+        return !(ca && ca === this.crossingAt(b.x));
+    }
+
+    // Route a ground unit entering a crossing: large units can't fit the
+    // bore and always take the top; everyone else alternates per team.
+    pickLane(e, team) {
+        if (e.large || e.isHero) return 1;
+        const k = team === 1 ? 0 : 1;
+        return (this._laneTick[k]++ & 1);
+    }
 
     tunnelArch() { return TUNNEL_ARCH; }
 
@@ -317,12 +358,12 @@ export class Terrain {
     speedMult(e, dir) {
         if (e.flying) return 1;
         let m = 1;
-        const s = this.slopeAt(e.x) * dir;
+        const s = this.slopeAt(e.x, e.lane) * dir;
         if (s > 0) m *= Math.max(0.75, 1 - s * 0.6);
         else if (s < 0) m *= Math.min(1.1, 1 - s * 0.25);
         const p = this.patchAt(e.x);
         if (p) m *= TERRAIN_PATCHES[p.kind].slow;
-        const rv = this.riverAt(e.x);
+        const rv = (e.lane || 0) === 0 ? this.riverAt(e.x) : null;
         if (rv && !rv.bridge) m *= FORD_SLOW;
         const z = this.zoneAt(e.x);
         if (z) m *= z.slow;
@@ -334,7 +375,9 @@ export class Terrain {
         const parts = [];
         const h = this.heightAt(x);
         if (this.inTunnel(x))
-            parts.push("<b>Tunnel</b>: ranged fire, flyers, spells and towers can't reach in or out. Melee only.");
+            parts.push("<b>Tunnel crossing</b>: troops split between the bore and the road over the top. Underground: ranged fire, flyers, spells and towers can't reach in or out. On top: exposed, with high ground.");
+        else if (this.crossingAt(x))
+            parts.push("<b>Crossing ramp</b>: the road climbs over the tunnel ahead; large units always take the top.");
         else if (h >= 60)
             parts.push(`<b>High ground</b> (+${Math.round(h)}): ranged units reach farther; attacks downhill ×${HIGH_GROUND.bonus}, uphill ×${HIGH_GROUND.penalty}`);
         else if (Math.abs(this.slopeAt(x)) > 0.15) parts.push("<b>Slope</b>: slower climbing, faster descent");
@@ -364,4 +407,4 @@ export class Terrain {
 // The one live battlefield. Module-level (like CONFIG) so leaf modules —
 // particles, projectiles, decals — can find the ground without a game handle.
 export const terrain = new Terrain();
-export function groundAt(x) { return terrain.groundAt(x); }
+export function groundAt(x, lane) { return terrain.groundAt(x, lane); }

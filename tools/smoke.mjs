@@ -300,6 +300,68 @@ try {
     ok(t2.blocks && t2.repair, 'barricades block enemies and repair for gold');
     ok(t2.hold, 'formation holds on a terrain anchor');
 
+    // Two-level crossings: every tunnel has a walkable road over the top; troops
+    // split between bore and road; melee can't reach across levels; a wave
+    // still pushes through.
+    const cx = await page.evaluate(() => {
+        const g = window.game, T = g.terrain, r = {};
+        g.loadLvl(4);
+        r.allTunnels = T.tunnels.length > 0 && T.crossings.length === T.tunnels.length;
+        let walkable = true, deckOk = true;
+        for (const c of T.crossings) {
+            for (let x = c.x0; x < c.x1; x += 8) if (Math.abs(T.heightAt(x + 8, 1) - T.heightAt(x, 1)) / 8 > 0.56) walkable = false;
+            const mid = (c.t.x0 + c.t.x1) / 2;
+            if (T.heightAt(mid, 1) - T.heightAt(mid, 0) < T.tunnelArch() + 30) deckOk = false;
+        }
+        r.walkable = walkable; r.deck = deckOk;
+        // March a squad through the first crossing.
+        const c = T.crossings[0];
+        g.formation = 'aggressive';
+        g.unlocked.u.add('knight');
+        g.gold = 1e5; g.iron = 1e4; g.maxPop = 999;
+        const squad = [];
+        for (const t of ['militia', 'militia', 'spearman', 'spearman', 'knight', 'militia']) { g.buyUnit(t); squad.push(g.units[g.units.length - 1]); }
+        squad.forEach((u, i) => { u.x = c.x0 - 40 - i * 20; });
+        // An immovable bait beyond the crossing pulls the squad through it.
+        g.spawnEnemy('ogre', c.x1 + 300);
+        const bait = g.enemies[g.enemies.length - 1];
+        bait.hp = bait.maxHp = 1e9;
+        const seen = new Set();
+        let feetOk = true;
+        for (let i = 0; i < 1100; i++) {
+            for (const u of squad) {
+                u.update(1);
+                if (T.crossingAt(u.x)) {
+                    seen.add(u.lane);
+                    if (Math.abs(u.y - T.groundAt(u.x, u.lane)) > 0.5) feetOk = false;
+                }
+            }
+        }
+        r.split = seen.has(0) && seen.has(1);
+        r.feet = feetOk;
+        // Everyone made it across (no flip-flop stall at a ramp foot).
+        r.through = squad.every((u) => u.x > c.x1);
+        r.knightTop = T.pickLane({ large: true }, 1) === 1 && T.pickLane({ large: true }, 2) === 1;
+        // Melee can't reach across levels inside a crossing; ranged on top can
+        // hit ground units out on the ramp but not underground ones.
+        const mid = (c.t.x0 + c.t.x1) / 2;
+        const mk = (x, lane, ranged) => ({ x, lane, y: T.groundAt(x, lane), ranged, flying: false });
+        const melee = squad[0];
+        melee.x = mid; melee.lane = 1; melee.y = T.groundAt(mid, 1);
+        r.meleeBlocked = !melee._canHit(mk(mid + 20, 0, false));
+        const topArcher = Object.assign(Object.create(Object.getPrototypeOf(melee)), mk(c.t.x0 - 10, 1, true));
+        r.shootRamp = topArcher._canHit(mk(c.x0 + 40, 0, false));
+        r.noShootUnder = !topArcher._canHit(mk(mid, 0, false));
+        g.returnToMenu();
+        return r;
+    });
+    ok(cx.allTunnels && cx.walkable && cx.deck, 'every tunnel is a two-level crossing with a walkable top road');
+    ok(cx.split && cx.feet, 'troops split between the bore and the top road and walk on their lane');
+    ok(cx.through, 'every unit gets through the crossing (no stall at the ramp)');
+    ok(cx.knightTop, 'large units take the top road');
+    ok(cx.meleeBlocked, 'melee cannot reach across levels inside a crossing');
+    ok(cx.shootRamp && cx.noShootUnder, 'ranged on the top road can hit the ramp but not the bore');
+
     const orb = await page.evaluate(() => {
         const g = window.game, r = {};
         g.loadLvl(4);

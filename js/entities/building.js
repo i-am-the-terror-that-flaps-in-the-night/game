@@ -81,7 +81,7 @@ export class Building extends Entity {
                 const { tgt: c } = nearestX(this.x, trgs, (t, d) =>
                     t.hp > 0 &&
                     d <= (t.flying && this.flyRange ? this.flyRange : this.range) &&
-                    !terrain.inTunnel(t.x), // tunnel roofs shelter from tower fire
+                    !terrain.underground(t), // tunnel roofs shelter from tower fire
                 );
                 if (c) {
                     // The castle fires a continuous machine-gun raycast beam; all

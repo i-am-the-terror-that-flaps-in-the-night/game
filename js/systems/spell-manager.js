@@ -119,7 +119,7 @@ export class SpellManager {
         const sp = SPELLS[this.active];
         this.mana -= sp.cost;
         const w = game.camera.toWorld(e.clientX, e.clientY);
-        const wy = Math.min(w.y, groundAt(w.x));
+        const wy = Math.min(w.y, groundAt(w.x, 1));
 
         game.audio.playMagic();
 

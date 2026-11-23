@@ -475,6 +475,7 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
             this._drawRivers(ctx, w, gy, cam);
             this._drawCaves(ctx, w, gy, cam);
             this._drawForests(ctx, w, gy, cam, lvl.ground);
+            this._drawCrossingRoads(ctx, w, gy, cam);   // in front of ridge trees
         }
     },
 
@@ -539,6 +540,65 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
                 }
             }
             ctx.restore();
+        }
+    },
+
+    // Two-level crossings, BEHIND the troops: a sunken road cut through each
+    // approach ramp (the bore's lower lane) and a paved, railed road along the
+    // top (the upper lane). Both lanes stay visible; the troops on them are
+    // depth-sorted normally (the top road sits further back, higher up).
+    _drawCrossingRoads(ctx, w, gy, cam) {
+        const z = cam.z;
+        const lo = (wx) => gy - terrain.heightAt(wx, 0) * z;
+        const hi = (wx) => gy - terrain.heightAt(wx, 1) * z;
+        for (const c of terrain.crossings) {
+            if (cam.sx(c.x1) < -40 || cam.sx(c.x0) > w + 40) continue;
+            const t = c.t;
+            // Sunken cutting on each ramp: dark walls up to ~44px, packed road.
+            for (const [a, b] of [[c.x0, t.x0], [t.x1, c.x1]]) {
+                ctx.fillStyle = "rgba(20,14,10,0.55)";
+                ctx.beginPath();
+                ctx.moveTo(cam.sx(a), lo(a));
+                for (let wx = a; wx <= b; wx += 12) ctx.lineTo(cam.sx(wx), Math.max(hi(wx), lo(wx) - 44 * z));
+                ctx.lineTo(cam.sx(b), lo(b));
+                for (let wx = b; wx >= a; wx -= 12) ctx.lineTo(cam.sx(wx), lo(wx));
+                ctx.closePath(); ctx.fill();
+                ctx.strokeStyle = "rgba(120,100,80,0.55)"; ctx.lineWidth = 1.2 * z;
+                ctx.beginPath();
+                for (let wx = a; wx <= b; wx += 12) {
+                    const y = Math.max(hi(wx), lo(wx) - 44 * z);
+                    if (wx === a) ctx.moveTo(cam.sx(wx), y); else ctx.lineTo(cam.sx(wx), y);
+                }
+                ctx.stroke();
+                ctx.fillStyle = "#4a3a2a";
+                for (let wx = a; wx < b; wx += 12) ctx.fillRect(cam.sx(wx), lo(wx) - 3 * z, 12 * z + 1, 3 * z);
+            }
+            // Top road: paving along the whole crossing...
+            ctx.strokeStyle = "#6b5e50"; ctx.lineWidth = 5 * z;
+            ctx.beginPath();
+            for (let wx = c.x0; wx <= c.x1; wx += 12) {
+                const y = hi(wx) + 2.5 * z;
+                if (wx === c.x0) ctx.moveTo(cam.sx(wx), y); else ctx.lineTo(cam.sx(wx), y);
+            }
+            ctx.stroke();
+            ctx.strokeStyle = "rgba(0,0,0,0.35)"; ctx.lineWidth = 1 * z;
+            for (let wx = c.x0 + 8; wx < c.x1; wx += 16) {
+                const y = hi(wx);
+                ctx.beginPath(); ctx.moveTo(cam.sx(wx), y); ctx.lineTo(cam.sx(wx), y + 5 * z); ctx.stroke();
+            }
+            // ...and a timber railing over the bore span (the bridge).
+            ctx.strokeStyle = "#5b3a1e"; ctx.lineWidth = 2.2 * z;
+            ctx.beginPath();
+            for (let wx = t.x0 - 10; wx <= t.x1 + 10; wx += 12) {
+                const y = hi(wx) - 15 * z;
+                if (wx === t.x0 - 10) ctx.moveTo(cam.sx(wx), y); else ctx.lineTo(cam.sx(wx), y);
+            }
+            ctx.stroke();
+            ctx.lineWidth = 2.6 * z;
+            for (let wx = t.x0 - 10; wx <= t.x1 + 10; wx += 48) {
+                const sx = cam.sx(wx), y = hi(wx);
+                ctx.beginPath(); ctx.moveTo(sx, y); ctx.lineTo(sx, y - 18 * z); ctx.stroke();
+            }
         }
     },
 

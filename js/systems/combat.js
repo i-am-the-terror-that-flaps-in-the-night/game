@@ -93,7 +93,7 @@ export function dealDamage(base, src, target, splash = false) {
     if (splash && target.merged > 1) base *= target.merged;
     const formation = typeof game !== "undefined" ? game.formation : undefined;
     // Forest cover: ranged fire into the trees loses its bite (flyers are above it).
-    if (src.ranged && !target.flying && target.kind !== "building" && terrain.forestAt(target.x) && !terrain.inTunnel(target.x))
+    if (src.ranged && !target.flying && target.kind !== "building" && terrain.forestAt(target.x) && !terrain.underground(target))
         base *= FOREST_COVER;
     const res = resolveDamage(base, src, target, formation);
     target.takeDamage(res.amt, res.tag);
