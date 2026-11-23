@@ -342,6 +342,7 @@ try {
         // Everyone made it across (no flip-flop stall at a ramp foot).
         r.through = squad.every((u) => u.x > c.x1);
         r.knightTop = T.pickLane({ large: true }, 1) === 1 && T.pickLane({ large: true }, 2) === 1;
+        r.rangedTop = T.pickLane({ ranged: true }, 1) === 1 && T.pickLane({ ranged: true }, 2) === 1;
         // Melee can't reach across levels inside a crossing; ranged on top can
         // hit ground units out on the ramp but not underground ones.
         const mid = (c.t.x0 + c.t.x1) / 2;
@@ -358,7 +359,7 @@ try {
     ok(cx.allTunnels && cx.walkable && cx.deck, 'every tunnel is a two-level crossing with a walkable top road');
     ok(cx.split && cx.feet, 'troops split between the bore and the top road and walk on their lane');
     ok(cx.through, 'every unit gets through the crossing (no stall at the ramp)');
-    ok(cx.knightTop, 'large units take the top road');
+    ok(cx.knightTop && cx.rangedTop, 'large and ranged units take the top road');
     ok(cx.meleeBlocked, 'melee cannot reach across levels inside a crossing');
     ok(cx.shootRamp && cx.noShootUnder, 'ranged on the top road can hit the ramp but not the bore');
 

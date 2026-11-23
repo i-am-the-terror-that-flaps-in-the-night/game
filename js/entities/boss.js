@@ -213,9 +213,12 @@ export class Boss extends Entity {
 
     // Ride the terrain: sit on the ground line and pitch the whole engine to
     // the chord between its front and rear wheels (eased, so crests don't snap).
+    // Too big for a tunnel bore: over a crossing it takes the top road (the
+    // lane-1 surface, which equals the ground everywhere else).
     _followGround(dt) {
-        this.y = groundAt(this.x);
-        const want = Math.atan2(groundAt(this.x + 70) - groundAt(this.x - 70), 140);
+        this.lane = terrain.crossingAt(this.x) ? 1 : 0;
+        this.y = groundAt(this.x, 1);
+        const want = Math.atan2(groundAt(this.x + 70, 1) - groundAt(this.x - 70, 1), 140);
         this.tilt = (this.tilt || 0) + (want - (this.tilt || 0)) * Math.min(1, 0.15 * dt);
     }
 
@@ -367,7 +370,7 @@ export class Boss extends Entity {
     _summon() {
         if (game.enemies.length >= 48) return; // shared swarm ceiling
         const x = clamp(this.x + rand(-50, 50), 300, CONFIG.WORLD_WIDTH - 100);
-        game.spawnEnemy('rabble', x, groundAt(x));
+        game.spawnEnemy('rabble', x, groundAt(x, 1));
         game.particles.emit(x, this.y - 20, 16, '#a855f7', 4, 3, 'float');
         game.fx.ring(x, this.y - 18, { r0: 4, r1: 28, col: '#7c3aed', w: 2, life: 16 });
     }

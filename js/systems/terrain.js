@@ -333,9 +333,10 @@ export class Terrain {
     }
 
     // Route a ground unit entering a crossing: large units can't fit the
-    // bore and always take the top; everyone else alternates per team.
+    // bore and ranged units can't shoot out of it, so both always take the
+    // top; melee alternates per team.
     pickLane(e, team) {
-        if (e.large || e.isHero) return 1;
+        if (e.large || e.isHero || e.ranged) return 1;
         const k = team === 1 ? 0 : 1;
         return (this._laneTick[k]++ & 1);
     }
