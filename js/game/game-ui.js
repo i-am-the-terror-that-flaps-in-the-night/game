@@ -174,6 +174,8 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
 
     updateSelUI() {
         const e = el("selectedInfo");
+        const panel = el("sidePanel");
+        if (panel) panel.classList.toggle("is-hidden", !this.sel);
         if (!this.sel) {
             e.innerText =
                 "Click a unit or building to view details.";
@@ -216,7 +218,7 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
                 "castleHealthFill",
             ).style.width =
                 (Math.max(0, c.hp) / c.maxHp) * 100 + "%";
-            setText(el("castleHealthText"), Math.floor(Math.max(0, c.hp)) + " / " + c.maxHp);
+            setText(el("castleHealthText"), Math.floor(Math.max(0, c.hp)) + " / " + Math.round(c.maxHp));
         }
 
         // Hero Void-Charge ring: --cd goes 0 (empty) -> 1 (full/READY), drawn by
