@@ -218,7 +218,7 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
                 "castleHealthFill",
             ).style.width =
                 (Math.max(0, c.hp) / c.maxHp) * 100 + "%";
-            setText(el("castleHealthText"), Math.floor(Math.max(0, c.hp)) + " / " + Math.round(c.maxHp));
+            setText(el("castleHealthText"), Math.round(Math.max(0, c.hp)) + " / " + Math.round(c.maxHp));
         }
 
         // Hero Void-Charge ring: --cd goes 0 (empty) -> 1 (full/READY), drawn by
