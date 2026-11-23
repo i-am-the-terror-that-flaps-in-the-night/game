@@ -711,3 +711,32 @@ body.perf-lite .overlay h1 {
 body.perf-lite .ember {
     display: none;
 }
+
+/* ── Docked HUD (visual overhaul) ──────────────────────────────────────────
+   One strip along the bottom edge, BELOW the battle lane (the ground line sits
+   180px above the bottom; this dock stays under ~120px). Hero left, recruit
+   buttons centre, formation + spells right. Overrides the stacked layout above. */
+#bottomContainer {
+    left: 10px;
+    right: 10px;
+    bottom: 8px;
+    transform: none;
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 10px;
+    pointer-events: none;
+}
+#bottomContainer > * { pointer-events: auto; }
+#heroPanel { order: 1; flex: 0 0 auto; }
+#bottomBar { order: 2; flex: 1 1 auto; flex-direction: row; align-items: center; gap: 10px; padding: 8px 10px; min-width: 0; }
+#spellsBar { order: 3; flex: 0 0 auto; flex-wrap: wrap; justify-content: flex-end; max-width: 440px; gap: 6px; padding: 8px 10px; }
+/* Formation toggle floats just above the spells, still below the lane. */
+#bottomContainer > #formationBar { position: absolute; right: 0; bottom: calc(100% + 6px); margin: 0; }
+#spellsBar .bar-divider:first-of-type { display: none; }
+#bottomBar .action-tabs { flex-direction: column; margin-bottom: 0; gap: 4px; }
+#bottomBar .action-tab { padding: 4px 10px; font-size: 10px; }
+#bottomBar .action-group { flex-wrap: wrap; justify-content: center; row-gap: 6px; }
+#bottomContainer .btn { min-width: 70px; padding: 7px 8px; font-size: 12px; }
+#sidePanel.is-hidden { display: none; }
+#minimapContainer { bottom: auto; top: 78px; }

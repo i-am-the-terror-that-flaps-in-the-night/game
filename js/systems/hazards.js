@@ -24,7 +24,7 @@ function victims(g, x, r, air = false) {
     const out = [];
     for (const list of [g.units, g.enemies])
         for (const e of list)
-            if (e.active && e.hp > 0 && !e.isBoss && (air || !e.flying) && !terrain.inTunnel(e.x) && Math.abs(e.x - x) < r) out.push(e);
+            if (e.active && e.hp > 0 && !e.isBoss && (air || !e.flying) && !terrain.underground(e) && Math.abs(e.x - x) < r) out.push(e);
     return out;
 }
 
@@ -34,7 +34,7 @@ export const HAZARD_TYPES = {
         name: "Lightning Storm", col: "#93c5fd", r: 60, linger: 26,
         tip: "Lightning strikes where the armies clash — watch for the crackling ground marks and pull back.",
         strike(g, h) {
-            const gy = groundAt(h.x);
+            const gy = groundAt(h.x, 1);
             for (const e of victims(g, h.x, this.r, true)) dealDamage(40, src("magic"), e, true);
             for (let i = 0; i < 3; i++)
                 g.lightningArcs.push({ x1: h.x + rand(-60, 60), y1: gy - 720, x2: h.x + rand(-10, 10), y2: gy, life: 14 });
@@ -58,7 +58,7 @@ export const HAZARD_TYPES = {
             for (const dir of [-1, 1])
                 for (let i = 0; i < 2; i++)
                     h.rocks.push({ x: h.x + dir * rand(4, 30), vx: dir * rand(0.8, 1.6), rot: 0, sz: rand(11, 16), hit: new Set(), live: true });
-            g.particles.emit(h.x, groundAt(h.x) - 6, 18, "#8b7355", 5, 4, "fade");
+            g.particles.emit(h.x, groundAt(h.x, 1) - 6, 18, "#8b7355", 5, 4, "fade");
             g.shake = Math.max(g.shake, 7);
             g.audio.rumble();
         },
@@ -71,7 +71,7 @@ export const HAZARD_TYPES = {
                 r.x += r.vx * dt;
                 r.rot += (r.vx / r.sz) * dt;
                 if (Math.floor(h.age) % 4 === 0)
-                    g.particles.emit(r.x, groundAt(r.x) - 2, 1, "#8b7355", 1.5, 3, "fade");
+                    g.particles.emit(r.x, groundAt(r.x, 1) - 2, 1, "#8b7355", 1.5, 3, "fade");
                 for (const e of victims(g, r.x, r.sz + 12)) {
                     if (r.hit.has(e)) continue;
                     r.hit.add(e);
@@ -81,7 +81,7 @@ export const HAZARD_TYPES = {
                 // Stalled out (or left the field): shatter.
                 if (Math.abs(r.vx) < 0.35 || r.x < 60 || r.x > CONFIG.WORLD_WIDTH - 60) {
                     r.live = false;
-                    const gy = groundAt(r.x);
+                    const gy = groundAt(r.x, 1);
                     for (let i = 0; i < 6; i++) g.particles.emit(r.x, gy - r.sz, 1, "#6b5a44", 4, rand(2, 4), "debris");
                     g.particles.emit(r.x, gy - 4, 8, "#a8a29e", 3, 4, "fade");
                     g.shake = Math.max(g.shake, 3);
@@ -92,7 +92,7 @@ export const HAZARD_TYPES = {
             if (!h.rocks) return;
             for (const r of h.rocks) {
                 if (!r.live) continue;
-                const p = cam.toScreen(r.x, groundAt(r.x) - r.sz);
+                const p = cam.toScreen(r.x, groundAt(r.x, 1) - r.sz);
                 const s = r.sz * cam.z;
                 ctx.save();
                 ctx.translate(p.x, p.y);
@@ -117,57 +117,13 @@ export const HAZARD_TYPES = {
         },
     },
 
-    // Snow maps: a howling whiteout that bogs down anyone caught inside.
-    whiteout: {
-        name: "Whiteout", col: "#e2e8f0", r: 110, linger: 360,
-        tip: "Whiteouts freeze the ground — anything caught inside slows to a crawl and takes frostbite.",
-        strike(g, h) {
-            terrain.addZone(h.x - this.r, h.x + this.r, 0.6, this.linger, "whiteout");
-            g.particles.emit(h.x, groundAt(h.x) - 30, 24, "#f1f5f9", 5, 5, "float");
-            g.fx.ring(h.x, groundAt(h.x), { r0: 10, r1: this.r, col: "#e0f2fe", w: 3, life: 22 });
-            g.audio.gust();
-        },
-        tick(g, h, dt) {
-            h.frostT = (h.frostT || 0) - dt;
-            if (h.frostT <= 0) {
-                h.frostT = 60;
-                for (const e of victims(g, h.x, this.r)) dealDamage(8, src("magic"), e, true);
-            }
-            if (Math.floor(h.age) % 3 === 0)
-                g.particles.emit(h.x + rand(-this.r, this.r), groundAt(h.x) - rand(10, 90), 1, "#f8fafc", 2.5, 3, "float");
-        },
-        drawOver(g, h, ctx, cam, k) {
-            // A soft dome of blowing snow hugging the ground (fades in and out).
-            const gy = cam.sy(groundAt(h.x)), px = cam.sx(h.x);
-            const a = 0.34 * Math.min(1, k * 4) * Math.min(1, (1 - k) * 5);
-            const r = this.r * 1.25 * cam.z;
-            ctx.save();
-            ctx.translate(px, gy);
-            ctx.scale(1, 0.6);
-            const grd = ctx.createRadialGradient(0, 0, r * 0.15, 0, 0, r);
-            grd.addColorStop(0, `rgba(241,245,249,${a})`);
-            grd.addColorStop(0.6, `rgba(226,232,240,${a * 0.6})`);
-            grd.addColorStop(1, "rgba(226,232,240,0)");
-            ctx.fillStyle = grd;
-            ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
-            // Wind streaks raking through it.
-            ctx.strokeStyle = `rgba(248,250,252,${a * 1.4})`;
-            ctx.lineWidth = 1.5 * cam.z;
-            for (let i = 0; i < 6; i++) {
-                const sx = ((h.age * 9 + i * 71) % (2 * r)) - r;
-                const sy = -((i * 37) % 70 + 10) * cam.z;
-                ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + 26 * cam.z, sy + 3 * cam.z); ctx.stroke();
-            }
-            ctx.restore();
-        },
-    },
 
     // Volcanic maps: fissure vents erupt in a column of fire.
     fireVent: {
         name: "Fire Vents", col: "#f97316", r: 50, linger: 40,
         tip: "The ground here is molten — fire vents erupt without mercy. Keep troops off the glowing cracks.",
         strike(g, h) {
-            const gy = groundAt(h.x);
+            const gy = groundAt(h.x, 1);
             for (const e of victims(g, h.x, this.r, true)) dealDamage(45, src("magic"), e, true);
             g.fx.flash(h.x, gy - 40, { r: 80, col: "#fdba74", life: 14 });
             g.fx.ring(h.x, gy, { r0: 6, r1: this.r * 1.4, col: "#f97316", w: 4, life: 18 });
@@ -180,7 +136,7 @@ export const HAZARD_TYPES = {
         },
         drawOver(g, h, ctx, cam, k) {
             // The eruption column: tall, flickering, collapsing as it ends.
-            const gy = cam.sy(groundAt(h.x)), px = cam.sx(h.x);
+            const gy = cam.sy(groundAt(h.x, 1)), px = cam.sx(h.x);
             const hgt = (220 + Math.sin(h.age * 0.8) * 20) * (1 - k * 0.6) * cam.z;
             const wid = (22 + Math.sin(h.age * 1.3) * 5) * cam.z;
             ctx.save();
@@ -287,7 +243,7 @@ export class HazardSystem {
             if (h.struck) continue;
             const d = HAZARD_TYPES[h.type];
             const k = h.age / TELEGRAPH;
-            const p = cam.toScreen(h.x, groundAt(h.x));
+            const p = cam.toScreen(h.x, groundAt(h.x, 1));
             const r = d.r * cam.z;
             const pulse = 0.5 + 0.5 * Math.sin(h.age * (0.2 + k * 0.5));
             ctx.save();
@@ -316,7 +272,7 @@ export class HazardSystem {
             ctx.restore();
             // Warning sparks/crackle as it builds.
             if (Math.floor(h.age) % 7 === 0 && k > 0.3)
-                this.g.particles.emit(h.x + rand(-d.r, d.r) * 0.7, groundAt(h.x) - 3, 1, d.col, 2, 2, "spark");
+                this.g.particles.emit(h.x + rand(-d.r, d.r) * 0.7, groundAt(h.x, 1) - 3, 1, d.col, 2, 2, "spark");
         }
     }
 

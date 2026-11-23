@@ -244,14 +244,30 @@ export class Unit extends Entity {
         }
 
         this.x = clamp(this.x, 50, CONFIG.WORLD_WIDTH - 50);
-        this.y = groundAt(this.x); // follow the terrain (hills, and resizes)
+        // Two-level crossings: pick bore or top road on entering one, drop
+        // back to the shared lane on leaving it.
+        const cr = this.flying ? null : terrain.crossingAt(this.x);
+        if (!cr) { this.lane = 0; this._cross = null; }
+        else if (this._cross !== cr) {
+            this._cross = cr;
+            // Walking in at the ramp foot (both levels meet): route by the
+            // alternation rule. Appearing mid-crossing (a summon or spawn):
+            // stay on the level nearest the feet instead of teleporting.
+            const yTop = groundAt(this.x, 1), yLow = groundAt(this.x, 0);
+            this.lane = Math.abs(yTop - yLow) < 4 ? terrain.pickLane(this, this.team)
+                : Math.abs(this.y - yTop) < Math.abs(this.y - yLow) ? 1 : 0;
+        }
+        this.y = groundAt(this.x, this.lane); // follow the terrain (hills, and resizes)
         this._wadeFx();
     }
     // Can this unit strike e at all? Ground melee can't reach flyers; ranged
     // shots and flyers can't cross a tunnel wall (melee at the mouth can).
     _canHit(e) {
         if (e.flying && !this.ranged) return false;
-        if ((this.ranged || this.flying) && terrain.blocksShot(this.x, e.x)) return false;
+        if ((this.ranged || this.flying) && terrain.blocksShot(this, e)) return false;
+        // Inside a crossing, melee only meets foes on the same level; ranged
+        // can still shoot between the top road and open ground.
+        if (!this.ranged && !this.flying && !terrain.sameLevel(this, e)) return false;
         return true;
     }
     // Player: furthest x worth chasing to. Enemy: aggro radius.
@@ -394,7 +410,7 @@ export class Unit extends Entity {
                 game.fx.ring(this.x, sy, { r0: 8, r1: this.aoe * 0.95, col: "#fb923c", w: 4, life: 20 });
                 game.fx.ring(this.x, sy, { r0: 4, r1: this.aoe * 0.6, col: "#fed7aa", w: 2, life: 14 });
                 game.fx.flash(this.x, sy, { r: this.aoe * 0.7, col: "#fdba74", life: 12 });
-                game.decals.add(this.x, groundAt(this.x), "scorch", this.aoe * 0.5);
+                game.decals.add(this.x, this.y, "scorch", this.aoe * 0.5);
                 game.shake = Math.min(14, game.shake + 6);
                 game.audio.playExplosion();
             } else {

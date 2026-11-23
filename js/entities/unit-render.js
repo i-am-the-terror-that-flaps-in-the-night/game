@@ -2,6 +2,7 @@ import { HIT_FLASH_FRAMES, HIT_FLINCH_FRAMES, TEAMS } from '../config.js';
 import { Unit } from './unit.js';
 import { clamp, ik2, lerp, shade, toRgba } from '../utils.js';
 import { GFX } from '../systems/graphics.js';
+import { OUTLINE, makeLook } from '../data/looks.js';
 
 // Per-unit torso + head gradients depend only on the unit's skin colour and are
 // drawn in a FIXED local coordinate space (the ctx is translated per unit), so
@@ -49,6 +50,8 @@ function cachedGrad(key, build) {
 }
 const WHITE_45 = toRgba("#fff", 0.45);
 const WHITE_85 = toRgba("#ffffff", 0.85);
+const P_FLETCH = "#e2b84a";
+const STEEL = "#a3adba", STEEL_D = "#6e7887", STEEL_L = "#d5dbe3";
 
 // --- UNIT RENDERING (stickman drawing, split from Unit class) ---
 Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
@@ -80,6 +83,11 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
         const hipY = -18 + bob, shY = -40 + bob, headCY = -50 + bob;
         const v = this.vis;
         const horse = v === "horse";
+        const L = this._look || (this._look = makeLook(this, this.team === TEAMS.PLAYER));
+        const B = L.build;
+        const flash = this.flashT > 0;
+        const metal = L.body === "plate" || L.body === "chain";
+        const bones = L.body === "bones";
         ctx.save();
         ctx.translate(px, py);
         ctx.scale(this.facing * s, s);
@@ -87,6 +95,7 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
         ctx.fillRect(-11, -2, 22, 4);
         if (this.flying) ctx.translate(0, -70 + Math.sin(this.frame * 0.1) * 12);
         ctx.lineCap = "round";
+        ctx.lineJoin = "round";
         if (horse) {
             ctx.translate(0, -18);
             const l1 = Math.sin(gp * 1.3) * 6;
@@ -99,31 +108,51 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
             ctx.fillStyle = "#7a5230";
             ctx.fillRect(-22, -12, 42, 14);
             ctx.fillRect(16, -27, 8, 19);
+            ctx.fillStyle = L.cloth;
+            ctx.fillRect(-13, -13, 20, 8);
         }
-        // Limbs: legs (or dangling legs + wings for flyers) and arms, one path.
-        const atk = this.atk; // 1 (just struck) -> 0
-        const hx = 9 + atk * 7, hy = shY + 9 - atk * 6; // weapon hand
-        ctx.strokeStyle = "#e2e8f0";
-        ctx.lineWidth = 3.5;
+        // Legs + arms as thick clothed strokes (one outline pass, one colour pass).
+        const atk = this.atk;
+        const hx = 9 + atk * 7, hy = shY + 9 - atk * 6;
+        const legW = (bones ? 2.6 : 5.2) * B, armW = (bones ? 2.4 : 4.4) * B;
+        const st = horse || this.flying ? 0 : walking ? Math.sin(gp) * 8 : 3.5; // idle: planted stance
+        const legs = !horse && !this.flying && L.body !== "robe";
+        const limbPath = () => {
+            ctx.beginPath();
+            if (legs) { ctx.moveTo(st, 0); ctx.lineTo(0, hipY); ctx.lineTo(-st, 0); }
+            ctx.moveTo(-6, shY + 15); ctx.lineTo(0, shY + 3); ctx.lineTo(hx, hy);
+        };
+        ctx.strokeStyle = OUTLINE; ctx.lineWidth = legW + 2;
+        limbPath(); ctx.stroke();
+        if (legs) {
+            ctx.strokeStyle = bones ? "#ddd6c4" : L.pants; ctx.lineWidth = legW;
+            ctx.beginPath(); ctx.moveTo(st, 0); ctx.lineTo(0, hipY); ctx.lineTo(-st, 0); ctx.stroke();
+        }
+        ctx.strokeStyle = bones ? "#ddd6c4" : metal ? STEEL : L.body === "bare" ? L.skin : L.cloth;
+        ctx.lineWidth = armW;
+        ctx.beginPath(); ctx.moveTo(-6, shY + 15); ctx.lineTo(0, shY + 3); ctx.lineTo(hx, hy); ctx.stroke();
+        // Torso block (robe falls to the feet).
+        const tw = 6 * B, bottom = L.body === "robe" ? -1 : hipY + 2;
+        ctx.fillStyle = flash ? "#ffffff" : bones ? "#ddd6c4" : L.tabard ? L.tabardCol
+            : metal ? STEEL : L.body === "bare" ? L.skin : L.body === "leather" ? "#6e4b2c" : L.cloth;
         ctx.beginPath();
-        if (this.flying) {
-            const fl = Math.sin(this.frame * 0.3) * 8;
-            ctx.moveTo(0, hipY); ctx.lineTo(-2, hipY + 15);
-            ctx.moveTo(-2, shY + 4); ctx.lineTo(-20, shY - 8 + fl);
-            ctx.moveTo(-2, shY + 4); ctx.lineTo(-13, shY - 17 + fl);
-        } else if (!horse) {
-            const st = walking ? Math.sin(gp) * 8 : 0;
-            ctx.moveTo(st, 0); ctx.lineTo(0, hipY); ctx.lineTo(-st, 0);
+        if (bones) ctx.rect(-1.5, shY, 3, hipY - shY);
+        else { ctx.moveTo(-tw, shY + 1); ctx.lineTo(tw, shY + 1); ctx.lineTo(tw * 0.85, bottom); ctx.lineTo(-tw * 0.85, bottom); ctx.closePath(); }
+        ctx.fill();
+        ctx.strokeStyle = OUTLINE; ctx.lineWidth = 1.4; ctx.stroke();
+        // Head: skin (or skull) + one headgear blob in its main colour.
+        ctx.fillStyle = flash ? "#ffffff" : L.head === "skull" ? "#e7e1cf" : L.skin;
+        ctx.beginPath(); ctx.arc(0, headCY, 7.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        const hatCol = { cap: L.cloth, kettle: STEEL, helm: STEEL, greathelm: STEEL, barbute: STEEL,
+            hood: L.hood || L.cloth, cowl: L.hood || L.cloth, wizard: L.cloth, horned: "#5a3e24", antlers: "#7c5a32" }[L.head]
+            || (L.head === "bare" && L.hair ? L.hair : null);
+        if (hatCol && !flash) {
+            ctx.fillStyle = hatCol;
+            ctx.beginPath(); ctx.arc(0, headCY - 0.6, 8.2, Math.PI, 0); ctx.closePath(); ctx.fill();
+            if (L.head === "wizard") { ctx.beginPath(); ctx.moveTo(-6, headCY - 7); ctx.lineTo(-5, headCY - 20); ctx.lineTo(6, headCY - 7); ctx.closePath(); ctx.fill(); }
         }
-        ctx.moveTo(-7, shY + 15); ctx.lineTo(0, shY + 2); ctx.lineTo(hx, hy);
-        ctx.stroke();
-        // Torso + head in the unit's colour (white while hit-flashing).
-        const body = this.flashT > 0 ? "#ffffff" : this.col;
-        ctx.strokeStyle = body;
-        ctx.lineWidth = 7;
-        ctx.beginPath(); ctx.moveTo(0, hipY); ctx.lineTo(0, shY); ctx.stroke();
-        ctx.fillStyle = body;
-        ctx.beginPath(); ctx.arc(0, headCY, 7.5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = L.glowEyes || "#0b1020";
+        ctx.beginPath(); ctx.arc(4.4, headCY - 1, 1.2, 0, Math.PI * 2); ctx.fill();
         // Weapon.
         ctx.strokeStyle = "#cbd5e1";
         ctx.lineWidth = 2.5;
@@ -133,19 +162,22 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
         else if (v === "staff" || v === "mage") { ctx.moveTo(hx, hy + 12); ctx.lineTo(hx, hy - 22); }
         else {
             const a = -0.9 + Math.sin(atk * Math.PI) * 1.4;
-            const L = v === "spear" || horse ? 34 : v === "club" ? 18 : 20;
-            tipX = hx + Math.cos(a) * L;
-            tipY = hy + Math.sin(a) * L;
+            const Lw = v === "spear" || horse ? 34 : v === "club" ? 18 : 20;
+            tipX = hx + Math.cos(a) * Lw;
+            tipY = hy + Math.sin(a) * Lw;
             ctx.moveTo(hx, hy); ctx.lineTo(tipX, tipY);
         }
         ctx.stroke();
-        // Shields (same spots/sizes as the full art) and the ogre's club head.
-        if (v === "sword_shield") {
-            ctx.fillStyle = "#64748b";
-            ctx.beginPath(); ctx.arc(8, shY + 9, 10, 0, Math.PI * 2); ctx.fill();
+        // Shields carry the team colour; the ogre's club head.
+        if (v === "sword_shield" || L.shield) {
+            ctx.fillStyle = "#7d8b9c";
+            ctx.beginPath(); ctx.arc(8, shY + 9, 10, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = L.cloth;
+            ctx.beginPath(); ctx.arc(8, shY + 9, 5, 0, Math.PI * 2); ctx.fill();
         } else if (v === "tower_shield") {
-            ctx.fillStyle = "#64748b";
-            ctx.fillRect(5, shY - 11, 9, 40);
+            ctx.fillStyle = "#7d8b9c";
+            ctx.fillRect(5, shY - 11, 9, 40); ctx.strokeRect(5, shY - 11, 9, 40);
+            ctx.fillStyle = L.cloth; ctx.fillRect(8, shY - 2, 3.5, 20);
         } else if (v === "club") {
             ctx.fillStyle = "#7a5230";
             ctx.beginPath(); ctx.arc(tipX, tipY, 7, 0, Math.PI * 2); ctx.fill();
@@ -178,6 +210,309 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
             ctx.fillText('×' + this.merged, plx, ply - (80 * this.scale + 2) * cam.z);
         }
         ctx.restore();
+    },
+
+    // Body between shoulders and hips, drawn in the unit's local frame (facing
+    // +x). Width scales with build; height never changes (anchors stay put).
+    _drawTorso(ctx, L, shoulderY, hipY, B, team, lowQ) {
+        const tw = 6.4 * B, hw = 4.8 * B;          // half-widths: shoulders, hips
+        const midY = (shoulderY + hipY) / 2;
+        const robe = L.body === "robe";
+        const bottom = robe ? -1 : hipY + 2;       // robes fall to the ankles
+        const hemW = robe ? 8.5 * B : hw;
+        ctx.lineJoin = "round";
+
+        if (L.body === "bones") {
+            // Spine, pelvis and ribs — skeletons stay bony on purpose.
+            ctx.strokeStyle = OUTLINE; ctx.lineWidth = 4.4;
+            ctx.beginPath(); ctx.moveTo(0, shoulderY); ctx.lineTo(0, hipY); ctx.stroke();
+            ctx.strokeStyle = "#ddd6c4"; ctx.lineWidth = 2.4;
+            ctx.beginPath(); ctx.moveTo(0, shoulderY); ctx.lineTo(0, hipY); ctx.stroke();
+            ctx.lineWidth = 1.6;
+            for (let i = 0; i < 4; i++) {
+                const y = shoulderY + 3 + i * 4, r = 5.4 - i * 0.7;
+                ctx.beginPath(); ctx.moveTo(-r, y + 1.5); ctx.quadraticCurveTo(0, y - 1.5, r, y + 1.5); ctx.stroke();
+            }
+            ctx.beginPath(); ctx.ellipse(0, hipY, 4.2, 2.2, 0, 0, Math.PI * 2); ctx.stroke();
+            return;
+        }
+
+        const base = L.body === "plate" ? STEEL
+            : L.body === "chain" ? "#8d96a2"
+            : L.body === "leather" ? "#6e4b2c"
+            : L.body === "bare" ? L.skin
+            : L.cloth;
+        // Silhouette
+        ctx.beginPath();
+        ctx.moveTo(-tw, shoulderY + 1);
+        ctx.quadraticCurveTo(-tw - 0.6, midY, -hw, hipY);
+        ctx.lineTo(-hemW, bottom);
+        if (L.body === "rags") {
+            // ragged hem
+            const n = 5;
+            for (let i = 1; i <= n; i++) ctx.lineTo(-hemW + (2 * hemW * i) / n, bottom + (i % 2 ? 3 : 0));
+        } else ctx.lineTo(hemW, bottom);
+        ctx.lineTo(hw, hipY);
+        ctx.quadraticCurveTo(tw + 0.6, midY, tw, shoulderY + 1);
+        ctx.quadraticCurveTo(0, shoulderY - 2.5, -tw, shoulderY + 1);
+        ctx.closePath();
+        ctx.fillStyle = base;
+        ctx.fill();
+        ctx.strokeStyle = OUTLINE; ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        if (!lowQ) {
+            // Detail pass by body type (cheap strokes, no gradients).
+            ctx.save();
+            ctx.clip();
+            if (L.body === "plate") {
+                ctx.fillStyle = STEEL_L;           // breastplate highlight
+                ctx.beginPath(); ctx.ellipse(2.4 * B, midY - 3, 2.2 * B, 6, 0.2, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = STEEL_D; ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(-tw, hipY - 4); ctx.lineTo(tw, hipY - 4); ctx.stroke();
+            } else if (L.body === "chain") {
+                ctx.strokeStyle = "#6b7380"; ctx.lineWidth = 0.8;
+                for (let y = shoulderY + 3; y < hipY; y += 2.6) { ctx.beginPath(); ctx.moveTo(-tw, y); ctx.lineTo(tw, y); ctx.stroke(); }
+            } else if (L.body === "gambeson") {
+                ctx.strokeStyle = shade(L.cloth, -0.25); ctx.lineWidth = 0.9;
+                for (let x = -tw + 2.5; x < tw; x += 2.8) { ctx.beginPath(); ctx.moveTo(x, shoulderY); ctx.lineTo(x * 0.8, hipY); ctx.stroke(); }
+            } else if (L.body === "leather") {
+                // cloth shirt showing at the collar + a sash/strap in team colour
+                ctx.strokeStyle = L.sash || L.cloth; ctx.lineWidth = 2.4;
+                ctx.beginPath(); ctx.moveTo(-tw, shoulderY + 1); ctx.lineTo(tw * 0.8, hipY - 1); ctx.stroke();
+            } else if (L.body === "bare") {
+                ctx.strokeStyle = shade(L.skin, -0.22); ctx.lineWidth = 0.9;   // pecs/abs hint
+                ctx.beginPath(); ctx.moveTo(-1, shoulderY + 6); ctx.quadraticCurveTo(2.5, shoulderY + 8, 5 * B, shoulderY + 5); ctx.stroke();
+                if (L.paint) {
+                    ctx.strokeStyle = L.paint; ctx.lineWidth = 1.6;
+                    for (const y of [shoulderY + 10, shoulderY + 14]) { ctx.beginPath(); ctx.moveTo(-tw, y); ctx.lineTo(tw, y - 2); ctx.stroke(); }
+                }
+                if (L.beads) {
+                    ctx.fillStyle = "#f5f5f4";
+                    for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.arc(i * 1.8 + 1, shoulderY + 4 + Math.abs(i) * -0.6 + 2, 0.9, 0, Math.PI * 2); ctx.fill(); }
+                }
+            } else if (L.body === "robe") {
+                ctx.strokeStyle = shade(L.cloth, -0.3); ctx.lineWidth = 1;     // fold lines
+                for (const x of [-3, 1.5]) { ctx.beginPath(); ctx.moveTo(x, hipY); ctx.lineTo(x * 1.6, bottom); ctx.stroke(); }
+            }
+            ctx.restore();
+        }
+
+        // Tabard over armour: the clearest team cue on heavy troops.
+        if (L.tabard) {
+            const tY0 = shoulderY + 3, tY1 = hipY + 7, w = 3.6 * B;
+            ctx.fillStyle = L.tabardCol;
+            ctx.beginPath(); ctx.rect(-w, tY0, 2 * w, tY1 - tY0); ctx.fill();
+            ctx.strokeStyle = OUTLINE; ctx.lineWidth = 1.1; ctx.stroke();
+            if (L.stripes) {
+                ctx.fillStyle = L.stripes;
+                for (let y = tY0 + 2; y < tY1; y += 5) ctx.fillRect(-w, y, 2 * w, 2);
+            } else if (team) {
+                // gold cross (or blue on a white paladin tabard)
+                ctx.strokeStyle = L.tabardCol === L.cloth ? L.trim : L.cloth; ctx.lineWidth = 1.6;
+                const cy = tY0 + (tY1 - tY0) * 0.38;
+                ctx.beginPath(); ctx.moveTo(0, tY0 + 2); ctx.lineTo(0, tY1 - 3); ctx.moveTo(-w + 1, cy); ctx.lineTo(w - 1, cy); ctx.stroke();
+            }
+        }
+        // Robe trim / tunic hem in the team's trim colour.
+        if (L.body === "robe" || L.body === "tunic") {
+            ctx.strokeStyle = L.trim; ctx.lineWidth = 1.3;
+            ctx.beginPath(); ctx.moveTo(-hemW + 0.8, bottom - 1); ctx.lineTo(hemW - 0.8, bottom - 1); ctx.stroke();
+            if (L.body === "robe") { ctx.beginPath(); ctx.moveTo(3, shoulderY + 2); ctx.lineTo(3.5, bottom - 1); ctx.stroke(); }
+        }
+        // Belt (or fur loincloth for the wild ones)
+        if (L.body !== "robe") {
+            if (L.fur || L.body === "bare") {
+                ctx.fillStyle = L.fur ? "#6b4a2a" : L.pants;
+                ctx.beginPath(); ctx.moveTo(-hw - 0.5, hipY - 2); ctx.lineTo(hw + 0.5, hipY - 2); ctx.lineTo(hw, hipY + 5); ctx.lineTo(0, hipY + 7); ctx.lineTo(-hw, hipY + 5); ctx.closePath(); ctx.fill();
+                ctx.strokeStyle = OUTLINE; ctx.lineWidth = 1; ctx.stroke();
+            } else {
+                ctx.strokeStyle = "#3a2616"; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(-hw - 0.3, hipY - 2); ctx.lineTo(hw + 0.3, hipY - 2); ctx.stroke();
+                ctx.fillStyle = team ? L.trim : "#9ca3af";
+                ctx.fillRect(1.2, hipY - 3.2, 2.2, 2.4);
+            }
+        }
+    },
+
+    // Head in a frame translated to the head centre (facing +x).
+    _drawHead(ctx, L, r, hurt, team) {
+        const T = Math.PI * 2;
+        ctx.lineJoin = "round";
+        // Long hair falls behind the head.
+        if (L.hair && L.longHair) {
+            ctx.fillStyle = L.hair;
+            ctx.beginPath(); ctx.moveTo(-r, -2); ctx.quadraticCurveTo(-r - 4, 10, -r + 1, 15); ctx.lineTo(0, 6); ctx.closePath(); ctx.fill();
+        }
+        // Skull / face
+        const skull = L.head === "skull";
+        ctx.fillStyle = skull ? "#e7e1cf" : L.skin;
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, T); ctx.fill();
+        ctx.strokeStyle = OUTLINE; ctx.lineWidth = 1.5; ctx.stroke();
+
+        if (skull) {
+            ctx.fillStyle = "#1c1917";
+            ctx.beginPath(); ctx.arc(3.6, -1.5, 2.2, 0, T); ctx.fill();
+            ctx.beginPath(); ctx.arc(-1.2, -1.5, 1.8, 0, T); ctx.fill();
+            ctx.fillRect(1.5, 4.2, 5, 1.2);
+            ctx.strokeStyle = "#e7e1cf"; ctx.lineWidth = 0.8;
+            for (const x of [2.5, 4, 5.5]) { ctx.beginPath(); ctx.moveTo(x, 4); ctx.lineTo(x, 5.6); ctx.stroke(); }
+            return;
+        }
+
+        // Hair (shown unless fully helmeted)
+        const showsHair = L.hair && !["greathelm", "barbute", "hood", "cowl", "wizard"].includes(L.head);
+        if (showsHair) {
+            ctx.fillStyle = L.hair;
+            ctx.beginPath();
+            ctx.arc(0, -0.6, r + 0.6, Math.PI * 0.62, Math.PI * 1.96);
+            ctx.quadraticCurveTo(2, -r * 0.45, -r * 0.7, 2);
+            ctx.closePath(); ctx.fill();
+            if (L.messy) {
+                for (const a of [3.6, 4.1, 4.6, 5.1]) {
+                    ctx.beginPath();
+                    ctx.moveTo(Math.cos(a) * (r - 1), Math.sin(a) * (r - 1));
+                    ctx.lineTo(Math.cos(a + 0.15) * (r + 3.5), Math.sin(a + 0.15) * (r + 3.5));
+                    ctx.lineTo(Math.cos(a + 0.3) * (r - 1), Math.sin(a + 0.3) * (r - 1));
+                    ctx.fill();
+                }
+            }
+        }
+        // War paint across the eyes
+        if (L.paint) {
+            ctx.fillStyle = L.paint;
+            ctx.fillRect(1, -2.8, r - 0.5, 2.6);
+        }
+        // Face: eye, brow, nose, mouth
+        const glow = L.glowEyes;
+        if (glow) {
+            ctx.save();
+            ctx.globalCompositeOperation = "screen";
+            ctx.fillStyle = glow;
+            ctx.beginPath(); ctx.arc(4.4, -1, 1.8, 0, T); ctx.fill();
+            ctx.restore();
+        } else {
+            ctx.fillStyle = "#ffffff";
+            ctx.beginPath(); ctx.arc(4, -1.2, 2.1, 0, T); ctx.fill();
+            ctx.fillStyle = "#0b1020";
+            ctx.beginPath(); ctx.arc(4.7, -1.2 + hurt * 0.5, 1.1, 0, T); ctx.fill();
+            ctx.strokeStyle = L.hair || shade(L.skin, -0.4); ctx.lineWidth = 1.1;   // brow
+            ctx.beginPath(); ctx.moveTo(2, -4.2 + hurt); ctx.lineTo(6.2, -3.8); ctx.stroke();
+        }
+        ctx.strokeStyle = shade(L.skin, -0.35); ctx.lineWidth = 1;                  // nose
+        ctx.beginPath(); ctx.moveTo(r - 0.6, -0.5); ctx.lineTo(r + 1.3, 1.6); ctx.lineTo(r - 0.4, 2); ctx.stroke();
+        if (hurt > 0.3) {
+            ctx.strokeStyle = "#0b1020"; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.arc(4, 4.5, 1.6, Math.PI + 0.3, -0.3); ctx.stroke();
+        } else {
+            ctx.beginPath(); ctx.moveTo(3, 4.6); ctx.lineTo(5.6, 4.3); ctx.stroke();
+        }
+        if (L.tusks) {
+            ctx.fillStyle = "#f5f0e1";
+            for (const x of [3, 6]) { ctx.beginPath(); ctx.moveTo(x, 4); ctx.lineTo(x + 0.8, 0.6); ctx.lineTo(x + 1.6, 4); ctx.closePath(); ctx.fill(); }
+        }
+        if (L.hasBeard) {
+            ctx.fillStyle = L.beardCol;
+            ctx.beginPath();
+            ctx.moveTo(-1, 2.5); ctx.quadraticCurveTo(2, 4, r - 0.2, 2.6);
+            ctx.quadraticCurveTo(r - 1, r + 2, 3, r + 3.2);
+            ctx.quadraticCurveTo(-1, r + 1, -1, 2.5);
+            ctx.closePath(); ctx.fill();
+            ctx.strokeStyle = OUTLINE; ctx.lineWidth = 0.9; ctx.stroke();
+        }
+
+        // ── Headgear ──
+        ctx.strokeStyle = OUTLINE; ctx.lineWidth = 1.3;
+        const dome = (col, extra = 0.8) => {
+            ctx.fillStyle = col;
+            ctx.beginPath(); ctx.arc(0, -0.6, r + extra, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+        };
+        switch (L.head) {
+            case "cap": {
+                dome(team ? L.cloth : shade(L.cloth, -0.1), 0.5);
+                ctx.fillStyle = L.trim; ctx.fillRect(-r - 0.5, -2.2, 2 * r + 1, 1.6);
+                break;
+            }
+            case "kettle": {
+                dome(STEEL);
+                ctx.fillStyle = STEEL_D;                          // wide brim
+                ctx.beginPath(); ctx.ellipse(0, -1, r + 4.5, 1.8, 0, 0, T); ctx.fill(); ctx.stroke();
+                break;
+            }
+            case "helm": {
+                dome(STEEL);
+                ctx.fillStyle = STEEL_D; ctx.fillRect(r - 2.4, -1.5, 2, 5.5);    // nasal
+                ctx.fillStyle = team ? L.trim : "#7f1d1d"; ctx.fillRect(-r - 0.6, -2.4, 2 * r + 1.2, 1.4);
+                break;
+            }
+            case "greathelm": {
+                ctx.fillStyle = STEEL;
+                ctx.beginPath(); ctx.rect(-r - 1, -r - 1.5, 2 * r + 2, 2 * r + 3); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = "#1f2328"; ctx.fillRect(0.5, -2.2, r + 0.5, 1.8);   // eye slit
+                ctx.fillStyle = STEEL_L; ctx.fillRect(-r + 0.5, -r, 2, 2 * r - 1);
+                if (L.plume) {
+                    ctx.fillStyle = team ? L.cloth : "#b91c1c";
+                    ctx.beginPath(); ctx.moveTo(-2, -r - 1.5); ctx.quadraticCurveTo(-6, -r - 9, -12, -r - 4); ctx.quadraticCurveTo(-6, -r - 4, -2, -r - 1.5); ctx.fill(); ctx.stroke();
+                }
+                break;
+            }
+            case "barbute": {
+                ctx.fillStyle = STEEL;
+                ctx.beginPath(); ctx.arc(0, -0.5, r + 1, 0, T); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = "#1f2328";
+                ctx.fillRect(1, -2.4, r, 1.8); ctx.fillRect(4, -2.4, 1.8, 7);      // T-slit
+                break;
+            }
+            case "hood":
+            case "cowl": {
+                const hc = L.hood || L.cloth;
+                ctx.fillStyle = hc;
+                ctx.beginPath();
+                ctx.moveTo(r * 0.9, -r * 0.55);
+                ctx.quadraticCurveTo(0, -r - 4, -r - 1.5, -1);
+                ctx.quadraticCurveTo(-r - 2, r * 0.9, -2, r + 2);
+                ctx.lineTo(-1, 2);
+                ctx.quadraticCurveTo(-1, -r * 0.5, r * 0.9, -r * 0.55);
+                ctx.closePath(); ctx.fill(); ctx.stroke();
+                if (L.head === "cowl") {                          // shadowed face
+                    ctx.fillStyle = "rgba(10,8,14,0.45)";
+                    ctx.beginPath(); ctx.arc(1.5, 0.5, r - 1.2, -1.4, 1.6); ctx.fill();
+                }
+                if (L.trimCol) { ctx.strokeStyle = L.trimCol; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(r * 0.9, -r * 0.55); ctx.quadraticCurveTo(-1, -r * 0.5, -1, 2); ctx.stroke(); }
+                break;
+            }
+            case "wizard": {
+                ctx.fillStyle = L.cloth;
+                ctx.beginPath(); ctx.ellipse(0, -r + 2, r + 4.5, 2.2, 0, 0, T); ctx.fill(); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(-r + 0.5, -r + 1.5); ctx.quadraticCurveTo(-2, -r - 13, -7, -r - 13); ctx.quadraticCurveTo(2, -r - 9, r - 0.5, -r + 1.5); ctx.closePath(); ctx.fill(); ctx.stroke();
+                ctx.strokeStyle = L.trim; ctx.lineWidth = 1.6;
+                ctx.beginPath(); ctx.moveTo(-r + 1.2, -r - 0.2); ctx.lineTo(r - 1.2, -r - 0.2); ctx.stroke();
+                break;
+            }
+            case "horned": {
+                dome("#5a3e24");
+                ctx.fillStyle = "#e7dcc4";
+                for (const sx of [-1, 1]) {
+                    ctx.beginPath();
+                    ctx.moveTo(sx * (r - 2), -r + 2);
+                    ctx.quadraticCurveTo(sx * (r + 5), -r - 1, sx * (r + 4), -r - 8);
+                    ctx.quadraticCurveTo(sx * (r + 1), -r - 2, sx * (r - 5), -r + 1);
+                    ctx.closePath(); ctx.fill(); ctx.stroke();
+                }
+                break;
+            }
+            case "antlers": {
+                ctx.fillStyle = "#7c5a32"; ctx.fillRect(-r, -3.5, 2 * r, 2.2);
+                ctx.strokeStyle = "#d6c7a6"; ctx.lineWidth = 1.6;
+                for (const sx of [-1, 1]) {
+                    ctx.beginPath(); ctx.moveTo(sx * 3, -r + 1); ctx.lineTo(sx * 6, -r - 9); ctx.moveTo(sx * 5, -r - 5); ctx.lineTo(sx * 9, -r - 7); ctx.stroke();
+                }
+                ctx.fillStyle = "#b91c1c";                       // feather
+                ctx.beginPath(); ctx.ellipse(-r, -2, 1.6, 4, -0.5, 0, T); ctx.fill();
+                break;
+            }
+            default: break;   // bare
+        }
     },
 
     drawFull(ctx, cam, dt) {
@@ -213,9 +548,12 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
         // ── Palette ──
         const team = this.team === TEAMS.PLAYER;
         const skin = this.col;
-        const limb = "#e2e8f0";
-        const limbDark = "#8b98a8";
         const fPh = gp, bPh = gp + Math.PI;
+        // Character look (clothing, armour, headgear, skin) — rolled once.
+        const L = this._look || (this._look = makeLook(this, team));
+        const B = L.build;
+        const bones = L.body === "bones";
+        const BONE = "#ddd6c4";
 
         ctx.save();
         ctx.translate(px, py);
@@ -232,10 +570,49 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
             ctx.lineTo(x2, y2);
             ctx.stroke();
         };
-        const limb2 = (rx, ry, tx, ty, l1, l2, bend, w, col) => {
-            const j = ik2(rx, ry, tx, ty, l1, l2, bend);
-            bone(rx, ry, j.x, j.y, w, col);
-            bone(j.x, j.y, j.ex, j.ey, w * 0.9, col);
+
+        // ── Filled-figure helpers (outlined, clothed limbs) ──
+        const metalBody = L.body === "plate" || L.body === "chain";
+        // Polyline outline then coloured runs, so a limb is 3 strokes total.
+        const run = (pts, w, col) => {
+            ctx.strokeStyle = col;
+            ctx.lineWidth = w;
+            ctx.beginPath();
+            ctx.moveTo(pts[0], pts[1]);
+            for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]);
+            ctx.stroke();
+        };
+        const legF = (tx, ty, back, bootsOnly) => {
+            const j = ik2(0, hipY, tx, ty, 11, 12, -1);
+            const kx = lerp(j.x, j.ex, 0.5), ky = lerp(j.y, j.ey, 0.5);
+            const w = (bones ? 2.6 : 5.6) * B;
+            const pc = bones ? BONE : back ? shade(L.pants, -0.25) : L.pants;
+            const bc = bones ? BONE : back ? shade(L.boots, -0.2) : L.boots;
+            if (bootsOnly) {
+                run([kx, ky, j.ex, j.ey, j.ex + 5, j.ey], w + 2.2, OUTLINE);
+                run([kx, ky, j.ex, j.ey, j.ex + 5, j.ey], w, bc);
+                return;
+            }
+            run([0, hipY, j.x, j.y, j.ex, j.ey, j.ex + 5, j.ey], w + 2.2, OUTLINE);
+            run([0, hipY, j.x, j.y, kx, ky], w, pc);
+            run([kx, ky, j.ex, j.ey, j.ex + 5, j.ey], w * 0.95, bc);
+        };
+        // Sleeve colour by body type; forearm is skin, sleeve or gauntlet.
+        const sleeveCol = metalBody ? STEEL : bones ? BONE : L.body === "bare" ? L.skin
+            : L.body === "leather" ? "#6e4b2c" : L.cloth;
+        const foreCol = metalBody ? STEEL : bones ? BONE
+            : (L.body === "robe" || L.body === "gambeson") ? L.cloth : L.skin;
+        const armF = (tx, ty, back) => {
+            const j = ik2(0, shoulderY + 3, tx, ty, 9, 10, back ? 1 : -1);
+            const w = (bones ? 2.4 : 4.8) * B;
+            const dk = (c) => (back ? shade(c, -0.25) : c);
+            run([0, shoulderY + 3, j.x, j.y, j.ex, j.ey], w + 2.2, OUTLINE);
+            run([0, shoulderY + 3, j.x, j.y], w, dk(sleeveCol));
+            run([j.x, j.y, j.ex, j.ey], w * 0.9, dk(foreCol));
+            ctx.fillStyle = OUTLINE;
+            ctx.beginPath(); ctx.arc(j.ex, j.ey, 2.9 * B, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = dk(metalBody ? STEEL_D : bones ? BONE : L.skin);
+            ctx.beginPath(); ctx.arc(j.ex, j.ey, 2.0 * B, 0, Math.PI * 2); ctx.fill();
             return j;
         };
 
@@ -273,7 +650,7 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
         else if (this.vis === "horse") ctx.translate(0, -18);
 
         const isHorse = this.vis === "horse";
-        const shielded = this.vis === "sword_shield" || this.vis === "tower_shield";
+        const shielded = this.vis === "sword_shield" || this.vis === "tower_shield" || !!L.shield;
         const meleeBlade = ["sword", "sword_shield", "tower_shield", "spear", "club", "dual"].includes(this.vis);
         const isCatapult = this.vis === "catapult";
         const isDragon = this.vis === "dragon";
@@ -439,8 +816,8 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
             ctx.beginPath(); ctx.moveTo(-22, -6); ctx.quadraticCurveTo(-34, -2, -32, 14); ctx.stroke();
             ctx.lineWidth = 2;
             ctx.beginPath(); ctx.moveTo(-22, -4); ctx.quadraticCurveTo(-30, 4, -27, 14); ctx.stroke();
-            // saddle blanket (team color)
-            ctx.fillStyle = skin;
+            // saddle caparison (team cloth + trim)
+            ctx.fillStyle = L.cloth;
             ctx.beginPath();
             ctx.moveTo(-13, -12); ctx.lineTo(8, -13); ctx.lineTo(6, -6); ctx.lineTo(-13, -5);
             ctx.closePath(); ctx.fill();
@@ -449,8 +826,9 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
             bone(14, 2, 14 + Math.sin(hg) * 6, GY, 4.2, legL);
             // draped rider legs over near side
             const stir = Math.sin(gp) * 1.2;
-            bone(0, -16, 8, 0 + stir, 3.6, limb);
-            bone(8, 0 + stir, 7, 9, 3.2, limb);
+            run([0, -16, 8, stir, 7, 9, 11, 9], 6.8 * B, OUTLINE);
+            run([0, -16, 8, stir], 4.6 * B, L.pants);
+            run([8, stir, 7, 9, 11, 9], 4.4 * B, L.boots);
         }
 
         // ── Back leg (behind torso) ──
@@ -458,12 +836,11 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
             const stride = walking ? 8.5 : 0;
             const bx = walking ? Math.sin(bPh) * stride : -5;
             const by = -(walking ? Math.max(0, Math.cos(bPh)) * 5 : 0);
-            const j = limb2(0, hipY, bx, by, 11, 12, -1, 4, limbDark);
-            bone(j.ex, j.ey, j.ex + 4, j.ey, 3.6, limbDark);
+            legF(bx, by, true);
         } else if (this.flying) {
-            // tucked dangling legs
-            bone(0, hipY, -3, hipY + 14, 3.5, limbDark);
-            bone(0, hipY, 3, hipY + 16, 3.5, limb);
+            // tucked dangling legs (bird-like talons for harpies)
+            run([0, hipY, -3, hipY + 14], 6, OUTLINE); run([0, hipY, -3, hipY + 14], 3.8, shade(L.skin, -0.25));
+            run([0, hipY, 3, hipY + 16], 6, OUTLINE); run([0, hipY, 3, hipY + 16], 3.8, L.skin);
         }
 
         // ════ Upper-body group (leans/tilts) ════
@@ -494,13 +871,12 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
         }
 
         // Cape (mage / staff / boss)
-        if (this.vis === "mage" || this.boss || this.vis === "staff") {
+        if (L.cape || this.boss) {
             const capeSway = Math.sin(this.frame * 0.1) * 4 + swing * 6;
-            const cg = ctx.createLinearGradient(0, shoulderY, 0, hipY + 18);
-            cg.addColorStop(0, shade(skin, 0.1));
-            cg.addColorStop(1, shade(skin, -0.35));
-            ctx.fillStyle = cg;
-            ctx.globalAlpha = 0.92;
+            ctx.fillStyle = shade(L.body === "plate" ? L.cloth : L.tabardCol, -0.2);
+            ctx.strokeStyle = OUTLINE;
+            ctx.lineWidth = 1.2;
+            ctx.globalAlpha = 0.95;
             ctx.beginPath();
             ctx.moveTo(-3, shoulderY + 2);
             ctx.quadraticCurveTo(-15 + capeSway, shoulderY + 16, -11 + capeSway, hipY + 16);
@@ -508,42 +884,33 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
             ctx.lineTo(4, shoulderY + 4);
             ctx.closePath();
             ctx.fill();
+            ctx.stroke();
             ctx.globalAlpha = 1;
         }
 
         // ── Back arm ──
-        const shX = 0, shY = shoulderY + 3;
         let bhx, bhy;
         if (shielded) { bhx = 8; bhy = shoulderY + 9; }
         else if (this.vis === "bow" || this.vis === "crossbow") {
             const pull = this.atkKind === 2 ? this.atk : 0;
             bhx = lerp(4, -7, pull); bhy = shoulderY + 8;
         } else { bhx = -6 + (walking ? Math.sin(fPh) * 5 : 0); bhy = shoulderY + 12; }
-        limb2(shX, shY, bhx, bhy, 9, 10, 1, 3.4, limbDark);
-        ctx.fillStyle = limbDark;
-        ctx.beginPath(); ctx.arc(bhx, bhy, 2.2, 0, Math.PI * 2); ctx.fill();
+        armF(bhx, bhy, true);
 
-        // ── Torso (tapered tunic, shaded) ──
-        let tg;
-        if (lowQ) { tg = shade(skin, -0.08); }
-        else { tg = torsoGrad(ctx, skin); }   // cached by skin colour
-        ctx.fillStyle = tg;
-        ctx.beginPath();
-        ctx.moveTo(-3.4, shoulderY);
-        ctx.quadraticCurveTo(-4.2, (shoulderY + hipY) / 2, -2.4, hipY);
-        ctx.lineTo(2.4, hipY);
-        ctx.quadraticCurveTo(4.2, (shoulderY + hipY) / 2, 3.4, shoulderY);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = toRgba("#ffffff", 0.22);
-        ctx.lineWidth = 1.1;
-        ctx.beginPath();
-        ctx.moveTo(3.4, shoulderY);
-        ctx.quadraticCurveTo(4.2, (shoulderY + hipY) / 2, 2.4, hipY);
-        ctx.stroke();
-        // shoulder cap
-        ctx.fillStyle = shade(skin, 0.05);
-        ctx.beginPath(); ctx.arc(0, shoulderY + 1, 4, 0, Math.PI * 2); ctx.fill();
+        // Quiver slung across the back
+        if (L.quiver) {
+            ctx.save();
+            ctx.translate(-4 * B, shoulderY + 6);
+            ctx.rotate(-0.35);
+            ctx.fillStyle = "#5a3a1e"; ctx.strokeStyle = OUTLINE; ctx.lineWidth = 1.2;
+            ctx.beginPath(); ctx.rect(-2.6, -4, 5.2, 16); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = team ? P_FLETCH : "#b91c1c";
+            for (const fx of [-1.4, 0.8]) { ctx.beginPath(); ctx.moveTo(fx, -4); ctx.lineTo(fx - 1.4, -8); ctx.lineTo(fx + 1.4, -8); ctx.closePath(); ctx.fill(); }
+            ctx.restore();
+        }
+
+        // ── Torso (clothed / armoured body) ──
+        this._drawTorso(ctx, L, shoulderY, hipY, B, team, lowQ);
 
         // ── Shield (drawn in front of torso) ──
         if (shielded) {
@@ -560,7 +927,7 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
                 ctx.strokeStyle = "#cbd5e1";
                 ctx.lineWidth = 1.5;
                 ctx.strokeRect(-3, -20, 9, 40);
-                ctx.fillStyle = skin;
+                ctx.fillStyle = L.cloth;
                 ctx.fillRect(-0.5, -7, 4, 16);
                 ctx.strokeStyle = WHITE_45;
                 ctx.lineWidth = 1;
@@ -577,63 +944,19 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
                 ctx.strokeStyle = "#cbd5e1";
                 ctx.lineWidth = 1.8;
                 ctx.stroke();
-                ctx.fillStyle = skin;
-                ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = L.cloth;
+                ctx.beginPath(); ctx.arc(0, 0, 5.5, 0, Math.PI * 2); ctx.fill();
                 ctx.fillStyle = "#fde68a";
                 ctx.beginPath(); ctx.arc(-1, -1, 1.5, 0, Math.PI * 2); ctx.fill();
             }
             ctx.restore();
         }
 
-        // ── Head + helmet ──
+        // ── Head, face, hair and headgear ──
         ctx.save();
         ctx.translate(0, headCY);
-        let hg2;
-        if (lowQ) { hg2 = shade(skin, 0.05); }
-        else { hg2 = headGrad(ctx, skin, headR); }   // cached by skin colour
-        ctx.fillStyle = hg2;
-        ctx.beginPath(); ctx.arc(0, 0, headR, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = toRgba("#ffffff", 0.3);
-        ctx.lineWidth = 1.2;
-        ctx.beginPath(); ctx.arc(0, 0, headR - 0.6, -2.2, -0.4); ctx.stroke();
-
-        const armored = ["sword", "sword_shield", "tower_shield", "spear"].includes(this.vis);
-        if (armored) {
-            ctx.fillStyle = "#94a3b8";
-            ctx.beginPath(); ctx.arc(0, -0.5, headR + 0.6, Math.PI, 0); ctx.closePath(); ctx.fill();
-            ctx.strokeStyle = "#475569"; ctx.lineWidth = 1; ctx.stroke();
-            ctx.strokeStyle = "#334155"; ctx.lineWidth = 1.5;
-            ctx.beginPath(); ctx.moveTo(2, -1); ctx.lineTo(headR - 0.5, -1); ctx.stroke();
-            // Transverse helmet crest (sits along the dome, sweeps back)
-            ctx.fillStyle = skin;
-            ctx.beginPath();
-            ctx.moveTo(-6, -headR - 0.5);
-            ctx.quadraticCurveTo(-1, -headR - 9, 5, -headR - 1.5);
-            ctx.quadraticCurveTo(-1, -headR - 4, -6, -headR - 0.5);
-            ctx.closePath();
-            ctx.fill();
-            ctx.strokeStyle = shade(skin, -0.3); ctx.lineWidth = 0.7; ctx.stroke();
-        } else if (this.vis === "bow" || this.vis === "crossbow") {
-            ctx.fillStyle = "#3f6212";
-            ctx.beginPath(); ctx.arc(0, -1, headR + 0.4, Math.PI, 0); ctx.closePath(); ctx.fill();
-        } else if (this.vis === "mage" || this.vis === "staff") {
-            ctx.fillStyle = shade(skin, -0.05);
-            ctx.beginPath();
-            ctx.moveTo(-headR - 1, 2);
-            ctx.quadraticCurveTo(0, -headR - 11, headR + 1, 2);
-            ctx.quadraticCurveTo(0, 1, -headR - 1, 2);
-            ctx.fill();
-        }
-        // Eye (front side)
-        ctx.fillStyle = "#ffffff";
-        ctx.beginPath(); ctx.arc(4, -1.2, 2.3, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = "#0b1020";
-        ctx.beginPath(); ctx.arc(4.7, -1.2 + hurt * 0.5, 1.1, 0, Math.PI * 2); ctx.fill();
-        if (hurt > 0.3) {
-            ctx.strokeStyle = "#0b1020"; ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.arc(3, 4, 2, -0.3, Math.PI + 0.3); ctx.stroke();
-        }
-        ctx.restore(); // head
+        this._drawHead(ctx, L, headR, hurt, team);
+        ctx.restore();
 
         // ── Front arm + weapon ──
         let fhx, fhy;
@@ -681,9 +1004,7 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
         }
 
         // Front upper arm/forearm
-        limb2(shX, shY, fhx, fhy, 9, 10, -1, 3.5, limb);
-        ctx.fillStyle = limb;
-        ctx.beginPath(); ctx.arc(fhx, fhy, 2.4, 0, Math.PI * 2); ctx.fill();
+        armF(fhx, fhy, false);
 
         // Weapon by type
         if (this.vis === "bow") {
@@ -822,8 +1143,7 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
             const stride = walking ? 8.5 : 0;
             const fx = walking ? Math.sin(fPh) * stride : 4;
             const fy = -(walking ? Math.max(0, Math.cos(fPh)) * 5 : 0);
-            const j = limb2(0, hipY, fx, fy, 11, 12, -1, 4.2, limb);
-            bone(j.ex, j.ey, j.ex + 4.5, j.ey, 3.8, limb);
+            legF(fx, fy, false, L.body === "robe");
         }
 
         // ── Boss crown ──

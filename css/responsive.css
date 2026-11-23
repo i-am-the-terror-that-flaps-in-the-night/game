@@ -17,9 +17,9 @@
         width: max-content;
     }
     #bottomContainer {
-        transform: translateX(-50%) scale(0.85);
-        bottom: 10px;
-        width: max-content;
+        transform: scale(0.85);
+        transform-origin: bottom center;
+        bottom: 6px;
     }
     #sidePanel {
         transform: scale(0.85);
@@ -63,8 +63,10 @@
     }
 
     #bottomContainer {
-        transform: translateX(-50%) scale(0.75);
-        bottom: -5px;
+        transform: scale(0.75);
+        transform-origin: bottom center;
+        bottom: 0;
+        flex-wrap: wrap;
     }
     #spellsBar,
     #bottomBar {

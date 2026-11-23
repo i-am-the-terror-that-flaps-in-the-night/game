@@ -9,7 +9,6 @@ import { Terrain } from '../systems/terrain.js';
 const ENDLESS_HAZARDS = [
     { weather: "rain", hazard: { type: "lightning", every: [22, 36] } },
     { weather: "none", hazard: { type: "rockslide", every: [24, 38] } },
-    { weather: "snow", hazard: { type: "whiteout", every: [26, 40] } },
     { weather: "none", hazard: { type: "fireVent", every: [20, 32] } },
 ];
 

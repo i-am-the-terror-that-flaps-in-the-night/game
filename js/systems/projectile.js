@@ -31,7 +31,7 @@ export class Projectile {
             fromY: o.fromY,
             ranged: true, // forest cover applies to every shot
         };
-        this.fromTunnel = terrain.inTunnel(x);
+        this.fromTunnel = terrain.underAt(x, y);
 
         this.tX = target.x;
         this.tY = target.y; // Fix #5: Cache coords
@@ -86,7 +86,7 @@ export class Projectile {
 
             // Only the descending half can strike the ground, so a lob launched
             // from a slope doesn't clip the hillside it starts on.
-            if (this.arcP >= 1 || (this.arcP > 0.5 && this.y >= groundAt(this.x))) {
+            if (this.arcP >= 1 || (this.arcP > 0.5 && this.y >= this._floorY())) {
                 // Fix #2: Hit properly
                 if (this.t && this.t.hp > 0 && !this.aoe)
                     this.hit(this.t);
@@ -94,7 +94,7 @@ export class Projectile {
             }
         } else {
             this.y += this.vy * dt;
-            if (this.y > groundAt(this.x) + 4) this.hitFloor();
+            if (this.y > this._floorY() + 4) this.hitFloor();
         }
 
         // Distance-sampled history (not per-frame): appends only after moving a
@@ -118,8 +118,13 @@ export class Projectile {
         if (this.x < -PROJ_CULL_MARGIN || this.x > CONFIG.WORLD_WIDTH + PROJ_CULL_MARGIN)
             this.active = false;
     }
+    // The surface a miss falls onto: the road over a bore for shots fired
+    // above ground, otherwise the ground/tunnel floor (so shots to or from
+    // ground troops on a crossing ramp — below the top road — still fly).
+    _floorY() { return groundAt(this.x, !this.fromTunnel && terrain.inTunnel(this.x) ? 1 : 0); }
+
     hitFloor() {
-        this.y = groundAt(this.x);
+        this.y = this._floorY();
         if (this.aoe) this.explode();
         else {
             this.active = false;
@@ -155,7 +160,7 @@ export class Projectile {
         }
 
         // A shot can't pass a tunnel wall: it smacks the rock instead.
-        if (terrain.inTunnel(target.x) !== this.fromTunnel) { this.hitFloor(); return; }
+        if (terrain.underground(target) !== this.fromTunnel) { this.hitFloor(); return; }
         dealDamage(this.dmg, this.src, target);
         const ang = Math.atan2(this.vy, this.vx) + Math.PI;
         game.fx.spark(this.x, this.y, ang, {
@@ -195,7 +200,7 @@ export class Projectile {
                   ];
         for (const t of targets) {
             if (dist(this.x, this.y, t.x, t.y) >= this.aoe) continue;
-            if (terrain.inTunnel(t.x) !== this.fromTunnel) continue; // sheltered
+            if (terrain.underground(t) !== this.fromTunnel) continue; // sheltered
             dealDamage(this.dmg * 0.6, this.src, t, true);
         }
         game.particles.emit(

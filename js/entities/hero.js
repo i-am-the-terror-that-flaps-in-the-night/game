@@ -82,7 +82,7 @@ export class Hero extends Unit {
         const near = { x: this.x, r: AUTO_CAST_RANGE };
         let any = false;
         for (const e of g.enemies)
-            if (e.active && e.hp > 0 && Math.abs(e.x - this.x) <= AUTO_CAST_RANGE && !terrain.inTunnel(e.x)) { any = true; break; }
+            if (e.active && e.hp > 0 && Math.abs(e.x - this.x) <= AUTO_CAST_RANGE && !terrain.underground(e)) { any = true; break; }
         if (any) this.castAbility(undefined, near);
     }
 

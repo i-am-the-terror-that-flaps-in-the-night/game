@@ -4,7 +4,7 @@ import { dealDamage } from '../systems/combat.js';
 import { Projectile } from '../systems/projectile.js';
 import { clamp, lerp, particleQuality, rand, toRgba } from '../utils.js';
 import { GFX } from '../systems/graphics.js';
-import { groundAt } from '../systems/terrain.js';
+import { groundAt, terrain } from '../systems/terrain.js';
 
 // --- BOSS: "Rustmaw, the Hollow Engine" ---------------------------------
 // A colossal eldritch locomotive — not a member of ENEMY_TYPES and not driven
@@ -213,9 +213,12 @@ export class Boss extends Entity {
 
     // Ride the terrain: sit on the ground line and pitch the whole engine to
     // the chord between its front and rear wheels (eased, so crests don't snap).
+    // Too big for a tunnel bore: over a crossing it takes the top road (the
+    // lane-1 surface, which equals the ground everywhere else).
     _followGround(dt) {
-        this.y = groundAt(this.x);
-        const want = Math.atan2(groundAt(this.x + 70) - groundAt(this.x - 70), 140);
+        this.lane = terrain.crossingAt(this.x) ? 1 : 0;
+        this.y = groundAt(this.x, 1);
+        const want = Math.atan2(groundAt(this.x + 70, 1) - groundAt(this.x - 70, 1), 140);
         this.tilt = (this.tilt || 0) + (want - (this.tilt || 0)) * Math.min(1, 0.15 * dt);
     }
 
@@ -288,7 +291,9 @@ export class Boss extends Entity {
         const halfW = 76;
         const ahead = this.x + this.chargeDir * 40;
         for (const u of game.units) {
-            if (u.active && !this._charged.has(u) && Math.abs(u.x - ahead) < halfW) {
+            // On rails through a crossing's bore: troops on the road above are
+            // a separate level (same rule as everyone else).
+            if (u.active && !this._charged.has(u) && Math.abs(u.x - ahead) < halfW && terrain.sameLevel(this, u)) {
                 this._charged.add(u);
                 dealDamage(this.chargeDmg, this._chargeSrc, u);
                 this._crushFx(u.x, u.y - 18, false);
@@ -353,7 +358,7 @@ export class Boss extends Entity {
     _pickTarget() {
         let best = null, bd = Infinity;
         for (const u of game.units) {
-            if (!u.active || u.hp <= 0) continue;
+            if (!u.active || u.hp <= 0 || !terrain.sameLevel(this, u)) continue;
             const d = Math.abs(u.x - this.x);
             if (d < bd) { bd = d; best = u; }
         }
@@ -365,7 +370,7 @@ export class Boss extends Entity {
     _summon() {
         if (game.enemies.length >= 48) return; // shared swarm ceiling
         const x = clamp(this.x + rand(-50, 50), 300, CONFIG.WORLD_WIDTH - 100);
-        game.spawnEnemy('rabble', x, groundAt(x));
+        game.spawnEnemy('rabble', x, groundAt(x, 1));
         game.particles.emit(x, this.y - 20, 16, '#a855f7', 4, 3, 'float');
         game.fx.ring(x, this.y - 18, { r0: 4, r1: 28, col: '#7c3aed', w: 2, life: 16 });
     }

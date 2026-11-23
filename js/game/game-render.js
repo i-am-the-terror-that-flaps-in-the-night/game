@@ -297,6 +297,18 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
             ctx.restore();
         }
 
+        // Distant range: palest and bluest layer (aerial perspective), so the
+        // eye reads three depths of mountains instead of two flat cut-outs.
+        if (!GFX.flatScenery) {
+            this._drawRidge(ctx, w, gy, cam, {
+                parallax: 0.025, seg: 210,
+                color: toRgb(mixRgb(mixRgb(sky, horizonO, 0.8), { r: 200, g: 214, b: 240 }, 0.18 + sun * 0.1)),
+                top: gy * 0.56, amp: gy * 0.26,
+            });
+        }
+        // Per-level colour grade, applied in drawPostFX (warm at dusk/day).
+        this._grade = lvl.grade || toRgb(mixRgb(sky, isSun ? "#ffb36b" : "#7e93c8", 0.45));
+
         // Far mountain range (hazy, snow-capped)
         this._drawRidge(ctx, w, gy, cam, {
             parallax: 0.05, seg: 150,
@@ -304,10 +316,24 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
             top: gy * 0.62, amp: gy * 0.32,
             snow: true, snowCol: rgba("#e8f0ff", 0.4 + sun * 0.25),
         });
-        // Mid mountain range (sharper, darker, sun-rim)
+        // Mid mountain range (sharper, darker, sun-rim). Painted vertical
+        // shading: lit upper slopes fading into the valley shadow (cached).
+        const midCol = toRgb(mixRgb(shade(sky, -0.3), gnd, 0.28));
+        let midFill = midCol;
+        if (!GFX.flatScenery) {
+            const midKey = midCol + "|" + gy + "|" + (isSun ? 1 : 0);
+            if (this._midKey !== midKey) {
+                const mg = ctx.createLinearGradient(0, gy * 0.48, 0, gy);
+                mg.addColorStop(0, shade(midCol, isSun ? 0.16 : 0.08));
+                mg.addColorStop(1, shade(midCol, -0.32));
+                this._midKey = midKey;
+                this._midGrad = mg;
+            }
+            midFill = this._midGrad;
+        }
         this._drawRidge(ctx, w, gy, cam, {
             parallax: 0.12, seg: 120,
-            color: toRgb(mixRgb(shade(sky, -0.3), gnd, 0.28)),
+            color: midFill,
             top: gy * 0.82, amp: gy * 0.34,
             rim: rgba(isSun ? "#ffcaa0" : "#7e93c8", 0.18 + sun * 0.12),
         });
@@ -326,6 +352,16 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
             }
             ctx.fillStyle = this._hazeGrad;
             ctx.fillRect(0, gy - gy * 0.3, w, gy * 0.3 + 6);
+        }
+
+        // Foothills between the mountains and the tree line.
+        if (!GFX.flatScenery) {
+            this._drawRidge(ctx, w, gy, cam, {
+                parallax: 0.18, seg: 70,
+                color: toRgb(mixRgb(mixRgb(shade(sky, -0.35), gnd, 0.5), horizonO, 0.12)),
+                top: gy * 0.9, amp: gy * 0.13,
+                rim: rgba(isSun ? "#ffd8b0" : "#8ea2d4", 0.1 + sun * 0.08),
+            });
         }
 
         // Tree-line silhouette
@@ -353,6 +389,30 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
             }
             ctx.fillStyle = this._gndGrad;
             ctx.fillRect(0, gy, w, h - gy);
+            // Soil texture: a cached speckle/grass tile scrolled with the world.
+            if (!this._soilPat) {
+                const c = document.createElement("canvas");
+                c.width = 160; c.height = 80;
+                const x = c.getContext("2d");
+                let seed = 7;
+                const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+                for (let i = 0; i < 140; i++) {
+                    x.fillStyle = rnd() < 0.6 ? "rgba(0,0,0,0.35)" : "rgba(255,255,230,0.18)";
+                    x.fillRect(rnd() * 160, rnd() * 80, 1 + rnd() * 2.5, 1 + rnd() * 1.5);
+                }
+                x.strokeStyle = "rgba(0,0,0,0.22)"; x.lineWidth = 1;
+                for (let i = 0; i < 18; i++) {
+                    const gx = rnd() * 160, gy2 = rnd() * 80;
+                    x.beginPath(); x.moveTo(gx, gy2); x.lineTo(gx + 6 + rnd() * 10, gy2 + rnd() * 2); x.stroke();
+                }
+                this._soilPat = ctx.createPattern(c, "repeat");
+            }
+            ctx.save();
+            ctx.globalAlpha = 0.55;
+            ctx.translate(-((cam.x * cam.z) % 160), gy);
+            ctx.fillStyle = this._soilPat;
+            ctx.fillRect(0, 0, w + 160, h - gy);
+            ctx.restore();
         }
 
         // Lit rim where grass catches the sky + shadow line beneath
@@ -415,6 +475,7 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
             this._drawRivers(ctx, w, gy, cam);
             this._drawCaves(ctx, w, gy, cam);
             this._drawForests(ctx, w, gy, cam, lvl.ground);
+            this._drawCrossingRoads(ctx, w, gy, cam);   // in front of ridge trees
         }
     },
 
@@ -479,6 +540,65 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
                 }
             }
             ctx.restore();
+        }
+    },
+
+    // Two-level crossings, BEHIND the troops: a sunken road cut through each
+    // approach ramp (the bore's lower lane) and a paved, railed road along the
+    // top (the upper lane). Both lanes stay visible; the troops on them are
+    // depth-sorted normally (the top road sits further back, higher up).
+    _drawCrossingRoads(ctx, w, gy, cam) {
+        const z = cam.z;
+        const lo = (wx) => gy - terrain.heightAt(wx, 0) * z;
+        const hi = (wx) => gy - terrain.heightAt(wx, 1) * z;
+        for (const c of terrain.crossings) {
+            if (cam.sx(c.x1) < -40 || cam.sx(c.x0) > w + 40) continue;
+            const t = c.t;
+            // Sunken cutting on each ramp: dark walls up to ~44px, packed road.
+            for (const [a, b] of [[c.x0, t.x0], [t.x1, c.x1]]) {
+                ctx.fillStyle = "rgba(20,14,10,0.55)";
+                ctx.beginPath();
+                ctx.moveTo(cam.sx(a), lo(a));
+                for (let wx = a; wx <= b; wx += 12) ctx.lineTo(cam.sx(wx), Math.max(hi(wx), lo(wx) - 44 * z));
+                ctx.lineTo(cam.sx(b), lo(b));
+                for (let wx = b; wx >= a; wx -= 12) ctx.lineTo(cam.sx(wx), lo(wx));
+                ctx.closePath(); ctx.fill();
+                ctx.strokeStyle = "rgba(120,100,80,0.55)"; ctx.lineWidth = 1.2 * z;
+                ctx.beginPath();
+                for (let wx = a; wx <= b; wx += 12) {
+                    const y = Math.max(hi(wx), lo(wx) - 44 * z);
+                    if (wx === a) ctx.moveTo(cam.sx(wx), y); else ctx.lineTo(cam.sx(wx), y);
+                }
+                ctx.stroke();
+                ctx.fillStyle = "#4a3a2a";
+                for (let wx = a; wx < b; wx += 12) ctx.fillRect(cam.sx(wx), lo(wx) - 3 * z, 12 * z + 1, 3 * z);
+            }
+            // Top road: paving along the whole crossing...
+            ctx.strokeStyle = "#6b5e50"; ctx.lineWidth = 5 * z;
+            ctx.beginPath();
+            for (let wx = c.x0; wx <= c.x1; wx += 12) {
+                const y = hi(wx) + 2.5 * z;
+                if (wx === c.x0) ctx.moveTo(cam.sx(wx), y); else ctx.lineTo(cam.sx(wx), y);
+            }
+            ctx.stroke();
+            ctx.strokeStyle = "rgba(0,0,0,0.35)"; ctx.lineWidth = 1 * z;
+            for (let wx = c.x0 + 8; wx < c.x1; wx += 16) {
+                const y = hi(wx);
+                ctx.beginPath(); ctx.moveTo(cam.sx(wx), y); ctx.lineTo(cam.sx(wx), y + 5 * z); ctx.stroke();
+            }
+            // ...and a timber railing over the bore span (the bridge).
+            ctx.strokeStyle = "#5b3a1e"; ctx.lineWidth = 2.2 * z;
+            ctx.beginPath();
+            for (let wx = t.x0 - 10; wx <= t.x1 + 10; wx += 12) {
+                const y = hi(wx) - 15 * z;
+                if (wx === t.x0 - 10) ctx.moveTo(cam.sx(wx), y); else ctx.lineTo(cam.sx(wx), y);
+            }
+            ctx.stroke();
+            ctx.lineWidth = 2.6 * z;
+            for (let wx = t.x0 - 10; wx <= t.x1 + 10; wx += 48) {
+                const sx = cam.sx(wx), y = hi(wx);
+                ctx.beginPath(); ctx.moveTo(sx, y); ctx.lineTo(sx, y - 18 * z); ctx.stroke();
+            }
         }
     },
 
@@ -645,7 +765,7 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
                 ctx.fillRect(sx - 5 * z, roof + 26 * z, 10 * z, 13 * z);
                 ctx.fillStyle = `rgba(254,215,170,${0.8 + 0.2 * Math.sin(this.frames * 0.3 + lx)})`;
                 ctx.fillRect(sx - 3 * z, roof + 28 * z, 6 * z, 9 * z);
-                if (this.frames % 4 === 0) this.lights.add({ x: lx, y: terrain.groundAt(lx) - A + 34, radius: 130, intensity: 0.7, color: "#fdba74", flicker: 0.2, life: 6 });
+                if (this.state === "playing" && this.frames % 4 === 0) this.lights.add({ x: lx, y: terrain.groundAt(lx) - A + 34, radius: 130, intensity: 0.7, color: "#fdba74", flicker: 0.2, life: 6 });
             }
             // Portal headwalls: dressed-stone jambs, a voussoir ring over the
             // mouth and a keystone, framing the troops as they pass under.
@@ -680,7 +800,7 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
                 const tf = 0.7 + 0.3 * Math.sin(this.frames * 0.31 + mx);
                 ctx.fillStyle = `rgba(251,146,60,${tf})`;
                 ctx.beginPath(); ctx.arc(sx - dir * 20 * z, f0 - (A - 30) * z, 4 * z, 0, Math.PI * 2); ctx.fill();
-                if (this.frames % 4 === 0) this.lights.add({ x: mx - dir * 20, y: terrain.groundAt(mx) - A + 30, radius: 90, intensity: 0.6, color: "#fb923c", flicker: 0.3, life: 6 });
+                if (this.state === "playing" && this.frames % 4 === 0) this.lights.add({ x: mx - dir * 20, y: terrain.groundAt(mx) - A + 30, radius: 90, intensity: 0.6, color: "#fb923c", flicker: 0.3, life: 6 });
             }
             ctx.restore();
         }
@@ -741,8 +861,8 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
         ctx.lineJoin = "miter";
     },
 
-    // Slow-ground patches painted onto the surface: glossy mud with bubbles,
-    // wind-carved snowdrifts, and reedy marsh water.
+    // Slow-ground patches painted onto the surface: glossy mud with bubbles
+    // and reedy marsh water.
     _drawPatches(ctx, w, gy, cam) {
         const z = cam.z;
         for (const p of terrain.patches) {
@@ -750,7 +870,7 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
             if (x1 < -20 || x0 > w + 20) continue;
             const def = TERRAIN_PATCHES[p.kind];
             const surf = (wx) => gy - terrain.heightAt(wx) * z;
-            const depth = (p.kind === "snow" ? 9 : 12) * z;
+            const depth = 12 * z;
             ctx.save();
             ctx.fillStyle = def.top;
             ctx.globalAlpha = p.kind === "marsh" ? 0.82 : 0.92;
@@ -758,8 +878,7 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
             // Tapered ends so the patch blends into the grass.
             ctx.moveTo(x0 - 10 * z, surf(p.x0) + 1);
             for (let wx = p.x0; wx <= p.x1; wx += 10) {
-                const bump = p.kind === "snow" ? Math.abs(Math.sin(wx * 0.045)) * 5 * z : 0;
-                ctx.lineTo(cam.sx(wx), surf(wx) - 2 * z - bump);
+                ctx.lineTo(cam.sx(wx), surf(wx) - 2 * z);
             }
             ctx.lineTo(x1 + 10 * z, surf(p.x1) + 1);
             for (let wx = p.x1; wx >= p.x0; wx -= 20) ctx.lineTo(cam.sx(wx), surf(wx) + depth);
@@ -771,7 +890,7 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
             ctx.lineWidth = 1.2 * z;
             ctx.beginPath();
             for (let wx = p.x0 + 8; wx <= p.x1 - 8; wx += 10) {
-                const y = surf(wx) - (p.kind === "snow" ? 3 : 1) * z;
+                const y = surf(wx) - 1 * z;
                 if (wx === p.x0 + 8) ctx.moveTo(cam.sx(wx), y); else ctx.lineTo(cam.sx(wx), y);
             }
             ctx.stroke();
@@ -842,6 +961,16 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
         if (this._vignette) {
             ctx.fillStyle = this._vignette;
             ctx.fillRect(0, 0, w, h);
+        }
+        // Colour grade: one soft-light wash in the level's mood colour ties
+        // sky, terrain and troops together (skipped on Performance tier).
+        if (this._grade && !GFX.flatScenery) {
+            ctx.save();
+            ctx.globalCompositeOperation = "soft-light";
+            ctx.globalAlpha = 0.28;
+            ctx.fillStyle = this._grade;
+            ctx.fillRect(0, 0, w, h);
+            ctx.restore();
         }
         if (GFX.postFX && this._grainPat) {
             ctx.save();

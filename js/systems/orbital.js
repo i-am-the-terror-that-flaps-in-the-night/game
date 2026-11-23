@@ -50,7 +50,7 @@ export class OrbitalCannon {
     }
 
     _valid(e, c) {
-        return e.active && e.hp > 0 && e.x - c.x <= ORBITAL.range && !terrain.inTunnel(e.x);
+        return e.active && e.hp > 0 && e.x - c.x <= ORBITAL.range && !terrain.underground(e);
     }
 
     // Current strength multiplier (1 at the start of a run).
@@ -117,7 +117,7 @@ export class OrbitalCannon {
             const E = g.enemies;
             for (let i = 0, n = E.length; i < n; i++) {
                 const e = E[i];
-                if (e.active && e.hp > 0 && Math.abs(e.x - this.x) < R && !terrain.inTunnel(e.x))
+                if (e.active && e.hp > 0 && Math.abs(e.x - this.x) < R && !terrain.underground(e))
                     dealDamage(dmg * (e.isBoss ? ORBITAL.bossMult : 1), src, e, true);
             }
         }
@@ -126,7 +126,7 @@ export class OrbitalCannon {
 
     // The beam's first contact: a blue-white blast, shockwaves, a camera punch.
     _ignite() {
-        const g = this.g, x = this.x, gy = groundAt(x);
+        const g = this.g, x = this.x, gy = groundAt(x, 1);
         g.fx.flash(x, gy - 40, { r: 220, col: "#dbeafe", life: 18 });
         g.fx.ring(x, gy, { r0: 10, r1: 280, col: "#3b82f6", w: 7, life: 28 });
         g.fx.ring(x, gy, { r0: 6, r1: 160, col: "#f0f9ff", w: 3, life: 18 });
@@ -141,7 +141,7 @@ export class OrbitalCannon {
     // Continuous impact: electric-blue sparks, rising ki motes, dust, a
     // scorched trail where the beam drags, a cold-blue light and a rumble.
     _groundFx(dt) {
-        const g = this.g, x = this.x, gy = groundAt(x), f = Math.floor(this.t);
+        const g = this.g, x = this.x, gy = groundAt(x, 1), f = Math.floor(this.t);
         const R = this.radius();
         if (f % 2 === 0) g.particles.emit(x + (Math.random() - 0.5) * 40, gy - 4, 3, "#60a5fa", 7, 3, "spark");
         if (f % 2 === 1) g.particles.emit(x + (Math.random() - 0.5) * R * 1.4, gy - 10, 2, "#bfdbfe", 3, 3, "float");
@@ -169,7 +169,7 @@ export class OrbitalCannon {
         if (this.power <= 0.01) { ctx.restore(); return; }
 
         const P = this.power;
-        const bx = cam.sx(this.x), by = cam.sy(groundAt(this.x));
+        const bx = cam.sx(this.x), by = cam.sy(groundAt(this.x, 1));
         const grow = this.radius() / ORBITAL.radius; // beam thickens as power rises
         const W = 170 * z * (0.6 + 0.4 * P) * grow;
         const wob = 1 + 0.07 * Math.sin(f * 0.6) + 0.05 * Math.sin(f * 1.9);
