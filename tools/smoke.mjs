@@ -151,7 +151,9 @@ try {
         e.takeDamage(1e9); // kill -> die() reads ENEMY_TYPES.shaman.drops
         return game.crystal - before;
     });
-    ok(drop === 2, 'shaman death drops 2 crystal (data-driven)');
+    // Crystal is fractional (income accrues per frame), so (c + 2) - c can come
+    // out as 1.999999999999993 — compare with a float tolerance, not ===.
+    ok(Math.abs(drop - 2) < 1e-6, 'shaman death drops 2 crystal (data-driven)');
 
     // Ranged combat builds a Projectile (exercises PROJECTILE_TYPES lookup): an
     // enemy archer near the castle targets it and fires an arrow.
