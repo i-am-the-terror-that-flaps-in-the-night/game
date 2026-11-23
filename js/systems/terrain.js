@@ -398,7 +398,14 @@ export class Terrain {
         const segs = [];
         for (let i = 0; i < 11; i++) {
             if (i === 2 || i === 7) segs.push("shrine:" + rewards[Math.floor(Math.random() * rewards.length)]);
-            else segs.push(pool[Math.floor(Math.random() * pool.length)]);
+            else {
+                let k = pool[Math.floor(Math.random() * pool.length)];
+                // A crossing's ramps reach RAMP px past its bore: as the first
+                // or last segment they'd run into the castle plateau / off the
+                // map end, so the edges never get a tunnel.
+                if ((i === 0 || i === 10) && k.startsWith("tunnel")) k = "rolling";
+                segs.push(k);
+            }
         }
         return { seed: Math.floor(Math.random() * 1e9), rough: 18 + Math.random() * 20, segments: segs };
     }

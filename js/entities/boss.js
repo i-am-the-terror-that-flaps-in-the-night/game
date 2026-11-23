@@ -4,7 +4,7 @@ import { dealDamage } from '../systems/combat.js';
 import { Projectile } from '../systems/projectile.js';
 import { clamp, lerp, particleQuality, rand, toRgba } from '../utils.js';
 import { GFX } from '../systems/graphics.js';
-import { groundAt } from '../systems/terrain.js';
+import { groundAt, terrain } from '../systems/terrain.js';
 
 // --- BOSS: "Rustmaw, the Hollow Engine" ---------------------------------
 // A colossal eldritch locomotive — not a member of ENEMY_TYPES and not driven
@@ -288,7 +288,9 @@ export class Boss extends Entity {
         const halfW = 76;
         const ahead = this.x + this.chargeDir * 40;
         for (const u of game.units) {
-            if (u.active && !this._charged.has(u) && Math.abs(u.x - ahead) < halfW) {
+            // On rails through a crossing's bore: troops on the road above are
+            // a separate level (same rule as everyone else).
+            if (u.active && !this._charged.has(u) && Math.abs(u.x - ahead) < halfW && terrain.sameLevel(this, u)) {
                 this._charged.add(u);
                 dealDamage(this.chargeDmg, this._chargeSrc, u);
                 this._crushFx(u.x, u.y - 18, false);
@@ -353,7 +355,7 @@ export class Boss extends Entity {
     _pickTarget() {
         let best = null, bd = Infinity;
         for (const u of game.units) {
-            if (!u.active || u.hp <= 0) continue;
+            if (!u.active || u.hp <= 0 || !terrain.sameLevel(this, u)) continue;
             const d = Math.abs(u.x - this.x);
             if (d < bd) { bd = d; best = u; }
         }

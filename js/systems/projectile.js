@@ -118,9 +118,10 @@ export class Projectile {
         if (this.x < -PROJ_CULL_MARGIN || this.x > CONFIG.WORLD_WIDTH + PROJ_CULL_MARGIN)
             this.active = false;
     }
-    // The surface this shot falls onto: the tunnel floor for shots fired
-    // underground, otherwise the visible top (the road over a crossing).
-    _floorY() { return groundAt(this.x, this.fromTunnel ? 0 : 1); }
+    // The surface a miss falls onto: the road over a bore for shots fired
+    // above ground, otherwise the ground/tunnel floor (so shots to or from
+    // ground troops on a crossing ramp — below the top road — still fly).
+    _floorY() { return groundAt(this.x, !this.fromTunnel && terrain.inTunnel(this.x) ? 1 : 0); }
 
     hitFloor() {
         this.y = this._floorY();

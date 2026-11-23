@@ -248,7 +248,15 @@ export class Unit extends Entity {
         // back to the shared lane on leaving it.
         const cr = this.flying ? null : terrain.crossingAt(this.x);
         if (!cr) { this.lane = 0; this._cross = null; }
-        else if (this._cross !== cr) { this._cross = cr; this.lane = terrain.pickLane(this, this.team); }
+        else if (this._cross !== cr) {
+            this._cross = cr;
+            // Walking in at the ramp foot (both levels meet): route by the
+            // alternation rule. Appearing mid-crossing (a summon or spawn):
+            // stay on the level nearest the feet instead of teleporting.
+            const yTop = groundAt(this.x, 1), yLow = groundAt(this.x, 0);
+            this.lane = Math.abs(yTop - yLow) < 4 ? terrain.pickLane(this, this.team)
+                : Math.abs(this.y - yTop) < Math.abs(this.y - yLow) ? 1 : 0;
+        }
         this.y = groundAt(this.x, this.lane); // follow the terrain (hills, and resizes)
         this._wadeFx();
     }
