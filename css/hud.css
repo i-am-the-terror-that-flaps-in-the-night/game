@@ -736,7 +736,7 @@ body.perf-lite .ember {
 #spellsBar .bar-divider:first-of-type { display: none; }
 #bottomBar .action-tabs { flex-direction: column; margin-bottom: 0; gap: 4px; }
 #bottomBar .action-tab { padding: 4px 10px; font-size: 10px; }
-#bottomBar .action-group { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; }
+#bottomBar .action-group { flex-wrap: wrap; justify-content: center; row-gap: 6px; }
 #bottomContainer .btn { min-width: 70px; padding: 7px 8px; font-size: 12px; }
 #sidePanel.is-hidden { display: none; }
 #minimapContainer { bottom: auto; top: 78px; }
