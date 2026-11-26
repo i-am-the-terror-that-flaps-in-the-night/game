@@ -20,6 +20,8 @@ import { terrain } from '../systems/terrain.js';
 import { HazardSystem } from '../systems/hazards.js';
 import { ObjectiveSystem } from '../systems/objectives.js';
 import { OrbitalCannon } from '../systems/orbital.js';
+import { RagdollSystem } from '../systems/ragdoll.js';
+import { ShoutSystem } from '../systems/shouts.js';
 
 // --- GAME: core state, lifecycle & main loop ---
 // (flow/economy/input/ui/render methods are mixed into Game.prototype
@@ -40,6 +42,8 @@ export class Game {
         this.particles = new ParticleSystem();
         this.fx = new EffectSystem();
         this.decals = new DecalSystem();
+        this.ragdolls = new RagdollSystem();  // death bodies (ragdoll / plank / confetti)
+        this.shouts = new ShoutSystem();      // speech bubbles + death screams
         this.weather = new WeatherSystem();
         this.spells = new SpellManager();
         this.terrain = terrain;                 // hills + slow ground (module singleton)
@@ -238,6 +242,8 @@ export class Game {
         this.singularities = [];
         this.hero = null;
         this.decals.decals = [];
+        this.ragdolls.clear();
+        this.shouts.clear();
         this.stats = {
             kills: 0,
             gold: 0,
@@ -457,6 +463,8 @@ export class Game {
         }
 
         this.particles.update(dt);
+        this.ragdolls.update(dt);
+        this.shouts.update(dt);
         this.fx.update(dt);
         this.decals.update(dt);
         this.weather.update(dt, this.camera);

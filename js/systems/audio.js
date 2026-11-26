@@ -64,6 +64,43 @@ export class AudioEngine {
     playCoin() {
         this.playTone(1200, 0.1, "sine", 0.05);
     }
+    // Pitch-swept voice: a wobbling sawtooth sliding from f0 to f1. Throttled —
+    // an AoE wipe would otherwise stack dozens of oscillators.
+    /** @param {OscillatorType} [type] */
+    _sweep(f0, f1, dur, vol, type = "sawtooth", vib = 0) {
+        if (!this.initDone || this.vols.sound === 0) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(f0, now);
+        osc.frequency.exponentialRampToValueAtTime(f1, now + dur);
+        if (vib) {
+            const lfo = this.ctx.createOscillator(), lg = this.ctx.createGain();
+            lfo.frequency.value = 9; lg.gain.value = vib;
+            lfo.connect(lg); lg.connect(osc.frequency);
+            lfo.start(now); lfo.stop(now + dur);
+        }
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(vol, now + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+        osc.connect(gain);
+        gain.connect(this.sfx);
+        osc.start(now);
+        osc.stop(now + dur);
+    }
+    playScream() {
+        const t = performance.now();
+        if (t - (this._screamT || 0) < 450) return;
+        this._screamT = t;
+        this._sweep(randInt(620, 900), randInt(180, 260), 0.75, 0.035, "sawtooth", 22);
+    }
+    playPop() {
+        const t = performance.now();
+        if (t - (this._popT || 0) < 120) return;
+        this._popT = t;
+        this._sweep(380, 1400, 0.09, 0.07, "triangle");
+    }
     // ── Environmental hazard cues ───────────────────────────────────────
     // Rising two-note alarm as a hazard telegraphs.
     hazardWarn() {

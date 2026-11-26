@@ -164,7 +164,16 @@ export class Hero extends Unit {
         if (this.jumpH > 0) {
             this.jumpH += this.jumpV * dt;
             this.jumpV -= JUMP_G * dt;
-            if (this.jumpH <= 0) { this.jumpH = 0; this.jumpV = 0; }
+            if (this.jumpH <= 0) {
+                // Landing: dust kicked up both ways + a soft ring, harder the faster he falls.
+                if (this.jumpV < -3 && typeof game !== "undefined") {
+                    const gy = this.y;
+                    game.particles.emit(this.x - 8, gy - 2, 6, "#a8a29e", 2.4, 3, "fade");
+                    game.particles.emit(this.x + 8, gy - 2, 6, "#a8a29e", 2.4, 3, "fade");
+                    game.fx.ring(this.x, gy, { r0: 4, r1: 26 * this.scale, col: "#d6d3d1", w: 2, life: 12 });
+                }
+                this.jumpH = 0; this.jumpV = 0;
+            }
         }
     }
 

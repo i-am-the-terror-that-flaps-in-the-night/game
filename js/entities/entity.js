@@ -47,7 +47,7 @@ export class Entity {
             c: col,
             s: sz,
         });
-        if (this.hp <= 0) this.die();
+        if (this.hp <= 0) { this._killTag = tag; this.die(); }
     }
     heal(amt) {
         if (this.hp <= 0) return;

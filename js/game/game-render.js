@@ -1076,6 +1076,7 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
             } else culled(e, dt);
         }
         for (const p of this.projectiles) if (p.x > vL && p.x < vR) ents.push(p);
+        for (const c of this.ragdolls.list) if (c.x > vL - 200 && c.x < vR + 200) ents.push(c); // corpses y-sort with the living
         const at = PERF.lodAt;
         this._lodE = this._lodE ? visE > at * 0.8 - 2 : visE > at;
         this._lodP = PERF.lodPlayers;
@@ -1087,6 +1088,7 @@ export const renderMethods = /** @type {ThisType<any>} */ ({
         this.hazards.drawOver(ctx, cam);
 
         this.particles.draw(ctx, cam);
+        this.shouts.draw(ctx, cam);
         // Dynamic lights queue into the active glow overlay (WebGPU/WebGL) using
         // the same captured shake offset as particles. No-op on Canvas-2D / when
         // GFX.lights is off. Queued during the world pass, composited at flush.
