@@ -1,6 +1,6 @@
 import { CONFIG, TEAMS } from '../config.js';
 import { el, setHTML, setText } from '../ui/dom.js';
-import { btnId, costStr, formatTime, toRgba } from '../utils.js';
+import { btnId, costStr, formatTime, hpStr, toRgba } from '../utils.js';
 import { TERRAIN_PATCHES } from '../systems/terrain.js';
 import { defOf, describeMatchups, waveHint } from '../systems/combat.js';
 import { clearSaves } from '../systems/storage.js';
@@ -191,7 +191,7 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
         const sell = refund
             ? `<button class="tech-btn" style="margin-top:8px;width:100%;border-color:var(--danger);color:var(--danger);" onclick="game.sellSelected()">Sell (Del) — ${costStr(refund)}</button>`
             : "";
-        e.innerHTML = `<strong style="color:var(--gold);font-size:15px; letter-spacing:1px; text-transform:uppercase;">${d ? d.name : "Unknown"}</strong><br>HP: ${Math.floor(s.hp)}/${Math.round(s.maxHp)}<br>${s.dmg ? "Damage: " + Math.round(s.dmg) + "<br>" : ""}${s.armor ? "Armor: " + s.armor + "<br>" : ""}${mu ? `<span style="font-size:12px;">${mu}</span>` : ""}${rep}${sell}`;
+        e.innerHTML = `<strong style="color:var(--gold);font-size:15px; letter-spacing:1px; text-transform:uppercase;">${d ? d.name : "Unknown"}</strong><br>HP: ${hpStr(s)}<br>${s.dmg ? "Damage: " + Math.round(s.dmg) + "<br>" : ""}${s.armor ? "Armor: " + s.armor + "<br>" : ""}${mu ? `<span style="font-size:12px;">${mu}</span>` : ""}${rep}${sell}`;
     },
 
     updateUI() {
