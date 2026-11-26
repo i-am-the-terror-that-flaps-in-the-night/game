@@ -3,7 +3,7 @@ import { TEAMS } from '../config.js';
 import { HEROES } from '../data/heroes.js';
 import { Singularity } from '../systems/void.js';
 import { GFX } from '../systems/graphics.js';
-import { terrain } from '../systems/terrain.js';
+import { HIGH_GROUND, groundAt, terrain } from '../systems/terrain.js';
 
 // --- HERO: a persistent, respawning player unit with an active ability --------
 //
@@ -20,6 +20,12 @@ import { terrain } from '../systems/terrain.js';
 /** Convert wall-clock ms to dt-frames (game normalizes to 60fps). */
 const msToFrames = (ms) => ms / (1000 / 60);
 const AUTO_CAST_RANGE = 650; // enemies this close trigger the auto Singularity
+// Manual-control jump: px/frame launch speed and gravity (frame basis). A
+// plain hop peaks ~54 px; a jump launched just before a tunnel entrance gets
+// enough lift to clear the opening and land on the road over it.
+const JUMP_V = 7;
+const JUMP_G = 0.45;
+const ENTRANCE_WINDOW = 150;   // px before an entrance where a jump gets the boost
 
 export class Hero extends Unit {
     /**
@@ -62,13 +68,104 @@ export class Hero extends Unit {
         this.respawnMs = def.respawnMs || 60000;
         this.respawnFrames = 0;
         this.spawnX = x;
+        this.jumpH = 0;   // height above the feet (draw-only; y stays the feet)
+        this.jumpV = 0;
     }
 
     /** @param {number} dt frame delta */
     update(dt) {
+        const prevX = this.x;
         super.update(dt);
         if (this.abilityCd > 0) this.abilityCd = Math.max(0, this.abilityCd - dt);
+        if (this.active) this._jumpPhysics(dt, prevX);
         this._autoCast();
+    }
+
+    // Manual control (called from Unit.update in place of the AI movement):
+    // fire at anything in range, walk where the keys say.
+    _manualStep(dt, tgt, cD) {
+        const k = window.game.heroKeys;
+        const dir = (k.right ? 1 : 0) - (k.left ? 1 : 0);
+        let attacking = false;
+        if (tgt) {
+            let range = this.range;
+            if (this.ranged) {
+                const dh = tgt.y - this.y;
+                if (dh > 0) range *= 1 + Math.min(HIGH_GROUND.rangeMax, dh * HIGH_GROUND.rangeK);
+            }
+            if (cD <= range) {
+                attacking = true;
+                this.facing = tgt.x > this.x ? 1 : -1;
+                if (this.cdTimer <= 0) {
+                    this.attack(tgt);
+                    this.cdTimer = this.cd;
+                }
+            }
+        }
+        if (dir) {
+            if (!attacking) this.facing = dir;
+            this.x += dir * this.speed * terrain.speedMult(this, dir) * dt;
+            this.state = "walk";
+        } else {
+            this.state = attacking ? "attack" : "idle";
+        }
+    }
+
+    // The tunnel entrance ahead of x in direction dir (on the lower lane).
+    _entranceAhead(dir) {
+        for (const c of terrain.crossings) {
+            const ex = dir > 0 ? c.t.x0 : c.t.x1;
+            const d = (ex - this.x) * dir;
+            if (d >= 0 && d <= ENTRANCE_WINDOW) return c;
+        }
+        return null;
+    }
+
+    // Jump arc + the road/tunnel choice: passing over a tunnel entrance while
+    // in the air lands him on the road; walking through it takes the bore.
+    _jumpPhysics(dt, prevX) {
+        const g = window.game;
+        const manual = g && g.heroManual && g.heroManual();
+        const k = g ? g.heroKeys : null;
+        const inBore = terrain.inTunnel(this.x) && this.lane === 0;
+        if (manual && k && k.jump) {
+            k.jump = false;
+            if (this.jumpH <= 0 && !inBore) {           // no hopping under the bore roof
+                let v = JUMP_V;
+                const dir = (k.right ? 1 : 0) - (k.left ? 1 : 0) || this.facing;
+                const c = this.lane === 0 ? this._entranceAhead(dir) : null;
+                if (c) {
+                    const ex = dir > 0 ? c.t.x0 : c.t.x1;
+                    const gap = groundAt(ex, 0) - groundAt(ex, 1);
+                    v = Math.max(v, Math.sqrt(2 * JUMP_G * (gap + 24)));
+                }
+                this.jumpV = v;
+                this.jumpH = 0.01;
+            }
+        }
+        if (!manual && this.jumpH > 0) { this.jumpH = 0; this.jumpV = 0; }
+        // Entering a bore from outside on the lower lane: airborne = road.
+        if (this.lane === 0) {
+            for (const c of terrain.crossings) {
+                const { x0, x1 } = c.t;
+                const crossed = (prevX < x0 && this.x >= x0) || (prevX > x1 && this.x <= x1);
+                if (!crossed) continue;
+                if (this.jumpH > 0) {
+                    const gap = groundAt(this.x, 0) - groundAt(this.x, 1);
+                    this.lane = 1;
+                    this.jumpH = Math.max(0, this.jumpH - gap);
+                    if (this.jumpH === 0) this.jumpV = 0;
+                    this.y = groundAt(this.x, 1);
+                    if (g && g.particles) g.particles.emit(this.x, this.y, 10, "#c084fc", 3, 3, "float");
+                }
+                break;
+            }
+        }
+        if (this.jumpH > 0) {
+            this.jumpH += this.jumpV * dt;
+            this.jumpV -= JUMP_G * dt;
+            if (this.jumpH <= 0) { this.jumpH = 0; this.jumpV = 0; }
+        }
     }
 
     // Auto-cast: the moment the meter is full and enemies are within reach,
@@ -175,9 +272,10 @@ export class Hero extends Unit {
     draw(ctx, cam, dt) {
         const TWO_PI = Math.PI * 2;
         const px = cam.sx(this.x);
-        const py = cam.sy(this.y);
         const z = cam.z;
-        const ok = this.active && Number.isFinite(px) && Number.isFinite(py)
+        const pyFeet = cam.sy(this.y);
+        const py = pyFeet - (this.jumpH || 0) * z;   // body/aura rise with a jump
+        const ok = this.active && Number.isFinite(px) && Number.isFinite(pyFeet)
             && Number.isFinite(z) && z > 0;
         const cf = this.voidCharge / (this.maxCharge || 100);   // 0..1
         const t = (window.game ? window.game.frames : 0) * 0.04;
@@ -223,7 +321,7 @@ export class Hero extends Unit {
             ctx.save();
             ctx.globalCompositeOperation = "screen";
             const sigilR = (32 + cf * 10) * s;
-            ctx.translate(px, py - 4 * z);
+            ctx.translate(px, pyFeet - 4 * z);
             ctx.scale(1, 0.4);
             const spin = t * (1 + cf * 2);
             if (useShadow) { ctx.shadowColor = "#e64bff"; ctx.shadowBlur = (6 + cf * 10) * z; }
@@ -353,6 +451,8 @@ export class Hero extends Unit {
 
     die() {
         super.die();
+        this.jumpH = 0;
+        this.jumpV = 0;
         this.respawnFrames = msToFrames(this.respawnDelayMs());
         this.deaths = (this.deaths || 0) + 1;
         this.active = false;

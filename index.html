@@ -303,7 +303,7 @@
                 </button>
             </div>
 
-            <div id="heroPanel" class="glass-panel ui-element" style="--cd: 0" title="Voidcaller — land hits to charge, press B to unleash Singularity">
+            <div id="heroPanel" class="glass-panel ui-element" style="--cd: 0" title="Voidcaller — ←/→ move, ↑ jump (jump over a tunnel entrance to take the road), H toggles autopilot, B casts Singularity">
                 <div class="hero-cd-ring">
                     <div class="hero-portrait"></div>
                     <span class="hero-key">B</span>
@@ -673,6 +673,13 @@
                     </select>
                 </div>
                 <div class="settings-row">
+                    <label for="heroControl">Hero Control (H)</label>
+                    <select id="heroControl">
+                        <option value="auto">Autopilot</option>
+                        <option value="manual">Manual (arrow keys)</option>
+                    </select>
+                </div>
+                <div class="settings-row">
                     <label for="perfShowFps">Show FPS</label>
                     <select id="perfShowFps">
                         <option value="0" selected>Off</option>
@@ -727,6 +734,7 @@
                     <section>
                         <h3>Your Hero: The <span class="m-void">Voidcaller</span></h3>
                         <p>Every run, the Voidcaller marches out of your Castle free of charge — faster and far tougher than any soldier. His void-bolts deal <strong>magic</strong> damage and splash, so he shreds packed formations while leading the charge.</p>
+                        <p><strong>Take the controls.</strong> He fights on autopilot by default. Press <kbd>H</kbd> (or Settings) to steer him yourself: <kbd>←</kbd><kbd>→</kbd> walk and <kbd>↑</kbd> jumps, and he still fires at anything in range. At a tunnel, <strong>jump over the entrance</strong> to land on the road above it, or walk in to take the tunnel. While you steer him, an <strong>auto-commander</strong> recruits troops that counter the coming wave and puts up buildings (Mines, Barracks, Academy, Towers); you can still recruit and build yourself. Press <kbd>H</kbd> again to hand him back to autopilot and command the army yourself.</p>
                         <p>Landing hits builds <span class="m-void">Void Charge</span> (more per enemy caught in the splash). At a full meter he crowns with light — press <kbd>B</kbd> to tear open a <strong>Singularity</strong> that drags in everything nearby and collapses on it. It auto-locks onto the densest enemy cluster, so you never have to aim it. There is no cooldown and no mana cost: the meter <em>is</em> the timer. If he falls, he returns to the Castle about a minute later.</p>
                     </section>
 
@@ -777,7 +785,9 @@
                             <dd>Cleared the field early? <span class="m-ok">Call the next wave</span> instead of waiting out the timer.</dd>
                             <dt><kbd>Space</kbd><kbd>P</kbd><kbd>Esc</kbd></dt>
                             <dd>Pause or resume. You can still scroll the field while paused.</dd>
-                            <dt><kbd>A</kbd><kbd>D</kbd> / <kbd>←</kbd><kbd>→</kbd></dt>
+                            <dt><kbd>←</kbd><kbd>→</kbd> <kbd>↑</kbd> / <kbd>H</kbd></dt>
+                            <dd>Move and jump your hero (jump over a tunnel entrance to take the road). <kbd>H</kbd> toggles hero autopilot; on autopilot the arrows scroll the camera instead.</dd>
+                            <dt><kbd>A</kbd><kbd>D</kbd></dt>
                             <dd>Scroll the camera — or push the mouse to the screen edge. On mobile, swipe.</dd>
                             <dt><span class="m-ok">Right-Click</span></dt>
                             <dd>Toggle auto-recruit on any unit button (long-press on mobile).</dd>

@@ -108,6 +108,16 @@ export class Game {
         this.dayT = 0;
         this.mouse = { x: 0, y: 0 };
         this.keysDown = { left: false, right: false }; // held-key panning state
+        // Hero control. Manual: ←/→ walk, ↑ jump (jump is edge-triggered and
+        // consumed by the hero). Jumping over a tunnel entrance takes the road
+        // over it; walking in takes the bore.
+        // Autopilot = the original AI and is the default, so new players
+        // start fully in charge of the army; H switches to steering the hero
+        // (which hands troops and buildings to the auto-commander). Persisted
+        // under its own key (the main save format is fixture-checked by smoke).
+        this.heroKeys = { left: false, right: false, jump: false };
+        const savedCtl = loadJSON("sd_hero_control");
+        this.heroAuto = savedCtl ? savedCtl.auto === true : true;
 
         this.lightningArcs  = [];
         this.formation       = 'defensive';
@@ -254,6 +264,7 @@ export class Game {
         this.holdX = null;                     // recomputed from terrain anchors
         // Spawn the hero near the castle at run start (campaign + endless), then
         // layer on his banked permanent upgrades (Power/Vitality/Attunement/Rift).
+        this.clearHeroKeys();
         this.hero = new Hero(340, "voidcaller");
         if (this.meta) this.meta.applyHeroUpgrades(this.hero);
         this.units.push(this.hero);
@@ -299,6 +310,26 @@ export class Game {
     // loop — decoupled from game state and timescale so scrolling stays smooth
     // and continuous even while paused or when the game speed changes. This is
     // what fixes the scroll "pauses/stops".
+    heroManual() {
+        return !this.heroAuto;
+    }
+
+    setHeroAuto(auto) {
+        this.heroAuto = !!auto;
+        this.clearHeroKeys();
+        saveJSON("sd_hero_control", { auto: this.heroAuto });
+        const sel = document.getElementById("heroControl");
+        if (sel) sel.value = this.heroAuto ? "auto" : "manual";
+        if (this.state === "playing" || this.state === "paused")
+            this.notify(this.heroAuto ? "Hero: autopilot — you command the army (H to take the hero)" : "Hero: manual — ←/→ move, ↑ jump. Troops and buildings are handled for you (H for autopilot)");
+        this.updateUI();
+    }
+
+    clearHeroKeys() {
+        const k = this.heroKeys;
+        k.left = k.right = k.jump = false;
+    }
+
     updateCamera(dt) {
         // Scroll during active play AND while paused — the whole point of
         // decoupling from ts is that you can pan the battlefield when paused.
@@ -315,6 +346,15 @@ export class Game {
                 if (this.mouse.x > window.innerWidth - CONFIG.EDGE_SCROLL_MARGIN)
                     this.camera.pan(CONFIG.EDGE_SCROLL_SPEED * dt);
             }
+        }
+        // Manual hero: keep him in view while you steer him (only while a
+        // move key is held, so it never fights panning or minimap clicks).
+        const h = this.hero;
+        if (canScroll && h && h.active && this.heroManual() && (this.heroKeys.left || this.heroKeys.right)) {
+            const vw = this.camera.viewW / this.camera.z;
+            const sx = h.x - this.camera.tX;
+            if (sx < vw * 0.3) this.camera.pan(sx - vw * 0.3);
+            else if (sx > vw * 0.6) this.camera.pan(sx - vw * 0.6);
         }
         this.camera.update(dt);
     }
@@ -342,6 +382,9 @@ export class Game {
         this.spells.update(dt);
 
         // Fix #6: Round Robin Auto-Queue
+        // While the hero is hand-steered, the army and base run themselves.
+        this.commanderTick(dt);
+
         this.autoTimer += dt;
         if (this.autoTimer >= 60) {
             this.autoTimer = 0;

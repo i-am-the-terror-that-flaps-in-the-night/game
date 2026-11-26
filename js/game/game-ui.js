@@ -232,9 +232,10 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
             const ready = this.hero.canCast && this.hero.canCast();
             hp.classList.toggle("ready", ready);
             const st = hp._statusEl || (hp._statusEl = hp.querySelector(".hero-status"));
+            const mode = this.heroAuto ? "Auto" : "Manual";
             if (st) setText(st, !this.hero.active
                 ? "Reviving…"
-                : ready ? "Singularity ▸ auto (B)" : `Charging ${Math.floor(frac * 100)}%`);
+                : (ready ? "Singularity ▸ auto (B)" : `Charging ${Math.floor(frac * 100)}%`) + ` · ${mode}`);
         }
 
         if (this.waveM) {

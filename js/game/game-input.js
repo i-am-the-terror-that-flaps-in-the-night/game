@@ -154,9 +154,18 @@ export const inputMethods = /** @type {ThisType<any>} */ ({
             // pan keys; updateCamera() pans per-frame — smooth from frame 1, no
             // OS key-repeat delay. Cleared on keyup.
             const playingOrPaused = this.state === "playing" || this.state === "paused";
+            // Manual hero: the arrow keys steer him (A/D keep panning).
+            const steer = playingOrPaused && this.heroManual() && this.hero;
+            if (steer && e.code.startsWith("Arrow")) {
+                e.preventDefault();
+                if (e.code === "ArrowLeft") this.heroKeys.left = true;
+                if (e.code === "ArrowRight") this.heroKeys.right = true;
+                if (e.code === "ArrowUp" && !e.repeat) this.heroKeys.jump = true;
+            }
             if (playingOrPaused) {
-                if (e.code === "ArrowLeft" || e.code === "KeyA") this.keysDown.left = true;
-                if (e.code === "ArrowRight" || e.code === "KeyD") this.keysDown.right = true;
+                if ((e.code === "ArrowLeft" && !steer) || e.code === "KeyA") this.keysDown.left = true;
+                if ((e.code === "ArrowRight" && !steer) || e.code === "KeyD") this.keysDown.right = true;
+                if (e.code === "KeyH" && !e.repeat) this.setHeroAuto(!this.heroAuto);
                 const k0 = e.key.toLowerCase();
                 if (k0 === " " || k0 === "p" || k0 === "escape")
                     this.setSpeed(this.ts === 0 ? 1 : 0);
@@ -181,9 +190,16 @@ export const inputMethods = /** @type {ThisType<any>} */ ({
         window.addEventListener("keyup", (e) => {
             if (e.code === "ArrowLeft" || e.code === "KeyA") this.keysDown.left = false;
             if (e.code === "ArrowRight" || e.code === "KeyD") this.keysDown.right = false;
+            if (e.code === "ArrowLeft") this.heroKeys.left = false;
+            if (e.code === "ArrowRight") this.heroKeys.right = false;
         });
         // Stop drifting when focus is lost (keyup can be missed while unfocused).
-        window.addEventListener("blur", () => { this.keysDown.left = false; this.keysDown.right = false; });
+        window.addEventListener("blur", () => { this.keysDown.left = false; this.keysDown.right = false; this.clearHeroKeys(); });
+        const hc = document.getElementById("heroControl");
+        if (hc) {
+            hc.value = this.heroAuto ? "auto" : "manual";
+            hc.addEventListener("change", () => this.setHeroAuto(hc.value === "auto"));
+        }
 
         const pqSel = document.getElementById("particleQuality");
         if (pqSel) pqSel.addEventListener("change", () => {

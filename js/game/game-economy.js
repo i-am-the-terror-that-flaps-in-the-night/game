@@ -101,6 +101,19 @@ export const economyMethods = /** @type {ThisType<any>} */ ({
         return true;
     },
 
+    // First free x on your side of the field wide enough for building t, or
+    // null if the build frontier is full. Scans left→right so a slot freed by
+    // a destroyed building gets reused; footprints pack just clear of each
+    // other. The frontier runs to midfield (past it is contested terrain).
+    buildSlot(t) {
+        const newW = BUILDING_TYPES[t].width || 100;
+        const gap = 22;
+        const maxX = 2250;
+        let bx = 340;
+        while (this.buildings.some((b) => Math.abs(b.x - bx) < (b.w + newW) / 2 + gap)) bx += 24;
+        return bx > maxX ? null : bx;
+    },
+
     build(t) {
         if (this.state !== "playing" || !this.unlocked.b.has(t))
             return;
@@ -117,17 +130,8 @@ export const economyMethods = /** @type {ThisType<any>} */ ({
         // just clear of each other. The frontier runs to midfield, so a real
         // base — several mines, towers, walls and every unlocker — fits without
         // running out of room after a handful of structures.
-        const newW = d.width || 100;
-        const gap = 22; // breathing room between adjacent footprints
-        const maxX = 2250; // the build frontier (the map past it is contested terrain)
-        let bx = 340;
-        while (
-            this.buildings.some(
-                (b) => Math.abs(b.x - bx) < (b.w + newW) / 2 + gap,
-            )
-        )
-            bx += 24;
-        if (bx > maxX) {
+        const bx = this.buildSlot(t);
+        if (bx == null) {
             this.audio.playError();
             this.notify("No space near castle!");
             return;
