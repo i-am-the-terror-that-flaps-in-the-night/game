@@ -111,13 +111,13 @@ export class Game {
         // Hero control. Manual: ←/→ walk, ↑ jump (jump is edge-triggered and
         // consumed by the hero). Jumping over a tunnel entrance takes the road
         // over it; walking in takes the bore.
-        // Autopilot = the original AI. Default manual, except on touch
-        // devices (no arrow keys). Persisted under its own key (the main save
-        // format is fixture-checked by smoke).
+        // Autopilot = the original AI and is the default, so new players
+        // start fully in charge of the army; H switches to steering the hero
+        // (which hands troops and buildings to the auto-commander). Persisted
+        // under its own key (the main save format is fixture-checked by smoke).
         this.heroKeys = { left: false, right: false, jump: false };
         const savedCtl = loadJSON("sd_hero_control");
-        const touch = typeof window !== "undefined" && ("ontouchstart" in window) && !matchMedia("(pointer: fine)").matches;
-        this.heroAuto = savedCtl ? savedCtl.auto === true : touch;
+        this.heroAuto = savedCtl ? savedCtl.auto === true : true;
 
         this.lightningArcs  = [];
         this.formation       = 'defensive';
