@@ -232,6 +232,15 @@ export const economyMethods = /** @type {ThisType<any>} */ ({
                 (this.upgrades.magic_damage || 0) + t.val; // Fix #9
 
         if (t.type === "pop") this.maxPop += t.val;
+        if (t.type === "forge") {
+            // New recruits get it in buyUnit(); upgrade troops already out.
+            for (const u of this.units)
+                if (u.team === TEAMS.PLAYER && !u.ranged && !u.isHero) u.dmg = Math.ceil(u.dmg * (1 + t.val));
+        }
+        if (t.unlock) {
+            t.unlock.forEach((u) => this.unlocked.u.add(u));
+            this.notify(`Unlocked: ${t.unlock.map((u) => UNIT_TYPES[u].name).join(", ")}`);
+        }
         if (t.type === "mana") {
             this.spells.maxMana += t.val;
             this.spells.mana += t.val;

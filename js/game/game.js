@@ -84,7 +84,7 @@ export class Game {
         this.upgrades = {};
         this.techs = new Set();
         // Only basic troops to start — buildings unlock the rest
-        // (Barracks, Academy, War Forge).
+        // (Barracks, Academy; the Paladin via War Forge research).
         this.unlocked = {
             u: new Set(["militia", "archer"]),
             b: new Set([
@@ -93,8 +93,6 @@ export class Game {
                 "tower",
                 "barracks",
                 "academy",
-                "obelisk",
-                "forge",
             ]),
         };
 
@@ -340,7 +338,7 @@ export class Game {
 
         if (this.upgrades.crystal_inc)
             this.crystal += (this.upgrades.crystal_inc * dt) / 60;
-        this.spells.dynamicRegen = buildingManaRegen;
+        this.spells.dynamicRegen = buildingManaRegen + (this.meta ? this.meta.manaRegenBonus() : 0);
         this.spells.update(dt);
 
         // Fix #6: Round Robin Auto-Queue

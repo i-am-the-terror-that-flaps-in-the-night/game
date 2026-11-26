@@ -55,14 +55,6 @@ export class Building extends Entity {
                 this.building = false;
                 game.audio.playBuild();
                 game.notify(`${this.name} completed.`);
-                if (this.type === 'forge') {
-                    game.upgrades.forge = (game.upgrades.forge || 0) + 0.25;
-                    game.units.forEach(u => {
-                        if (u.team === TEAMS.PLAYER && !u.ranged)
-                            u.dmg = Math.ceil(u.dmg * 1.25);
-                    });
-                    game.notify('⚒ Forge active — melee units gain +25% damage!');
-                }
             }
             return;
         }
@@ -365,45 +357,6 @@ export class Building extends Entity {
                 w * 0.4,
                 25 * cam.z,
             );
-        } else if (this.type === "forge") {
-            ctx.fillStyle = "#2d1a0e";
-            ctx.fillRect(x, y, w, h);
-            // chimney
-            ctx.fillStyle = "#374151";
-            ctx.fillRect(x + w*0.65, y - 16*cam.z, w*0.2, 16*cam.z);
-            // body
-            ctx.fillStyle = "#4b2c1a";
-            ctx.fillRect(x + w*0.05, y + h*0.4, w*0.9, h*0.45);
-            // anvil
-            ctx.fillStyle = "#6b7280";
-            ctx.fillRect(x + w*0.15, y + h*0.55, w*0.7, h*0.2);
-            ctx.fillRect(x + w*0.25, y + h*0.4, w*0.5, h*0.15);
-            // fire glow
-            ctx.globalCompositeOperation = "screen";
-            const ff = 0.3 + Math.abs(Math.sin(this.frame * 0.12)) * 0.4;
-            ctx.fillStyle = `rgba(251,146,60,${ff})`;
-            ctx.beginPath();
-            ctx.arc(px, y + h*0.35, 14*cam.z, 0, Math.PI*2);
-            ctx.fill();
-            ctx.fillStyle = `rgba(255,220,100,${ff*0.6})`;
-            ctx.beginPath();
-            ctx.arc(px, y + h*0.3, 7*cam.z, 0, Math.PI*2);
-            ctx.fill();
-            ctx.globalCompositeOperation = "source-over";
-        } else if (this.type === "obelisk") {
-            ctx.fillStyle = "#1e1b4b";
-            ctx.beginPath();
-            ctx.moveTo(px, y);
-            ctx.lineTo(x + w, py);
-            ctx.lineTo(x, py);
-            ctx.closePath();
-            ctx.fill();
-            ctx.globalCompositeOperation = "screen";
-            ctx.fillStyle = `rgba(192, 132, 252, ${0.5 + Math.sin(this.frame * 0.05) * 0.3})`;
-            ctx.beginPath();
-            ctx.arc(px, y + h * 0.6, 15 * cam.z, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.globalCompositeOperation = "source-over";
         }
 
         this.drawHp(ctx, cam, this.w * 0.8, -this.h - 15);

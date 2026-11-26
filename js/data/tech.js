@@ -1,5 +1,14 @@
 export const TECH_TREE = [
     {
+        id: "war_forge",
+        name: "War Forge",
+        cost: 220,
+        desc: "Unlocks the Paladin. +25% melee damage, including troops already fielded.",
+        type: "forge",
+        val: 0.25,
+        unlock: ["paladin"],
+    },
+    {
         id: "forged_blades",
         name: "Forged Blades",
         cost: 150,

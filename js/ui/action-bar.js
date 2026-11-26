@@ -20,10 +20,10 @@ export const UNIT_ROSTER = [
 ];
 export const BUILDING_ROSTER = [
     ['mine', 'Q'], ['barracks', 'W'], ['tower', 'E'],
-    ['academy', 'T'], ['obelisk', 'F'], ['forge', 'H'],
+    ['academy', 'T'],
 ];
 // Per-button accent modifiers (premium/fire units).
-const MODIFIER = { paladin: ' btn--gold', forge: ' btn--ember' };
+const MODIFIER = { paladin: ' btn--gold' };
 
 function unitButton([type, key]) {
     const mod = MODIFIER[type] || '';

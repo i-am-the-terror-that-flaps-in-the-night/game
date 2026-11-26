@@ -306,6 +306,8 @@ export const uiMethods = /** @type {ThisType<any>} */ ({
         for (const [bt, bd] of Object.entries(BUILDING_TYPES))
             if (bd.unlock)
                 bd.unlock.forEach((u) => (unlockedBy[u] = bd.name));
+        for (const t of TECH_TREE)
+            if (t.unlock) t.unlock.forEach((u) => (unlockedBy[u] = "Research"));
 
         // Recruit buttons — one per unit type (ids derived from the data table).
         for (const t of Object.keys(UNIT_TYPES)) {

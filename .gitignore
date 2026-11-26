@@ -1,2 +1,5 @@
 # Generated single-file build (npm run build:khan)
 khanacademy.html
+
+# macOS Finder metadata
+.DS_Store

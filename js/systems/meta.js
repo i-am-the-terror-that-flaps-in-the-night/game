@@ -78,6 +78,8 @@ export const CASTLE_UPGRADES = {
     bastion: { icon: "🏰", label: "Bastion", per: 400, suffix: " hp",   goldBase: 300, renownBase: 5 },
     rapid:   { icon: "🔥", label: "Rapid Fire", per: 1, suffix: " rof", goldBase: 360, renownBase: 6 },
     reach:   { icon: "🎯", label: "Reach",   per: 30, suffix: " rng",   goldBase: 340, renownBase: 6 },
+    // Replaces the Mana Obelisk: +mana regeneration (mana/sec) every run.
+    ley:     { icon: "✨", label: "Ley Lines", per: 0.75, suffix: " mana/s", goldBase: 300, renownBase: 5 },
 };
 
 export class MetaProgression {
@@ -266,6 +268,12 @@ export class MetaProgression {
             castle.range += CASTLE_UPGRADES.reach.per * rc;
             if (castle.flyRange) castle.flyRange += CASTLE_UPGRADES.reach.per * rc;
         }
+    }
+
+    // Ley Lines: permanent mana regen in mana per FRAME (spells tick per frame
+    // at the 60 fps basis), from the per-second figure shown in the UI.
+    manaRegenBonus() {
+        return (CASTLE_UPGRADES.ley.per * this.castleUpgradeLevel("ley")) / 60;
     }
 
     buyCastleUpgrade(track, currency) {
