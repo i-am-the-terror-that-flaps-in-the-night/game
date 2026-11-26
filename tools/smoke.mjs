@@ -424,6 +424,46 @@ try {
     ok(cmd.mixed, 'auto-commander recruits a mixed army');
     ok(cmd.offOnAutopilot, 'auto-commander stays off when the hero is on autopilot');
 
+    // Deaths: bodies go to the ragdoll system (never stay in `enemies`), settle
+    // or fly off, expire, and stay under the per-tier cap. Shouts are capped.
+    const rd = await page.evaluate(() => {
+        const g = window.game, r = {};
+        g.loadLvl(0); g.state = 'playing';
+        const kill = (x, kind) => {
+            g.spawnEnemy('marauder', x);
+            const e = g.enemies[g.enemies.length - 1];
+            g.draw(1);                                   // rolls its look, like a real frame
+            g.ragdolls.force = kind; e.takeDamage(e.hp + 1); g.ragdolls.force = null;
+            e.dmgTexts.length = 0;
+            return e;
+        };
+        const x = g.camera.x + 400, kills0 = g.stats.kills;
+        const kinds = ['crumple', 'launch', 'plank', 'confetti'];
+        const es = kinds.map((k, i) => kill(x + i * 20, k));
+        g.update(1);
+        r.spawned = kinds.every((k) => g.ragdolls.list.some((c) => c.kind === k));
+        r.notEnemies = es.every((e) => !g.enemies.includes(e)) && g.stats.kills === kills0 + 4;
+        const crumple = g.ragdolls.list.find((c) => c.kind === 'crumple');
+        for (let i = 0; i < 120; i++) g.update(1);
+        let finite = true;
+        for (let k = 0; k < 44; k++) if (!Number.isFinite(crumple.p[k])) finite = false;
+        r.settled = finite && crumple.rest > 0 && Math.abs(crumple.y - g.terrain.groundAt(crumple.x, 0)) < 12;
+        g.draw(1);
+        for (let i = 0; i < 400; i++) g.update(1);
+        r.expired = g.ragdolls.list.length === 0;
+        for (let i = 0; i < 120; i++) kill(x + (i % 10) * 10, 'crumple');
+        r.capped = g.ragdolls.list.length <= 40;
+        g.shouts.clear();
+        for (let i = 0; i < 30; i++) g.shouts.say({ x, y: 400, team: 0 }, 'hi', { force: true });
+        r.shoutCap = g.shouts.list.length <= 5;
+        g.returnToMenu();
+        return r;
+    });
+    ok(rd.spawned && rd.notEnemies, 'deaths hand bodies to the ragdoll system (crumple/launch/plank/confetti), not the enemy list');
+    ok(rd.settled, 'a crumpled ragdoll comes to rest on the ground');
+    ok(rd.expired && rd.capped, 'corpses expire and stay under the per-tier cap');
+    ok(rd.shoutCap, 'speech bubbles are capped');
+
     const orb = await page.evaluate(() => {
         const g = window.game, r = {};
         g.loadLvl(4);

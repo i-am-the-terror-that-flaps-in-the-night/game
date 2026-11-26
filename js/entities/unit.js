@@ -386,6 +386,7 @@ export class Unit extends Entity {
             else game.audio.playShoot();
         } else {
             this.atk = 1; this.atkKind = 1; // melee swing
+            if (game.shouts) game.shouts.swing(this);
             const src = {
                 dmgType: this.dmgType,
                 armorPierce: this.armorPierce,
@@ -531,6 +532,16 @@ export class Unit extends Entity {
     }
     die() {
         super.die();
+        // Hand the body to the ragdoll system (ragdoll / plank / confetti / wreck)
+        // and maybe let it say something on the way out.
+        const dead = game.ragdolls ? game.ragdolls.spawn(this, this._killTag) : null;
+        if (dead && game.shouts) game.shouts.death(dead.corpse, dead.kind, this);
+        const confetti = dead && dead.kind === "confetti";
+        if (confetti) {
+            game.fx.ring(this.x, this.y - 30 * this.scale, { r0: 4, r1: 30 * this.scale, col: "#fde68a", w: 2, life: 12 });
+            game.fx.flash(this.x, this.y - 30 * this.scale, { r: 22 * this.scale, col: "#fef3c7", life: 7 });
+            game.audio.playPop && game.audio.playPop();
+        }
         // Death impact: ground ring + scatter burst
         game.fx.ring(this.x, groundAt(this.x), {
             r0: 6, r1: 42 * this.scale,
@@ -544,21 +555,10 @@ export class Unit extends Entity {
         // Mages / summoners release a rising soul wisp
         if (this.vis === "mage" || this.vis === "staff" || this.boss)
             game.particles.emit(this.x, this.y - 30, 14, "#c084fc", 3, 4, "float");
-        game.particles.emit(
-            this.x,
-            this.y - 25,
-            20,
-            "#ef4444",
-            5,
-            4,
-            "fade",
-        );
-        game.decals.add(
-            this.x,
-            groundAt(this.x),
-            "blood",
-            35 * this.scale,
-        );
+        if (!confetti) {
+            game.particles.emit(this.x, this.y - 25, 20, "#ef4444", 5, 4, "fade");
+            game.decals.add(this.x, groundAt(this.x, this.lane || 0), "blood", 35 * this.scale);
+        }
         if (this.team === TEAMS.ENEMY) {
             // A horde-merged enemy (anti-lag) stands in for `merged` bodies: its
             // bounty was summed on absorb; kills and drops scale here.

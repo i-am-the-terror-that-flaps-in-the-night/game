@@ -212,6 +212,30 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
         ctx.restore();
     },
 
+    // Secondary motion: one damped spring per unit driven by how far it moved
+    // since the last draw (not by dt, so pausing never jitters it). Returns how
+    // much loose cloth — capes, plumes, crests — should stream behind (0..~1.6);
+    // `_lift` carries the hero's jump so a cape billows up on the way down.
+    // Teleports (respawn, culled units scrolling back in) reset instead of whip.
+    _secondary(dt) {
+        const last = this._sx;
+        this._sx = this.x;
+        if (!(dt > 0) || last === undefined || Math.abs(this.x - last) > 30) {
+            if (last === undefined || Math.abs(this.x - (last || 0)) > 30) { this._sa = 0; this._sv = 0; }
+            return this._sa || 0;
+        }
+        const fwd = clamp(((this.x - last) / dt) * (this.facing || 1), -4, 4);
+        const target = clamp(Math.abs(fwd) * 0.38 + (this.state === "walk" ? 0.2 : 0), 0, 1.6);
+        let a = this._sa || 0, v = this._sv || 0;
+        v += (target - a) * 0.14 * dt;
+        v *= Math.pow(0.8, dt);
+        a += v * dt;
+        this._sa = clamp(a, -0.4, 1.8); this._sv = v;
+        const jl = clamp(-(this.jumpV || 0) * 0.14, -0.4, 1);
+        this._lift = (this._lift || 0) + (jl - (this._lift || 0)) * Math.min(1, 0.2 * dt);
+        return this._sa;
+    },
+
     // Body between shoulders and hips, drawn in the unit's local frame (facing
     // +x). Width scales with build; height never changes (anchors stay put).
     _drawTorso(ctx, L, shoulderY, hipY, B, team, lowQ) {
@@ -336,7 +360,7 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
     },
 
     // Head in a frame translated to the head centre (facing +x).
-    _drawHead(ctx, L, r, hurt, team) {
+    _drawHead(ctx, L, r, hurt, team, sway = 0) {
         const T = Math.PI * 2;
         ctx.lineJoin = "round";
         // Long hair falls behind the head.
@@ -440,6 +464,16 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
                 break;
             }
             case "helm": {
+                if (L.crest) {
+                    // Brush crest running front-to-back over the helm.
+                    const k = Math.min(1.4, sway);
+                    ctx.fillStyle = team ? L.cloth : "#991b1b";
+                    ctx.beginPath(); ctx.moveTo(r * 0.6, -r + 0.5);
+                    ctx.quadraticCurveTo(0, -r - 8, -r - 2 - k * 4, -r + 1 + k);
+                    ctx.quadraticCurveTo(-r * 0.3, -r - 1, r * 0.6, -r + 0.5);
+                    ctx.closePath(); ctx.fill(); ctx.stroke();
+                    ctx.strokeStyle = OUTLINE; ctx.lineWidth = 1.3;
+                }
                 dome(STEEL);
                 ctx.fillStyle = STEEL_D; ctx.fillRect(r - 2.4, -1.5, 2, 5.5);    // nasal
                 ctx.fillStyle = team ? L.trim : "#7f1d1d"; ctx.fillRect(-r - 0.6, -2.4, 2 * r + 1.2, 1.4);
@@ -451,8 +485,15 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
                 ctx.fillStyle = "#1f2328"; ctx.fillRect(0.5, -2.2, r + 0.5, 1.8);   // eye slit
                 ctx.fillStyle = STEEL_L; ctx.fillRect(-r + 0.5, -r, 2, 2 * r - 1);
                 if (L.plume) {
+                    // Long horsehair plume; whips back as the knight charges.
+                    const k = Math.min(1.4, sway);
                     ctx.fillStyle = team ? L.cloth : "#b91c1c";
-                    ctx.beginPath(); ctx.moveTo(-2, -r - 1.5); ctx.quadraticCurveTo(-6, -r - 9, -12, -r - 4); ctx.quadraticCurveTo(-6, -r - 4, -2, -r - 1.5); ctx.fill(); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(-1, -r - 1.5);
+                    ctx.quadraticCurveTo(-4 - k * 4, -r - 12 + k * 5, -14 - k * 5, -r - 5 + k * 3);
+                    ctx.quadraticCurveTo(-11 - k * 3, -r - 1 + k * 2, -6, -r - 0.5);
+                    ctx.closePath(); ctx.fill(); ctx.stroke();
+                    ctx.strokeStyle = team ? L.trim : "#450a0a"; ctx.lineWidth = 0.8;
+                    ctx.beginPath(); ctx.moveTo(-2, -r - 3); ctx.quadraticCurveTo(-6 - k * 3, -r - 8 + k * 4, -11 - k * 4, -r - 4 + k * 2.5); ctx.stroke();
                 }
                 break;
             }
@@ -554,6 +595,8 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
         const B = L.build;
         const bones = L.body === "bones";
         const BONE = "#ddd6c4";
+        const stream = this._secondary(dt);          // loose cloth trailing behind
+        const lift = this._lift || 0;
 
         ctx.save();
         ctx.translate(px, py);
@@ -873,20 +916,32 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
 
         // Cape (mage / staff / boss)
         if (L.cape || this.boss) {
-            const capeSway = Math.sin(this.frame * 0.1) * 4 + swing * 6;
-            ctx.fillStyle = shade(L.body === "plate" ? L.cloth : L.tabardCol, -0.2);
+            // Streams out behind on the move, flutters at speed, billows up as
+            // the hero falls from a jump.
+            const long = this.isHero ? 9 : 0;
+            const flut = Math.sin(this.frame * 0.32) * (0.6 + stream * 2.6);
+            const capeSway = Math.sin(this.frame * 0.1) * 3 * (1 - Math.min(1, stream)) + swing * 6;
+            const tipX = -11 - stream * 15 + capeSway + flut * 0.5;
+            const tipY = hipY + 16 + long - stream * (9 + long * 0.6) - lift * (14 + long) + flut;
+            const hemX = 4 - stream * 6, hemY = hipY + 12 + long - stream * 4 - lift * 8;
+            const capeCol = shade(L.body === "plate" ? L.cloth : L.tabardCol, -0.2);
+            ctx.fillStyle = capeCol;
             ctx.strokeStyle = OUTLINE;
             ctx.lineWidth = 1.2;
-            ctx.globalAlpha = 0.95;
             ctx.beginPath();
             ctx.moveTo(-3, shoulderY + 2);
-            ctx.quadraticCurveTo(-15 + capeSway, shoulderY + 16, -11 + capeSway, hipY + 16);
-            ctx.quadraticCurveTo(0, hipY + 20, 5, hipY + 12);
+            ctx.quadraticCurveTo(-15 + capeSway - stream * 9, shoulderY + 14 - lift * 4, tipX, tipY);
+            ctx.quadraticCurveTo((tipX + hemX) / 2 + flut, Math.max(tipY, hemY) + 5, hemX, hemY);
             ctx.lineTo(4, shoulderY + 4);
             ctx.closePath();
             ctx.fill();
             ctx.stroke();
-            ctx.globalAlpha = 1;
+            if (!lowQ) {                       // inner fold
+                ctx.strokeStyle = shade(capeCol, -0.25); ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(-1, shoulderY + 5);
+                ctx.quadraticCurveTo(-7 - stream * 6, shoulderY + 16, (tipX + hemX) / 2, Math.max(tipY, hemY) + 1);
+                ctx.stroke();
+            }
         }
 
         // ── Back arm ──
@@ -956,7 +1011,7 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
         // ── Head, face, hair and headgear ──
         ctx.save();
         ctx.translate(0, headCY);
-        this._drawHead(ctx, L, headR, hurt, team);
+        this._drawHead(ctx, L, headR, hurt, team, stream);
         ctx.restore();
 
         // ── Front arm + weapon ──
@@ -979,7 +1034,7 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
         else { const k = swing; wa = lerp(-0.7, 0.6, k); }
 
         // Weapon-tip motion trail
-        if (this.atkKind === 1 && meleeBlade && Math.abs(swing) > 0.06 && GFX.postFX) {
+        if (this.atkKind === 1 && meleeBlade && Math.abs(swing) > 0.06 && !lowQ) {
             const L = this.vis === "spear" ? 34 : this.vis === "club" ? 18 : 20;
             this.wTrail.push({ x: fhx + Math.cos(wa) * L, y: fhy + Math.sin(wa) * L, l: 6 });
             if (this.wTrail.length > 12) this.wTrail.shift();
@@ -1006,6 +1061,21 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
 
         // Front upper arm/forearm
         armF(fhx, fhy, false);
+
+        // Pauldron over the front shoulder: polished + gold-edged on your
+        // troops, dark spiked iron on the enemy's — a silhouette cue at range.
+        if (metalBody) {
+            const pw = 5.6 * B, ph = 4.4 * B, py0 = shoulderY + 4.5;
+            ctx.fillStyle = team ? STEEL_L : "#4b4f57";
+            ctx.strokeStyle = OUTLINE; ctx.lineWidth = 1.3;
+            ctx.beginPath(); ctx.ellipse(0.5, py0, pw, ph, 0.18, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.strokeStyle = team ? L.trim : "#1f1f24"; ctx.lineWidth = 1.2;
+            ctx.beginPath(); ctx.moveTo(-pw + 1.2, py0 - 0.4); ctx.lineTo(pw + 0.4, py0 + 0.6); ctx.stroke();
+            if (!team) {
+                ctx.fillStyle = "#c7cbd1"; ctx.strokeStyle = OUTLINE; ctx.lineWidth = 0.9;
+                ctx.beginPath(); ctx.moveTo(-1.6, py0 - ph + 0.8); ctx.lineTo(-0.6, py0 - ph - 5); ctx.lineTo(1.4, py0 - ph + 0.6); ctx.closePath(); ctx.fill(); ctx.stroke();
+            }
+        }
 
         // Weapon by type
         if (this.vis === "bow") {

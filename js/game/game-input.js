@@ -2,7 +2,7 @@ import { CONFIG } from '../config.js';
 import { defOf, describeMatchups } from '../systems/combat.js';
 import { BUILDING_TYPES } from '../data/buildings.js';
 import { UNIT_TYPES } from '../data/units.js';
-import { btnId } from '../utils.js';
+import { btnId, hpStr } from '../utils.js';
 import { BUILDING_ROSTER, UNIT_ROSTER } from '../ui/action-bar.js';
 import { refreshGraphics } from '../systems/graphics.js';
 
@@ -49,7 +49,7 @@ export const inputMethods = /** @type {ThisType<any>} */ ({
                 const def = defOf(hov);
                 if (def) {
                     const mu = describeMatchups(def);
-                    tt.innerHTML = `<div class="tt-name">${def.name}</div><div class="tt-desc">${def.desc || ""}</div>HP: ${Math.floor(hov.hp)}/${hov.maxHp}<br>${def.dmg ? "DMG: " + def.dmg + "<br>" : ""}${def.armor ? "Armor: " + def.armor + "<br>" : ""}${mu ? `<span style="font-size:11px;">${mu}</span>` : ""}`;
+                    tt.innerHTML = `<div class="tt-name">${def.name}</div><div class="tt-desc">${def.desc || ""}</div>HP: ${hpStr(hov)}<br>${def.dmg ? "DMG: " + def.dmg + "<br>" : ""}${def.armor ? "Armor: " + def.armor + "<br>" : ""}${mu ? `<span style="font-size:11px;">${mu}</span>` : ""}`;
                 }
             } else {
                 // Nothing picked: describe the ground under the cursor (hills,

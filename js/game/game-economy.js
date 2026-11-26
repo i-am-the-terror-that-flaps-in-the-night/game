@@ -97,6 +97,7 @@ export const economyMethods = /** @type {ThisType<any>} */ ({
         if (this.upgrades.forge && !UNIT_TYPES[t].ranged)
             u.dmg = Math.ceil(u.dmg * (1 + this.upgrades.forge));
         this.units.push(u);
+        if (this.shouts) this.shouts.recruit(u);
         if (!auto) this.audio.playBuild();
         return true;
     },
@@ -191,6 +192,7 @@ export const economyMethods = /** @type {ThisType<any>} */ ({
         e.hp = e.maxHp;
         if (this.mergeSpawn(e)) return;
         this.enemies.push(e);
+        if (this.shouts) this.shouts.arrive(e);
     },
 
     // Horde merge (anti-lag; endless only, while Anti-Lag isn't Off — see

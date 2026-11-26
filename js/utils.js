@@ -73,4 +73,12 @@ export const btnId = (type) => "btn" + cap(type);
 // Format a { g, i, c } cost object as "10g 5i 2c" (omitting zero components).
 export const costStr = (c) =>
     `${c.g || 0}g` + (c.i ? ` ${c.i}i` : "") + (c.c ? ` ${c.c}c` : "");
+// "hp/max" for tooltips and panels. Max HP picks up fractional values from
+// multipliers (difficulty, power scaling): the max is rounded like the castle
+// HUD bar, and current HP rounds up but never past it — full health always
+// reads n/n, and a unit on 0.4 HP still shows 1, not 0.
+export const hpStr = (e) => {
+    const max = Math.round(e.maxHp);
+    return `${Math.min(max, Math.ceil(Math.max(0, e.hp)))}/${max}`;
+};
 export { particleQuality } from './systems/graphics.js';

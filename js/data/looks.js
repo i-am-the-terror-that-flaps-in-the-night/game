@@ -41,13 +41,13 @@ export const LOOKS = {
     "p:knight":   { body: "plate",    head: "greathelm", build: 1.15, pants: "#5c6470", boots: "#3b4048", tabard: true, plume: true },
     "p:mage":     { body: "robe",     head: "wizard",    build: 1.0,  pants: "#22304f", boots: "#1c2033", beard: 0.8, beardCol: "#e5e7eb" },
     "p:catapult": { body: "tunic",    head: "cap",       build: 1.0,  pants: "#5b4630", boots: "#3a2a1c" },
-    "p:paladin":  { body: "plate",    head: "helm",      build: 1.3,  pants: "#6b7280", boots: "#3b4048", tabard: true, tabardCol: "#f1ede2", cape: true, beard: 0.5 },
+    "p:paladin":  { body: "plate",    head: "helm",      build: 1.3,  pants: "#6b7280", boots: "#3b4048", tabard: true, tabardCol: "#f1ede2", cape: true, crest: true, beard: 0.5 },
 
     // ── Enemies ──────────────────────────────────────────────────────────
     "e:rabble":      { body: "rags",     head: "bare",    build: 0.9,  cloth: ["#7a3b2a", "#6b5a3a", "#5a4a3c"], pants: "#4a3a2a", boots: "#2a1e14", beard: 0.5, messy: true },
     "e:marauder":    { body: "leather",  head: "horned",  build: 1.05, cloth: ["#8e2a22", "#7a2a1e"], pants: "#3b2a20", boots: "#241811", sash: "#b91c1c", beard: 0.6 },
     "e:berserker":   { body: "bare",     head: "bare",    build: 1.25, cloth: ["#5a3b22"], pants: "#4a2f1a", boots: "#2a1a10", paint: "#b91c1c", beard: 0.9, messy: true, fur: true },
-    "e:shieldman":   { body: "chain",    head: "helm",    build: 1.15, cloth: ["#8e2a22"], pants: "#3b3b42", boots: "#22222a", tabard: true },
+    "e:shieldman":   { body: "chain",    head: "helm",    build: 1.15, cloth: ["#8e2a22"], pants: "#3b3b42", boots: "#22222a", tabard: true, crest: true },
     "e:archer":      { body: "leather",  head: "cowl",    build: 0.95, cloth: ["#2b2622", "#3a2e26"], pants: "#2a2420", boots: "#1a1512", hood: "#3d1f1a", quiver: true },
     "e:shaman":      { body: "robe",     head: "antlers", build: 1.0,  cloth: ["#4a5a2a", "#5a4a2a"], pants: "#3a2a1a", boots: "#2a1a10", skin: SKIN_TRIBAL, paint: "#e7e5e4", beads: true },
     "e:ogre":        { body: "bare",     head: "bare",    build: 1.55, cloth: ["#5a4022"], pants: "#4a3520", boots: "#2a1e12", skin: SKIN_OGRE, tusks: true, bald: true },
