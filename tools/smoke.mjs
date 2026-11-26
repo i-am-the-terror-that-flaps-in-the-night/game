@@ -363,6 +363,45 @@ try {
     ok(cx.meleeBlocked, 'melee cannot reach across levels inside a crossing');
     ok(cx.shootRamp && cx.noShootUnder, 'ranged on the top road can hit the ramp but not the bore');
 
+    // Manual hero control: arrows steer (not pan), no drift without input,
+    // jumping over a tunnel entrance takes the road, walking in takes the bore,
+    // he fires past the hold line, pause freezes him, H toggles autopilot.
+    const hc = await page.evaluate(() => {
+        const g = window.game, T = g.terrain, r = {};
+        g.setHeroAuto(false);
+        g.loadLvl(4); g.state = 'playing'; g.ts = 1;
+        const key = (type, code) => window.dispatchEvent(new KeyboardEvent(type, { code, key: code, bubbles: true }));
+        const pump = (n) => { for (let i = 0; i < n; i++) { g.frames++; g.update(1); g.updateCamera(1); } };
+        const h = g.hero;
+        const x0 = h.x; pump(200); r.noDrift = Math.abs(h.x - x0) < 1;
+        key('keydown', 'ArrowRight'); pump(60); r.moves = h.x > x0 + 50 && !g.keysDown.right; key('keyup', 'ArrowRight');
+        const c = T.crossings[0];
+        const place = () => { h.x = c.x0 - 20; h._cross = null; h.lane = 0; h.jumpH = 0; pump(1); };
+        place();
+        key('keydown', 'ArrowRight'); let n = 0; while (h.x < c.t.x0 + 60 && n++ < 3000) pump(1); key('keyup', 'ArrowRight');
+        r.walkIn = h.lane === 0 && T.underground(h);
+        place();
+        key('keydown', 'ArrowRight'); n = 0; while (h.x < c.t.x0 - 60 && n++ < 3000) pump(1);
+        key('keydown', 'ArrowUp'); key('keyup', 'ArrowUp');
+        n = 0; while (h.x < c.t.x0 + 80 && n++ < 3000) pump(1); key('keyup', 'ArrowRight'); pump(80);
+        r.jumpOver = h.lane === 1 && !T.underground(h) && h.jumpH === 0;
+        h.x = 3200; h._cross = null; h.lane = 0; pump(1);
+        g.spawnEnemy('rabble', 3320); const foe = g.enemies[g.enemies.length - 1]; foe.speed = 0; const hp0 = foe.hp;
+        for (let i = 0; i < 150; i++) { pump(1); for (const p of g.projectiles) p.update(1); }
+        r.fires = foe.hp < hp0 || !foe.active;
+        g.setSpeed(0); const xp = h.x;
+        key('keydown', 'ArrowRight'); for (let i = 0; i < 30; i++) { g.frames++; if (g.state === 'playing') g.update(1); }
+        key('keyup', 'ArrowRight'); r.pauseFreezes = h.x === xp; g.setSpeed(1);
+        key('keydown', 'KeyH'); key('keyup', 'KeyH');
+        key('keydown', 'ArrowRight'); r.toggle = g.heroAuto === true && g.keysDown.right === true; key('keyup', 'ArrowRight');
+        g.setHeroAuto(false); g.returnToMenu();
+        return r;
+    });
+    ok(hc.noDrift && hc.moves, 'manual hero: arrows move him (not the camera); no drift without input');
+    ok(hc.walkIn && hc.jumpOver, 'manual hero: walking in takes the tunnel, jumping over the entrance takes the road');
+    ok(hc.fires, 'manual hero fires at enemies beyond the hold line');
+    ok(hc.pauseFreezes && hc.toggle, 'pause freezes the hero; H toggles autopilot (arrows pan again)');
+
     const orb = await page.evaluate(() => {
         const g = window.game, r = {};
         g.loadLvl(4);

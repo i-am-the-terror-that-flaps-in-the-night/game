@@ -157,8 +157,12 @@ export class Unit extends Entity {
         // Engagement reach: player troops in Defensive/Standard stay leashed to
         // their hold point; enemies only react to foes inside their aggro
         // radius — otherwise both sides move between tactical positions.
+        const manual = this.isHero && game.heroManual && game.heroManual();
         const reach = this._reach();
-        const inReach = (e) => (isPlayer ? e.x <= reach : Math.abs(e.x - this.x) <= reach);
+        // A steered hero fires at whatever is near HIM (not the formation's
+        // leash, which would stop him shooting past the hold line).
+        const inReach = manual ? (e) => Math.abs(e.x - this.x) <= this.range * 1.25
+            : (e) => (isPlayer ? e.x <= reach : Math.abs(e.x - this.x) <= reach);
 
         // Fix #4: ground units ignore airborne foes; tunnels block shots.
         // Cheap reach test first: _canHit walks the tunnel list for ranged/flyers.
@@ -178,7 +182,9 @@ export class Unit extends Entity {
             cD = Math.max(0, this.x - blk.x - blk.w / 2);
         }
 
-        if (tgt) {
+        if (manual) {
+            this._manualStep(dt, tgt, cD);
+        } else if (tgt) {
             this.facing = tgt.x > this.x ? 1 : -1;
             // High ground: ranged troops above their target reach farther.
             let range = this.range;
@@ -254,7 +260,9 @@ export class Unit extends Entity {
             // alternation rule. Appearing mid-crossing (a summon or spawn):
             // stay on the level nearest the feet instead of teleporting.
             const yTop = groundAt(this.x, 1), yLow = groundAt(this.x, 0);
-            this.lane = Math.abs(yTop - yLow) < 4 ? terrain.pickLane(this, this.team)
+            // A steered hero walks into the bore; jumping is how he takes the road.
+            this.lane = Math.abs(yTop - yLow) < 4
+                ? (this.isHero && game.heroManual && game.heroManual() ? 0 : terrain.pickLane(this, this.team))
                 : Math.abs(this.y - yTop) < Math.abs(this.y - yLow) ? 1 : 0;
         }
         this.y = groundAt(this.x, this.lane); // follow the terrain (hills, and resizes)

@@ -736,7 +736,15 @@ body.perf-lite .ember {
 #spellsBar .bar-divider:first-of-type { display: none; }
 #bottomBar .action-tabs { flex-direction: column; margin-bottom: 0; gap: 4px; }
 #bottomBar .action-tab { padding: 4px 10px; font-size: 10px; }
-#bottomBar .action-group { flex-wrap: wrap; justify-content: center; row-gap: 6px; }
+/* Recruit/build grid: never more than two rows (columns fill top-to-bottom),
+   so the dock stays short enough to sit below the lane at any width. */
+#bottomBar .action-group { display: grid; grid-auto-flow: column; grid-template-rows: repeat(2, auto); gap: 6px; justify-content: center; }
+#bottomBar .action-group.is-hidden { display: none; }
 #bottomContainer .btn { min-width: 70px; padding: 7px 8px; font-size: 12px; }
 #sidePanel.is-hidden { display: none; }
 #minimapContainer { bottom: auto; top: 78px; }
+@media (max-width: 1200px) {
+    #bottomContainer .btn { min-width: 58px; padding: 6px 6px; font-size: 11px; }
+    #bottomContainer .btn .cost { font-size: 9px; }
+    #bottomBar .action-tab { padding: 3px 8px; }
+}

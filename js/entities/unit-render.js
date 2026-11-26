@@ -648,6 +648,7 @@ Object.assign(Unit.prototype, /** @type {ThisType<any>} */ ({
 
         if (this.flying) ctx.translate(0, -70 + Math.sin(this.frame * 0.1) * 12);
         else if (this.vis === "horse") ctx.translate(0, -18);
+        if (this.jumpH) ctx.translate(0, -this.jumpH / (this.scale || 1));   // hero jump
 
         const isHorse = this.vis === "horse";
         const shielded = this.vis === "sword_shield" || this.vis === "tower_shield" || !!L.shield;
