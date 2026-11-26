@@ -402,6 +402,28 @@ try {
     ok(hc.fires, 'manual hero fires at enemies beyond the hold line');
     ok(hc.pauseFreezes && hc.toggle, 'pause freezes the hero; H toggles autopilot (arrows pan again)');
 
+    // Auto-commander: runs only while the hero is hand-steered; builds the
+    // economy plan and recruits counters (not just militia); off on autopilot.
+    const cmd = await page.evaluate(() => {
+        const g = window.game, r = {};
+        g.setHeroAuto(false);
+        g.loadLvl(2); g.state = 'playing'; g.ts = 1;
+        for (let i = 0; i < 9000; i++) { g.frames++; g.update(1); }
+        const types = new Set(g.units.filter((u) => u.active && !u.isHero).map((u) => u.type));
+        r.built = ['mine', 'barracks', 'tower', 'academy'].every((t) => g.buildings.some((b) => b.type === t && b.active));
+        r.mixed = types.size >= 3 && g.units.filter((u) => u.active && !u.isHero).length >= 6;
+        g.setHeroAuto(true);
+        g.loadLvl(2); g.state = 'playing'; g.gold = 3000;
+        const b0 = g.buildings.length, u0 = g.units.length;
+        for (let i = 0; i < 1500; i++) { g.frames++; g.update(1); }
+        r.offOnAutopilot = g.buildings.length === b0 && g.units.length === u0;
+        g.setHeroAuto(false); g.returnToMenu();
+        return r;
+    });
+    ok(cmd.built, 'auto-commander builds mines, barracks, tower and academy while the hero is steered');
+    ok(cmd.mixed, 'auto-commander recruits a mixed army');
+    ok(cmd.offOnAutopilot, 'auto-commander stays off when the hero is on autopilot');
+
     const orb = await page.evaluate(() => {
         const g = window.game, r = {};
         g.loadLvl(4);

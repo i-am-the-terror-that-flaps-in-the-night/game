@@ -16,6 +16,7 @@ import { renderMethods } from './game-render.js';
 import { bossMethods } from './game-boss.js';
 import { tacticsMethods } from './game-tactics.js';
 import { powerMethods } from './game-power.js';
+import { commanderMethods } from './game-commander.js';
 
 Object.assign(
     Game.prototype,
@@ -27,4 +28,5 @@ Object.assign(
     bossMethods,
     tacticsMethods,
     powerMethods,
+    commanderMethods,
 );

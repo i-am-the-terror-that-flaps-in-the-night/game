@@ -321,7 +321,7 @@ export class Game {
         const sel = document.getElementById("heroControl");
         if (sel) sel.value = this.heroAuto ? "auto" : "manual";
         if (this.state === "playing" || this.state === "paused")
-            this.notify(this.heroAuto ? "Hero: autopilot (H to take control)" : "Hero: manual — ←/→ move, ↑ jump (H for autopilot)");
+            this.notify(this.heroAuto ? "Hero: autopilot — you command the army (H to take the hero)" : "Hero: manual — ←/→ move, ↑ jump. Troops and buildings are handled for you (H for autopilot)");
         this.updateUI();
     }
 
@@ -382,6 +382,9 @@ export class Game {
         this.spells.update(dt);
 
         // Fix #6: Round Robin Auto-Queue
+        // While the hero is hand-steered, the army and base run themselves.
+        this.commanderTick(dt);
+
         this.autoTimer += dt;
         if (this.autoTimer >= 60) {
             this.autoTimer = 0;
